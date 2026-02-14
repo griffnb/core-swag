@@ -68,3 +68,15 @@ ckb-reindex: ## Reindex CKB data
 .PHONY: ckb-start
 ckb-start: ## Start CKB node
 	@npx @tastehub/ckb daemon start
+
+
+.PHONY: test-project-1
+test-project-1: ## Run tests for project 1
+	@echo "Running generation for project 1..."
+	@go install ./cmd/core-swag && cd /Users/griffnb/projects/Crowdshield/atlas-go && core-swag init -g "main.go" -d "./cmd/server,./internal/controllers,./internal/models" --parseInternal -pd -o "./swag_docs"
+
+
+.PHONY: test-project-2
+test-project-2: ## Run tests for project 2
+	@echo "Running generation for project 2..."
+	@go install ./cmd/core-swag && cd /Users/griffnb/projects/botbuilders/go-the-schwartz && core-swag init -g "main.go" -d "./cmd/server,./internal/controllers,./internal/models,./applications" --parseInternal -pd -o "./swag_docs"

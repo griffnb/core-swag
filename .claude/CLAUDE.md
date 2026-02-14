@@ -6,6 +6,9 @@ Previous Project is located here: `/Users/griffnb/projects/swag`
 
 ## ⚠️ CRITICAL: The most important test
 `testing/core_models_integration_test.go` :  `TestRealProjectIntegration`
+To run on ACTUAL projects, theres 2 make commands to give full true outputs on real projects:
+`make test-project-1`
+`make test-project-2`
 
 ## ⚠️ CRITICAL: ALWAYS FOLLOW DOCUMENTATION AND PRD
 **MANDATORY REQUIREMENT**: Before making ANY changes to this codebase, you MUST:
