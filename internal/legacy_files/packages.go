@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/swaggo/swag/console"
+	"github.com/griffnb/core-swag/console"
 	"golang.org/x/tools/go/loader"
 	"golang.org/x/tools/go/packages"
 )

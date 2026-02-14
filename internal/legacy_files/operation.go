@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/console"
+	"github.com/griffnb/core-swag/console"
 	"golang.org/x/tools/go/loader"
 )
 
@@ -26,7 +26,7 @@ type RouteProperties struct {
 }
 
 // Operation describes a single API operation on a path.
-// For more information: https://github.com/swaggo/swag#api-operation
+// For more information: https://github.com/griffnb/core-swag#api-operation
 type Operation struct {
 	parser              *Parser
 	codeExampleFilesDir string

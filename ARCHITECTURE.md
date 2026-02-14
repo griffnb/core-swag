@@ -22,9 +22,9 @@ The refactored architecture provides:
 ```
 swag/
 ├── cmd/                          # CLI commands (unchanged)
-├── format/                       # Swagger formatter (unchanged)
 │
 ├── internal/                     # Internal packages (refactored)
+    ├-- format/                       # Swagger formatter
 │   ├── domain/                   # Shared domain types
 │   ├── loader/                   # Package discovery and loading
 │   ├── registry/                 # Type and package registry
@@ -33,10 +33,7 @@ swag/
 │       ├── base/                 # General API info parsing
 │       ├── struct/               # Struct parsing
 │       └── route/                # Route/operation parsing
-│
-└── examples/                     # Real importable Go projects for testing
-    ├── basicapp/                 # Simple CRUD app example
-    └── customfields/             # Custom fields example
+
 ```
 
 ## Service Descriptions

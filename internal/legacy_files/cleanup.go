@@ -2,7 +2,7 @@ package swag
 
 import (
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/internal/schema"
+	"github.com/griffnb/core-swag/internal/schema"
 )
 
 // RemoveUnusedDefinitions removes schema definitions that are not referenced anywhere in the Swagger spec.

@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/swaggo/swag"
 )
 
 func TestCoreModelsIntegration(t *testing.T) {
@@ -36,7 +35,12 @@ func TestCoreModelsIntegration(t *testing.T) {
 	t.Run("Public variant schemas should exist", func(t *testing.T) {
 		assert.Contains(t, p.GetSwagger().Definitions, "account.AccountPublic", "account.AccountPublic definition should exist")
 		assert.Contains(t, p.GetSwagger().Definitions, "account.AccountJoinedPublic", "account.AccountJoinedPublic definition should exist")
-		assert.Contains(t, p.GetSwagger().Definitions, "billing_plan.BillingPlanJoinedPublic", "billing_plan.BillingPlanJoinedPublic definition should exist")
+		assert.Contains(
+			t,
+			p.GetSwagger().Definitions,
+			"billing_plan.BillingPlanJoinedPublic",
+			"billing_plan.BillingPlanJoinedPublic definition should exist",
+		)
 	})
 
 	// Test field properties in base Account schema
@@ -95,7 +99,12 @@ func TestCoreModelsIntegration(t *testing.T) {
 
 		// Authentication has swaggerignore:"true", so its schema should not be generated
 		assert.NotContains(t, definitions, "account.Authentication", "Should NOT have Authentication schema (field has swaggerignore:true)")
-		assert.NotContains(t, definitions, "account.AuthenticationPublic", "Should NOT have AuthenticationPublic schema (field has swaggerignore:true)")
+		assert.NotContains(
+			t,
+			definitions,
+			"account.AuthenticationPublic",
+			"Should NOT have AuthenticationPublic schema (field has swaggerignore:true)",
+		)
 	})
 
 	// Test operations and their schema references
@@ -149,7 +158,7 @@ func TestCoreModelsIntegration(t *testing.T) {
 		actualJSON, err := json.MarshalIndent(p.GetSwagger(), "", "  ")
 		require.NoError(t, err, "Failed to marshal swagger to JSON")
 
-		err = os.WriteFile("actual_output.json", actualJSON, 0644)
+		err = os.WriteFile("actual_output.json", actualJSON, 0o644)
 		require.NoError(t, err, "Failed to write actual output")
 
 		t.Logf("Actual swagger output written to actual_output.json")

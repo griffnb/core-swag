@@ -2,7 +2,7 @@ package swag
 
 import (
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/internal/parser/field"
+	"github.com/griffnb/core-swag/internal/parser/field"
 )
 
 // parserAdapter adapts the Parser to implement field.SchemaHelper and field.ParserConfig.
@@ -11,8 +11,10 @@ type parserAdapter struct {
 }
 
 // Ensure parserAdapter implements both interfaces
-var _ field.SchemaHelper = (*parserAdapter)(nil)
-var _ field.ParserConfig = (*parserAdapter)(nil)
+var (
+	_ field.SchemaHelper = (*parserAdapter)(nil)
+	_ field.ParserConfig = (*parserAdapter)(nil)
+)
 
 // newParserAdapter creates a new parser adapter.
 func newParserAdapter(p *Parser) *parserAdapter {
