@@ -1,0 +1,6 @@
+{
+  "language": "go",
+  "indexer": "scip-go",
+  "manifestPath": "go.mod",
+  "detectedAt": "2026-02-13T20:18:24.07284-07:00"
+}

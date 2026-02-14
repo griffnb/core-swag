@@ -1,0 +1,30 @@
+{
+  "enabledMcpjsonServers": ["code_tools"],
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "mcp__code_tools",
+      "mcp__ui_code_tools",
+      "Read(./**)"
+    ],
+   "deny": ["Read(*.env)", "Read(*.env.*)", "Read(*/.configs/**)"]
+  },
+  "plansDirectory":"./.agents/plans",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/stop-ralph-hook.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "./.claude/statusline.sh",
+    "padding": 0
+  }
+}

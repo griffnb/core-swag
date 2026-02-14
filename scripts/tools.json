@@ -1,0 +1,80 @@
+{
+  "tools": [
+    {
+      "name": "docs",
+      "description": "Gets the documentation for an internal package or function. This should be the first place to look for how something works.\n\nIMPORTANT: Before running a specific test, use this tool to verify:\n1. The exact test function name exists in the package\n2. The correct naming convention (Test_functionName_scenario with underscores)\n3. Available test scenarios for a function",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "package": {
+            "title": "Package Path",
+            "type": "string",
+            "description": "Package of the function or struct to get documents for. For tests, use the test file path (e.g., ./internal/services/dsrs)."
+          },
+          "function": {
+            "title": "Function Name",
+            "type": "string",
+            "description": "Function to get information about. Can be a package level function SomeFunction or a struct SomeStruct, or a struct function SomeStruct.StructFunction. For test functions, include 'Test_' prefix. Leave empty to get package level docs."
+          }
+        },
+        "required": ["package"]
+      },
+      "command": "go doc {{package}} {{function:=\"\"}}"
+    },
+    {
+      "name": "format",
+      "description": "Formats the code according to the specified style guide.\n\nThis command runs 'make fmt' to format all code in the project according to the configured style guide.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "package": {
+            "title": "Package Path",
+            "type": "string",
+            "description": "Specific package or file to format (e.g., dir1 | dir2/... | file.go). Leave empty to format all packages."
+          }
+        },
+        "required": []
+      },
+      "command": "make fmt PKG=\"{{package:=./...}}\""
+    },
+
+    {
+      "name": "lint",
+      "description": "Runs the linter on the code",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "package": {
+            "title": "Package Path",
+            "type": "string",
+            "description": "Specific package or file to lint (e.g., dir1 | dir2/... | file.go). Leave empty to lint all packages."
+          }
+        },
+        "required": []
+      },
+      "command": "make lint PKG=\"{{package:=./...}}\""
+    },
+
+    {
+      "name": "run_tests",
+      "description": "Run the test suite for the project.\n\nIMPORTANT: Test names in this project follow the pattern Test_functionName_scenario (with underscores), NOT TestFunctionName.\nBefore running a specific test, use the 'docs' tool or grep to verify the exact test name exists in the package.\n\nArgs:\n    package: Required package path to test (e.g., ./internal/services/dsrs)\n    test: Optional test name pattern. Use Go test regex patterns:\n          - Test_functionName (runs all scenarios for that function)\n          - Test_functionName_scenario (runs specific scenario)\n          - Test_functionName_scenario/subtest (runs specific subtest)\n\nReturns:\n    Test results and coverage information",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "package": {
+            "title": "Package Path",
+            "type": "string",
+            "description": "Specific package to test (e.g., ./internal/services/dsrs). Required."
+          },
+          "test": {
+            "title": "Test Name Pattern",
+            "type": "string",
+            "description": "Optional test name pattern (e.g., Test_ProcessJob or Test_ProcessJob_success). Leave empty to run all tests in the package. IMPORTANT: Test names use underscores (Test_name_scenario), not camelCase (TestNameScenario)."
+          }
+        },
+        "required": ["package"]
+      },
+      "command": "make unit_test PKG=\"{{package:=./...}}\" RUN=\"{{test:=\"\"}}\""
+    }
+  ]
+}

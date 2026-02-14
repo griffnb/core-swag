@@ -1,0 +1,23 @@
+definitions:
+  api.MyStruct:
+    properties:
+      urltemplate:
+        example: http://example.org/{{ path }}
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Testing custom template delimeters
+  termsOfService: http://swagger.io/terms/
+  title: Swagger Example API
+  version: "1.0"
+paths:
+  /myfunc:
+    get:
+      description: My Function
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.MyStruct'
+swagger: "2.0"

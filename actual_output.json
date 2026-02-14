@@ -1,0 +1,2960 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Parse external models.",
+    "title": "Swagger Example API",
+    "contact": {},
+    "version": "1.0"
+  },
+  "basePath": "/v1",
+  "paths": {
+    "/account/organization/member": {
+      "get": {
+        "description": "Lists all members in the organization (requires local admin role)",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Account"
+        ],
+        "summary": "List organization members",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "search by q",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "default": 100,
+            "description": "limit results",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "minimum": 0,
+            "type": "integer",
+            "default": 0,
+            "description": "offset results",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "default": "created_at desc",
+            "description": "sort results e.g. 'created_at desc'",
+            "name": "order",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "filters, see readme",
+            "name": "filters",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/account.OrgAccountPublic"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          }
+        },
+        "x-function": "authOrganization",
+        "x-line": 116,
+        "x-path": "/Users/griffnb/projects/swag/testdata/core_models/api/api.go"
+      }
+    },
+    "/admin/accounts": {
+      "get": {
+        "description": "Retrieves a paginated list of accounts with optional search",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "accounts"
+        ],
+        "summary": "List accounts",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Search query",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Results per page",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Page offset",
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/account.AccountJoinedPublic"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          }
+        },
+        "x-function": "publicIndex",
+        "x-line": 94,
+        "x-path": "/Users/griffnb/projects/swag/testdata/core_models/api/api.go"
+      }
+    },
+    "/admin/testUser": {
+      "post": {
+        "description": "Creates a test account with the provided details and optionally logs in as that account",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Create test account",
+        "parameters": [
+          {
+            "description": "Test user details",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api.TestUserInput"
+            }
+          },
+          {
+            "type": "string",
+            "description": "Set to login as the created user",
+            "name": "login_as",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/account.Account"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          }
+        },
+        "x-function": "CreateTestAccount",
+        "x-line": 28,
+        "x-path": "/Users/griffnb/projects/swag/testdata/core_models/api/api.go"
+      }
+    },
+    "/api/account/{id}": {
+      "get": {
+        "description": "Retrieves account and associated organization data by account ID",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get account with organization",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Account ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/api.APIResponse"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          }
+        },
+        "x-function": "InternalAPIAccount",
+        "x-line": 47,
+        "x-path": "/Users/griffnb/projects/swag/testdata/core_models/api/api.go"
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "description": "Retrieves the authenticated user's account details with joined data",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get current user",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/account.AccountWithFeaturesPublic"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          }
+        },
+        "x-function": "Me",
+        "x-line": 61,
+        "x-path": "/Users/griffnb/projects/swag/testdata/core_models/api/api.go"
+      }
+    }
+  },
+  "definitions": {
+    "account.Account": {
+      "type": "object",
+      "title": "Account",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "properties",
+        "signup_properties",
+        "hashed_password",
+        "password_updated_at_ts",
+        "email_verified_at_ts",
+        "last_login_ts",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session"
+      ],
+      "properties": {
+        "config_key": {
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ],
+          "x-enum-comments": {
+            "GCK_ALLOW_SELF_SIGNED_CERTS": "Allow self-signed SSL certificates",
+            "GCK_API_RATE_LIMIT_ENABLED": "Enable API rate limiting"
+          },
+          "x-enum-descriptions": [
+            "Allow self-signed SSL certificates",
+            "Enable API rate limiting"
+          ],
+          "x-enum-varnames": [
+            "GCK_ALLOW_SELF_SIGNED_CERTS",
+            "GCK_API_RATE_LIMIT_ENABLED"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "email_verified_at_ts": {
+          "type": "integer"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/definitions/account.Flags"
+        },
+        "hashed_password": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_login_ts": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "password_updated_at_ts": {
+          "type": "integer"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "properties": {
+          "$ref": "#/definitions/account.Properties"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ],
+          "x-enum-comments": {
+            "ROLE_ADMIN": "System Admin",
+            "ROLE_ANY_AUTHORIZED": "Any Authorized",
+            "ROLE_ORG_ADMIN": "Org Admin",
+            "ROLE_ORG_OWNER": "Org Owner",
+            "ROLE_UNAUTHORIZED": "Unauthorized",
+            "ROLE_USER": "User"
+          },
+          "x-enum-descriptions": [
+            "Unauthorized",
+            "Any Authorized",
+            "User",
+            "Org Admin",
+            "Org Owner",
+            "System Admin"
+          ],
+          "x-enum-varnames": [
+            "ROLE_UNAUTHORIZED",
+            "ROLE_ANY_AUTHORIZED",
+            "ROLE_USER",
+            "ROLE_ORG_ADMIN",
+            "ROLE_ORG_OWNER",
+            "ROLE_ADMIN"
+          ]
+        },
+        "signup_properties": {
+          "$ref": "#/definitions/account.SignupProperties"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "$ref": "#/definitions/address.Verification"
+        }
+      }
+    },
+    "account.AccountJoined": {
+      "type": "object",
+      "title": "AccountJoined",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "properties",
+        "signup_properties",
+        "hashed_password",
+        "password_updated_at_ts",
+        "email_verified_at_ts",
+        "last_login_ts",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session",
+        "name",
+        "organization_name",
+        "created_by_name",
+        "updated_by_name",
+        "tags",
+        "nested_settings"
+      ],
+      "properties": {
+        "config_key": {
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ],
+          "x-enum-comments": {
+            "GCK_ALLOW_SELF_SIGNED_CERTS": "Allow self-signed SSL certificates",
+            "GCK_API_RATE_LIMIT_ENABLED": "Enable API rate limiting"
+          },
+          "x-enum-descriptions": [
+            "Allow self-signed SSL certificates",
+            "Enable API rate limiting"
+          ],
+          "x-enum-varnames": [
+            "GCK_ALLOW_SELF_SIGNED_CERTS",
+            "GCK_API_RATE_LIMIT_ENABLED"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by_name": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "email_verified_at_ts": {
+          "type": "integer"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/definitions/account.Flags"
+        },
+        "hashed_password": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_login_ts": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nested_settings": {
+          "$ref": "#/definitions/account.NestedSettings"
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "organization_name": {
+          "type": "string"
+        },
+        "password_updated_at_ts": {
+          "type": "integer"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "properties": {
+          "$ref": "#/definitions/account.Properties"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ],
+          "x-enum-comments": {
+            "ROLE_ADMIN": "System Admin",
+            "ROLE_ANY_AUTHORIZED": "Any Authorized",
+            "ROLE_ORG_ADMIN": "Org Admin",
+            "ROLE_ORG_OWNER": "Org Owner",
+            "ROLE_UNAUTHORIZED": "Unauthorized",
+            "ROLE_USER": "User"
+          },
+          "x-enum-descriptions": [
+            "Unauthorized",
+            "Any Authorized",
+            "User",
+            "Org Admin",
+            "Org Owner",
+            "System Admin"
+          ],
+          "x-enum-varnames": [
+            "ROLE_UNAUTHORIZED",
+            "ROLE_ANY_AUTHORIZED",
+            "ROLE_USER",
+            "ROLE_ORG_ADMIN",
+            "ROLE_ORG_OWNER",
+            "ROLE_ADMIN"
+          ]
+        },
+        "signup_properties": {
+          "$ref": "#/definitions/account.SignupProperties"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/account.IconTagJoin"
+          }
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_by_name": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "$ref": "#/definitions/address.Verification"
+        }
+      }
+    },
+    "account.AccountJoinedPublic": {
+      "type": "object",
+      "title": "AccountJoinedPublic",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session",
+        "tags",
+        "nested_settings"
+      ],
+      "properties": {
+        "config_key": {
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ],
+          "x-enum-comments": {
+            "GCK_ALLOW_SELF_SIGNED_CERTS": "Allow self-signed SSL certificates",
+            "GCK_API_RATE_LIMIT_ENABLED": "Enable API rate limiting"
+          },
+          "x-enum-descriptions": [
+            "Allow self-signed SSL certificates",
+            "Enable API rate limiting"
+          ],
+          "x-enum-varnames": [
+            "GCK_ALLOW_SELF_SIGNED_CERTS",
+            "GCK_API_RATE_LIMIT_ENABLED"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/definitions/account.FlagsPublic"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "nested_settings": {
+          "$ref": "#/definitions/account.NestedSettingsPublic"
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ],
+          "x-enum-comments": {
+            "ROLE_ADMIN": "System Admin",
+            "ROLE_ANY_AUTHORIZED": "Any Authorized",
+            "ROLE_ORG_ADMIN": "Org Admin",
+            "ROLE_ORG_OWNER": "Org Owner",
+            "ROLE_UNAUTHORIZED": "Unauthorized",
+            "ROLE_USER": "User"
+          },
+          "x-enum-descriptions": [
+            "Unauthorized",
+            "Any Authorized",
+            "User",
+            "Org Admin",
+            "Org Owner",
+            "System Admin"
+          ],
+          "x-enum-varnames": [
+            "ROLE_UNAUTHORIZED",
+            "ROLE_ANY_AUTHORIZED",
+            "ROLE_USER",
+            "ROLE_ORG_ADMIN",
+            "ROLE_ORG_OWNER",
+            "ROLE_ADMIN"
+          ]
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/account.IconTagJoinPublic"
+          }
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "$ref": "#/definitions/address.VerificationPublic"
+        }
+      }
+    },
+    "account.AccountPublic": {
+      "type": "object",
+      "title": "AccountPublic",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session"
+      ],
+      "properties": {
+        "config_key": {
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ],
+          "x-enum-comments": {
+            "GCK_ALLOW_SELF_SIGNED_CERTS": "Allow self-signed SSL certificates",
+            "GCK_API_RATE_LIMIT_ENABLED": "Enable API rate limiting"
+          },
+          "x-enum-descriptions": [
+            "Allow self-signed SSL certificates",
+            "Enable API rate limiting"
+          ],
+          "x-enum-varnames": [
+            "GCK_ALLOW_SELF_SIGNED_CERTS",
+            "GCK_API_RATE_LIMIT_ENABLED"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/definitions/account.FlagsPublic"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ],
+          "x-enum-comments": {
+            "ROLE_ADMIN": "System Admin",
+            "ROLE_ANY_AUTHORIZED": "Any Authorized",
+            "ROLE_ORG_ADMIN": "Org Admin",
+            "ROLE_ORG_OWNER": "Org Owner",
+            "ROLE_UNAUTHORIZED": "Unauthorized",
+            "ROLE_USER": "User"
+          },
+          "x-enum-descriptions": [
+            "Unauthorized",
+            "Any Authorized",
+            "User",
+            "Org Admin",
+            "Org Owner",
+            "System Admin"
+          ],
+          "x-enum-varnames": [
+            "ROLE_UNAUTHORIZED",
+            "ROLE_ANY_AUTHORIZED",
+            "ROLE_USER",
+            "ROLE_ORG_ADMIN",
+            "ROLE_ORG_OWNER",
+            "ROLE_ADMIN"
+          ]
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "$ref": "#/definitions/address.VerificationPublic"
+        }
+      }
+    },
+    "account.AccountWithFeatures": {
+      "type": "object",
+      "title": "AccountWithFeatures",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "properties",
+        "signup_properties",
+        "hashed_password",
+        "password_updated_at_ts",
+        "email_verified_at_ts",
+        "last_login_ts",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session",
+        "billing_plan_level",
+        "billing_plan_price",
+        "billing_plan_id",
+        "billing_plan_name",
+        "billing_plan_feature_set",
+        "feature_set_overrides",
+        "feature_set"
+      ],
+      "properties": {
+        "billing_plan_feature_set": {
+          "$ref": "#/definitions/billing_plan.FeatureSet"
+        },
+        "billing_plan_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "billing_plan_level": {
+          "type": "integer"
+        },
+        "billing_plan_name": {
+          "type": "string"
+        },
+        "billing_plan_price": {
+          "type": "integer"
+        },
+        "config_key": {
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ],
+          "x-enum-comments": {
+            "GCK_ALLOW_SELF_SIGNED_CERTS": "Allow self-signed SSL certificates",
+            "GCK_API_RATE_LIMIT_ENABLED": "Enable API rate limiting"
+          },
+          "x-enum-descriptions": [
+            "Allow self-signed SSL certificates",
+            "Enable API rate limiting"
+          ],
+          "x-enum-varnames": [
+            "GCK_ALLOW_SELF_SIGNED_CERTS",
+            "GCK_API_RATE_LIMIT_ENABLED"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "email_verified_at_ts": {
+          "type": "integer"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "feature_set": {
+          "$ref": "#/definitions/billing_plan.FeatureSet"
+        },
+        "feature_set_overrides": {
+          "$ref": "#/definitions/billing_plan.MergeableFeatureSet"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/definitions/account.Flags"
+        },
+        "hashed_password": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_login_ts": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "password_updated_at_ts": {
+          "type": "integer"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "properties": {
+          "$ref": "#/definitions/account.Properties"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ],
+          "x-enum-comments": {
+            "ROLE_ADMIN": "System Admin",
+            "ROLE_ANY_AUTHORIZED": "Any Authorized",
+            "ROLE_ORG_ADMIN": "Org Admin",
+            "ROLE_ORG_OWNER": "Org Owner",
+            "ROLE_UNAUTHORIZED": "Unauthorized",
+            "ROLE_USER": "User"
+          },
+          "x-enum-descriptions": [
+            "Unauthorized",
+            "Any Authorized",
+            "User",
+            "Org Admin",
+            "Org Owner",
+            "System Admin"
+          ],
+          "x-enum-varnames": [
+            "ROLE_UNAUTHORIZED",
+            "ROLE_ANY_AUTHORIZED",
+            "ROLE_USER",
+            "ROLE_ORG_ADMIN",
+            "ROLE_ORG_OWNER",
+            "ROLE_ADMIN"
+          ]
+        },
+        "signup_properties": {
+          "$ref": "#/definitions/account.SignupProperties"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "$ref": "#/definitions/address.Verification"
+        }
+      }
+    },
+    "account.AccountWithFeaturesPublic": {
+      "type": "object",
+      "title": "AccountWithFeaturesPublic",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session",
+        "billing_plan_level",
+        "billing_plan_price",
+        "billing_plan_id",
+        "billing_plan_name",
+        "feature_set"
+      ],
+      "properties": {
+        "billing_plan_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "billing_plan_level": {
+          "type": "integer"
+        },
+        "billing_plan_name": {
+          "type": "string"
+        },
+        "billing_plan_price": {
+          "type": "integer"
+        },
+        "config_key": {
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ],
+          "x-enum-comments": {
+            "GCK_ALLOW_SELF_SIGNED_CERTS": "Allow self-signed SSL certificates",
+            "GCK_API_RATE_LIMIT_ENABLED": "Enable API rate limiting"
+          },
+          "x-enum-descriptions": [
+            "Allow self-signed SSL certificates",
+            "Enable API rate limiting"
+          ],
+          "x-enum-varnames": [
+            "GCK_ALLOW_SELF_SIGNED_CERTS",
+            "GCK_API_RATE_LIMIT_ENABLED"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "feature_set": {
+          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/definitions/account.FlagsPublic"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ],
+          "x-enum-comments": {
+            "ROLE_ADMIN": "System Admin",
+            "ROLE_ANY_AUTHORIZED": "Any Authorized",
+            "ROLE_ORG_ADMIN": "Org Admin",
+            "ROLE_ORG_OWNER": "Org Owner",
+            "ROLE_UNAUTHORIZED": "Unauthorized",
+            "ROLE_USER": "User"
+          },
+          "x-enum-descriptions": [
+            "Unauthorized",
+            "Any Authorized",
+            "User",
+            "Org Admin",
+            "Org Owner",
+            "System Admin"
+          ],
+          "x-enum-varnames": [
+            "ROLE_UNAUTHORIZED",
+            "ROLE_ANY_AUTHORIZED",
+            "ROLE_USER",
+            "ROLE_ORG_ADMIN",
+            "ROLE_ORG_OWNER",
+            "ROLE_ADMIN"
+          ]
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "$ref": "#/definitions/address.VerificationPublic"
+        }
+      }
+    },
+    "account.Flags": {
+      "type": "object",
+      "title": "AccountFlags",
+      "required": [
+        "force_pending_restart_flow",
+        "pending_restart_flow",
+        "send_dsrs",
+        "never_sent_dsrs",
+        "no_coverage",
+        "new_classification_id",
+        "terms_needed",
+        "simplify_login",
+        "shared_address_update",
+        "address_update_by",
+        "authorization_needed",
+        "show_new_data_brokers",
+        "new_data_brokers",
+        "last_broker_email_ts",
+        "lexis_freeze",
+        "classification_changed",
+        "welcome_back"
+      ],
+      "properties": {
+        "address_update_by": {
+          "type": "string"
+        },
+        "authorization_needed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "classification_changed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "force_pending_restart_flow": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "last_broker_email_ts": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "lexis_freeze": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "never_sent_dsrs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "new_classification_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "new_data_brokers": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "no_coverage": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "pending_restart_flow": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "send_dsrs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "shared_address_update": {
+          "type": "object"
+        },
+        "show_new_data_brokers": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "simplify_login": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "terms_needed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "welcome_back": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "account.FlagsPublic": {
+      "type": "object",
+      "title": "AccountFlagsPublic",
+      "required": [
+        "force_pending_restart_flow",
+        "pending_restart_flow",
+        "send_dsrs",
+        "never_sent_dsrs",
+        "no_coverage",
+        "new_classification_id",
+        "terms_needed",
+        "simplify_login",
+        "shared_address_update",
+        "address_update_by",
+        "authorization_needed",
+        "show_new_data_brokers",
+        "new_data_brokers",
+        "lexis_freeze",
+        "classification_changed",
+        "welcome_back"
+      ],
+      "properties": {
+        "address_update_by": {
+          "type": "string"
+        },
+        "authorization_needed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "classification_changed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "force_pending_restart_flow": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "lexis_freeze": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "never_sent_dsrs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "new_classification_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "new_data_brokers": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "no_coverage": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "pending_restart_flow": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "send_dsrs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "shared_address_update": {
+          "type": "object"
+        },
+        "show_new_data_brokers": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "simplify_login": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "terms_needed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "welcome_back": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "account.IconTagJoin": {
+      "type": "object",
+      "title": "AccountIconTagJoin",
+      "required": [
+        "id",
+        "name",
+        "urn",
+        "status",
+        "created_at",
+        "updated_at",
+        "role"
+      ],
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ],
+          "x-enum-comments": {
+            "ROLE_ADMIN": "System Admin",
+            "ROLE_ANY_AUTHORIZED": "Any Authorized",
+            "ROLE_ORG_ADMIN": "Org Admin",
+            "ROLE_ORG_OWNER": "Org Owner",
+            "ROLE_UNAUTHORIZED": "Unauthorized",
+            "ROLE_USER": "User"
+          },
+          "x-enum-descriptions": [
+            "Unauthorized",
+            "Any Authorized",
+            "User",
+            "Org Admin",
+            "Org Owner",
+            "System Admin"
+          ],
+          "x-enum-varnames": [
+            "ROLE_UNAUTHORIZED",
+            "ROLE_ANY_AUTHORIZED",
+            "ROLE_USER",
+            "ROLE_ORG_ADMIN",
+            "ROLE_ORG_OWNER",
+            "ROLE_ADMIN"
+          ]
+        },
+        "status": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
+    },
+    "account.IconTagJoinPublic": {
+      "type": "object",
+      "title": "AccountIconTagJoinPublic"
+    },
+    "account.JoinedOrgMember": {
+      "type": "object",
+      "title": "AccountJoinedOrgMember",
+      "required": [
+        "id",
+        "union_id",
+        "union_local_id",
+        "union_local_name",
+        "union_local_number",
+        "local_member_id",
+        "union_status",
+        "status",
+        "meta_data"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "local_member_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "meta_data": {
+          "$ref": "#/definitions/org_member.MetaData"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "union_id": {
+          "type": "string"
+        },
+        "union_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "union_local_name": {
+          "type": "string"
+        },
+        "union_local_number": {
+          "type": "string"
+        },
+        "union_status": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "x-enum-comments": {
+            "UNION_STATUS_ASSOCIATE": "Smaller custom ones"
+          },
+          "x-enum-descriptions": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Smaller custom ones",
+            "",
+            ""
+          ],
+          "x-enum-varnames": [
+            "UNION_STATUS_UNKNOWN",
+            "UNION_STATUS_ACTIVE",
+            "UNION_STATUS_INACTIVE",
+            "UNION_STATUS_RETIRED",
+            "UNION_STATUS_RESIGNED",
+            "UNION_STATUS_ASSOCIATE",
+            "UNION_STATUS_FOP",
+            "UNION_STATUS_TERM"
+          ]
+        }
+      }
+    },
+    "account.JoinedOrgMemberPublic": {
+      "type": "object",
+      "title": "AccountJoinedOrgMemberPublic",
+      "required": [
+        "id",
+        "union_id",
+        "union_local_id",
+        "union_local_name",
+        "union_local_number",
+        "local_member_id",
+        "union_status",
+        "status",
+        "meta_data"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "local_member_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "meta_data": {
+          "$ref": "#/definitions/org_member.MetaDataPublic"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "union_id": {
+          "type": "string"
+        },
+        "union_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "union_local_name": {
+          "type": "string"
+        },
+        "union_local_number": {
+          "type": "string"
+        },
+        "union_status": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "x-enum-comments": {
+            "UNION_STATUS_ASSOCIATE": "Smaller custom ones"
+          },
+          "x-enum-descriptions": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Smaller custom ones",
+            "",
+            ""
+          ],
+          "x-enum-varnames": [
+            "UNION_STATUS_UNKNOWN",
+            "UNION_STATUS_ACTIVE",
+            "UNION_STATUS_INACTIVE",
+            "UNION_STATUS_RETIRED",
+            "UNION_STATUS_RESIGNED",
+            "UNION_STATUS_ASSOCIATE",
+            "UNION_STATUS_FOP",
+            "UNION_STATUS_TERM"
+          ]
+        }
+      }
+    },
+    "account.NestedSettings": {
+      "type": "object",
+      "title": "AccountNestedSettings",
+      "required": [
+        "role"
+      ],
+      "properties": {
+        "role": {
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "x-enum-varnames": [
+            "STYLE_TYPE_MIX_IT_UP",
+            "STYLE_TYPE_IMAGINATIVE",
+            "STYLE_TYPE_FUTURISTIC",
+            "STYLE_TYPE_RETRO",
+            "STYLE_TYPE_PHOTOREALISTIC",
+            "STYLE_TYPE_ABSTRACT",
+            "STYLE_TYPE_MINIMALIST",
+            "STYLE_TYPE_POP_ART",
+            "STYLE_TYPE_3D_ANIMATED",
+            "STYLE_TYPE_ANIME",
+            "STYLE_TYPE_SYNTHWAVE",
+            "STYLE_TYPE_WATERCOLOR",
+            "STYLE_TYPE_IMPRESSIONISM",
+            "STYLE_TYPE_VECTOR_ART",
+            "STYLE_TYPE_STEAMPUNK",
+            "STYLE_TYPE_CUSTOM"
+          ]
+        }
+      }
+    },
+    "account.NestedSettingsPublic": {
+      "type": "object",
+      "title": "AccountNestedSettingsPublic"
+    },
+    "account.OrgAccount": {
+      "type": "object",
+      "title": "AccountOrgAccount",
+      "required": [
+        "id",
+        "account_id",
+        "org_member_id",
+        "status",
+        "name",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "organization_id",
+        "organization_name",
+        "union_id",
+        "union_local_id",
+        "union_local_name",
+        "union_local_number",
+        "organization_verification",
+        "onboard_action_finished_ts",
+        "organization_subscription_plan_id",
+        "organization_subscription_plan_name",
+        "organization_subscription_plan_properties",
+        "created_at",
+        "org_member",
+        "org_member_local_member_id",
+        "org_member_union_status",
+        "org_member_status",
+        "org_member_email"
+      ],
+      "properties": {
+        "account_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "middle_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "onboard_action_finished_ts": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "org_member": {
+          "$ref": "#/definitions/account.JoinedOrgMember"
+        },
+        "org_member_email": {
+          "type": "string"
+        },
+        "org_member_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "org_member_local_member_id": {
+          "type": "string"
+        },
+        "org_member_status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "org_member_union_status": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "x-enum-comments": {
+            "UNION_STATUS_ASSOCIATE": "Smaller custom ones"
+          },
+          "x-enum-descriptions": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Smaller custom ones",
+            "",
+            ""
+          ],
+          "x-enum-varnames": [
+            "UNION_STATUS_UNKNOWN",
+            "UNION_STATUS_ACTIVE",
+            "UNION_STATUS_INACTIVE",
+            "UNION_STATUS_RETIRED",
+            "UNION_STATUS_RESIGNED",
+            "UNION_STATUS_ASSOCIATE",
+            "UNION_STATUS_FOP",
+            "UNION_STATUS_TERM"
+          ]
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "organization_name": {
+          "type": "string"
+        },
+        "organization_subscription_plan_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "organization_subscription_plan_name": {
+          "type": "string"
+        },
+        "organization_subscription_plan_properties": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "organization_verification": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "union_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "union_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "union_local_name": {
+          "type": "string"
+        },
+        "union_local_number": {
+          "type": "string"
+        }
+      }
+    },
+    "account.OrgAccountPublic": {
+      "type": "object",
+      "title": "AccountOrgAccountPublic",
+      "required": [
+        "id",
+        "account_id",
+        "org_member_id",
+        "status",
+        "name",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "organization_id",
+        "organization_name",
+        "union_id",
+        "union_local_id",
+        "union_local_name",
+        "union_local_number",
+        "organization_verification",
+        "onboard_action_finished_ts",
+        "organization_subscription_plan_id",
+        "organization_subscription_plan_name",
+        "organization_subscription_plan_properties",
+        "created_at",
+        "org_member",
+        "org_member_local_member_id",
+        "org_member_union_status",
+        "org_member_status",
+        "org_member_email"
+      ],
+      "properties": {
+        "account_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "middle_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "onboard_action_finished_ts": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "org_member": {
+          "$ref": "#/definitions/account.JoinedOrgMemberPublic"
+        },
+        "org_member_email": {
+          "type": "string"
+        },
+        "org_member_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "org_member_local_member_id": {
+          "type": "string"
+        },
+        "org_member_status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "org_member_union_status": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "x-enum-comments": {
+            "UNION_STATUS_ASSOCIATE": "Smaller custom ones"
+          },
+          "x-enum-descriptions": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Smaller custom ones",
+            "",
+            ""
+          ],
+          "x-enum-varnames": [
+            "UNION_STATUS_UNKNOWN",
+            "UNION_STATUS_ACTIVE",
+            "UNION_STATUS_INACTIVE",
+            "UNION_STATUS_RETIRED",
+            "UNION_STATUS_RESIGNED",
+            "UNION_STATUS_ASSOCIATE",
+            "UNION_STATUS_FOP",
+            "UNION_STATUS_TERM"
+          ]
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "organization_name": {
+          "type": "string"
+        },
+        "organization_subscription_plan_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "organization_subscription_plan_name": {
+          "type": "string"
+        },
+        "organization_subscription_plan_properties": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "organization_verification": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "union_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "union_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "union_local_name": {
+          "type": "string"
+        },
+        "union_local_number": {
+          "type": "string"
+        }
+      }
+    },
+    "account.Properties": {
+      "type": "object",
+      "title": "AccountProperties",
+      "required": [
+        "invite_key",
+        "invite_ts",
+        "last_seen",
+        "external_user_info",
+        "verify_email_key"
+      ],
+      "properties": {
+        "external_user_info": {},
+        "invite_key": {
+          "type": "string"
+        },
+        "invite_ts": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "last_seen": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "verify_email_key": {
+          "type": "string"
+        }
+      }
+    },
+    "account.PropertiesPublic": {
+      "type": "object",
+      "title": "AccountPropertiesPublic"
+    },
+    "account.SignupProperties": {
+      "type": "object",
+      "title": "AccountSignupProperties",
+      "required": [
+        "is_oauth"
+      ],
+      "properties": {
+        "is_oauth": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "account.SignupPropertiesPublic": {
+      "type": "object",
+      "title": "AccountSignupPropertiesPublic"
+    },
+    "address.FieldVerification": {
+      "type": "object",
+      "title": "AddressFieldVerification",
+      "required": [
+        "value",
+        "google_value",
+        "confirmation_level",
+        "is_different",
+        "is_unconfirmed"
+      ],
+      "properties": {
+        "confirmation_level": {
+          "type": "string"
+        },
+        "google_value": {
+          "type": "string"
+        },
+        "is_different": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "is_unconfirmed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "address.FieldVerificationPublic": {
+      "type": "object",
+      "title": "AddressFieldVerificationPublic",
+      "required": [
+        "value",
+        "google_value",
+        "confirmation_level",
+        "is_different",
+        "is_unconfirmed"
+      ],
+      "properties": {
+        "confirmation_level": {
+          "type": "string"
+        },
+        "google_value": {
+          "type": "string"
+        },
+        "is_different": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "is_unconfirmed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "address.Verification": {
+      "type": "object",
+      "title": "AddressVerification",
+      "required": [
+        "street",
+        "street_2",
+        "city",
+        "state",
+        "postal_code",
+        "google_formatted_address",
+        "google_street_number",
+        "google_route",
+        "google_subpremise",
+        "google_neighborhood",
+        "google_locality",
+        "google_sublocality",
+        "google_administrative_area_level_1",
+        "google_administrative_area_level_2",
+        "google_postal_code",
+        "google_postal_code_suffix",
+        "google_country",
+        "is_match",
+        "is_unconfirmed",
+        "external_id"
+      ],
+      "properties": {
+        "city": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "google_administrative_area_level_1": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_administrative_area_level_2": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_country": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_formatted_address": {
+          "type": "string"
+        },
+        "google_locality": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_neighborhood": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_postal_code": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_postal_code_suffix": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_route": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_street_number": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_sublocality": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "google_subpremise": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "is_match": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "is_unconfirmed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "postal_code": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "state": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "street": {
+          "$ref": "#/definitions/address.FieldVerification"
+        },
+        "street_2": {
+          "$ref": "#/definitions/address.FieldVerification"
+        }
+      }
+    },
+    "address.VerificationPublic": {
+      "type": "object",
+      "title": "AddressVerificationPublic",
+      "required": [
+        "street",
+        "street_2",
+        "city",
+        "state",
+        "postal_code",
+        "google_formatted_address",
+        "google_street_number",
+        "google_route",
+        "google_subpremise",
+        "google_neighborhood",
+        "google_locality",
+        "google_sublocality",
+        "google_administrative_area_level_1",
+        "google_administrative_area_level_2",
+        "google_postal_code",
+        "google_postal_code_suffix",
+        "google_country",
+        "is_match",
+        "is_unconfirmed",
+        "external_id"
+      ],
+      "properties": {
+        "city": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "google_administrative_area_level_1": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_administrative_area_level_2": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_country": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_formatted_address": {
+          "type": "string"
+        },
+        "google_locality": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_neighborhood": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_postal_code": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_postal_code_suffix": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_route": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_street_number": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_sublocality": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "google_subpremise": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "is_match": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "is_unconfirmed": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "postal_code": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "state": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "street": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        },
+        "street_2": {
+          "$ref": "#/definitions/address.FieldVerificationPublic"
+        }
+      }
+    },
+    "api.APIResponse": {
+      "type": "object",
+      "required": [
+        "account",
+        "billing_plan"
+      ],
+      "properties": {
+        "account": {
+          "$ref": "#/definitions/account.Account"
+        },
+        "billing_plan": {
+          "$ref": "#/definitions/billing_plan.BillingPlanJoined"
+        }
+      }
+    },
+    "api.TestUserInput": {
+      "type": "object",
+      "required": [
+        "organization_id"
+      ],
+      "properties": {
+        "organization_id": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.BillingPlanJoined": {
+      "type": "object",
+      "title": "BillingPlanJoined",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "name",
+        "description",
+        "internal_name",
+        "feature_set",
+        "properties",
+        "stripe_product_id",
+        "level",
+        "is_default",
+        "fees",
+        "created_by_name",
+        "updated_by_name"
+      ],
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by_name": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
+          "$ref": "#/definitions/billing_plan.FeatureSet"
+        },
+        "fees": {
+          "$ref": "#/definitions/billing_plan.Fees"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "internal_name": {
+          "type": "string"
+        },
+        "is_default": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "$ref": "#/definitions/billing_plan.Properties"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_by_name": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.BillingPlanJoinedPublic": {
+      "type": "object",
+      "title": "BillingPlanJoinedPublic",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "name",
+        "description",
+        "feature_set",
+        "properties",
+        "stripe_product_id",
+        "level",
+        "is_default"
+      ],
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
+          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "is_default": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "$ref": "#/definitions/billing_plan.PropertiesPublic"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ],
+          "x-enum-varnames": [
+            "STATUS_ACTIVE",
+            "STATUS_DISABLED",
+            "STATUS_DELETED"
+          ]
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.FeatureSet": {
+      "type": "object",
+      "title": "BillingPlanFeatureSet",
+      "required": [
+        "custom_branding",
+        "advanced_analytics",
+        "priority_support"
+      ],
+      "properties": {
+        "advanced_analytics": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "custom_branding": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "priority_support": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "billing_plan.FeatureSetPublic": {
+      "type": "object",
+      "title": "BillingPlanFeatureSetPublic",
+      "required": [
+        "advanced_analytics"
+      ],
+      "properties": {
+        "advanced_analytics": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "billing_plan.Fees": {
+      "type": "object",
+      "title": "BillingPlanFees",
+      "required": [
+        "setup_rate",
+        "monthly_rate",
+        "sms_rate",
+        "mms_rate",
+        "voice_rate"
+      ],
+      "properties": {
+        "mms_rate": {
+          "type": "number"
+        },
+        "monthly_rate": {
+          "type": "number"
+        },
+        "setup_rate": {
+          "type": "number"
+        },
+        "sms_rate": {
+          "type": "number"
+        },
+        "voice_rate": {
+          "type": "number"
+        }
+      }
+    },
+    "billing_plan.FeesPublic": {
+      "type": "object",
+      "title": "BillingPlanFeesPublic"
+    },
+    "billing_plan.MergeableFeatureSet": {
+      "type": "object",
+      "title": "BillingPlanMergeableFeatureSet"
+    },
+    "billing_plan.MergeableFeatureSetPublic": {
+      "type": "object",
+      "title": "BillingPlanMergeableFeatureSetPublic"
+    },
+    "billing_plan.Properties": {
+      "type": "object",
+      "title": "BillingPlanProperties",
+      "required": [
+        "pricing_text",
+        "default_discount_code"
+      ],
+      "properties": {
+        "default_discount_code": {
+          "type": "string"
+        },
+        "pricing_text": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.PropertiesPublic": {
+      "type": "object",
+      "title": "BillingPlanPropertiesPublic",
+      "required": [
+        "pricing_text"
+      ],
+      "properties": {
+        "pricing_text": {
+          "type": "string"
+        }
+      }
+    },
+    "org_member.MetaData": {
+      "type": "object",
+      "title": "OrgMemberMetaData",
+      "required": [
+        "pending_removal",
+        "pending_local_id",
+        "unknown_local",
+        "pending_plan_id"
+      ],
+      "properties": {
+        "pending_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pending_plan_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pending_removal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "unknown_local": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "org_member.MetaDataPublic": {
+      "type": "object",
+      "title": "OrgMemberMetaDataPublic",
+      "required": [
+        "pending_removal",
+        "pending_local_id",
+        "unknown_local",
+        "pending_plan_id"
+      ],
+      "properties": {
+        "pending_local_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pending_plan_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "pending_removal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "unknown_local": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "response.ErrorResponse": {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "response.SuccessResponse": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {}
+      }
+    }
+  }
+}

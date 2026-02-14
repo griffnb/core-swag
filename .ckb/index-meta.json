@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "createdAt": "2026-02-14T13:27:11.883161-07:00",
+  "commitHash": "0b40d928ad0c72b75ee3772aeaba4b2a8f60efbf",
+  "repoStateId": "b1351b5c5b33c460b02c5cc728dec79cdc1c05b84bb9505850ab8a6b63f50fc4",
+  "fileCount": 395,
+  "duration": "1.2s",
+  "indexer": "scip-go",
+  "indexerArgs": [
+    "scip-go"
+  ],
+  "lastRefresh": {
+    "at": "2026-02-14T13:27:11.892086-07:00",
+    "trigger": "stale",
+    "triggerInfo": "uncommitted changes detected",
+    "durationMs": 1218
+  }
+}
