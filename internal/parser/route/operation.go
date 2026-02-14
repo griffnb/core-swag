@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/swaggo/swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
 // operation represents a parsed operation (before being split into routes)

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/swaggo/swag/internal/loader"
+	"github.com/griffnb/core-swag/internal/loader"
 )
 
 func TestNew(t *testing.T) {

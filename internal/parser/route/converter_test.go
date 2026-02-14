@@ -3,7 +3,7 @@ package route
 import (
 	"testing"
 
-	"github.com/swaggo/swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
 func TestRouteToSpecOperation(t *testing.T) {

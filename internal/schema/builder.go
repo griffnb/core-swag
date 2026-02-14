@@ -7,8 +7,8 @@ import (
 	"unicode"
 
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/internal/domain"
-	"github.com/swaggo/swag/model"
+	"github.com/griffnb/core-swag/internal/domain"
+	"github.com/griffnb/core-swag/internal/model"
 )
 
 // TypeResolver provides type lookup functionality.

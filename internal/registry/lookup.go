@@ -5,7 +5,7 @@ import (
 	"go/ast"
 	"strings"
 
-	"github.com/swaggo/swag/internal/domain"
+	"github.com/griffnb/core-swag/internal/domain"
 )
 
 // findPackagePathFromImports finds the package path from imports.

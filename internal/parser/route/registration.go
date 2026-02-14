@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/console"
-	"github.com/swaggo/swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/console"
+	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
 // RegisterRoutes registers routes to swagger.Paths

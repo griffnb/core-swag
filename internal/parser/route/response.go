@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/swaggo/swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
 var (

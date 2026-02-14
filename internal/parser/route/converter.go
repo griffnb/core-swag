@@ -2,7 +2,7 @@ package route
 
 import (
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
 // RouteToSpecOperation converts a domain.Route to a spec.Operation

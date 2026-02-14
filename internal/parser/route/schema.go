@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
 // isModelType checks if a type name represents a model type (not a primitive).

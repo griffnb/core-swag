@@ -16,6 +16,20 @@ import (
 	"golang.org/x/tools/imports"
 )
 
+// Swagger annotation attribute constants
+const (
+	paramAttr    = "@param"
+	successAttr  = "@success"
+	failureAttr  = "@failure"
+	responseAttr = "@response"
+	headerAttr   = "@header"
+)
+
+// Debugger is the interface that wraps the basic Printf method.
+type Debugger interface {
+	Printf(format string, v ...interface{})
+}
+
 // Check of @Param @Success @Failure @Response @Header
 var specialTagForSplit = map[string]bool{
 	paramAttr:    true,

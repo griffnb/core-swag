@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/spec"
-	"github.com/griffnb/core-swag/console"
+	"github.com/griffnb/core-swag/internal/console"
 	swag "github.com/griffnb/core-swag/internal/legacy_files"
 	"github.com/griffnb/core-swag/internal/loader"
 	"github.com/griffnb/core-swag/internal/orchestrator"

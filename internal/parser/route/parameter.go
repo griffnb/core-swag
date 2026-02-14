@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/swaggo/swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
 var paramPattern = regexp.MustCompile(`(\S+)\s+(\w+)\s+([\S.]+)\s+(\w+)\s+"([^"]+)"`)

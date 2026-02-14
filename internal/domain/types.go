@@ -12,7 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/internal/loader"
+	"github.com/griffnb/core-swag/internal/loader"
 	"golang.org/x/tools/go/packages"
 )
 

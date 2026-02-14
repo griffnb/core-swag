@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/internal/loader"
-	"github.com/swaggo/swag/internal/parser/base"
-	"github.com/swaggo/swag/internal/parser/route"
-	"github.com/swaggo/swag/internal/registry"
-	"github.com/swaggo/swag/internal/schema"
+	"github.com/griffnb/core-swag/internal/loader"
+	"github.com/griffnb/core-swag/internal/parser/base"
+	"github.com/griffnb/core-swag/internal/parser/route"
+	"github.com/griffnb/core-swag/internal/registry"
+	"github.com/griffnb/core-swag/internal/schema"
 )
 
 // Service coordinates all parsing services to generate OpenAPI documentation.

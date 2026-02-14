@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/swaggo/swag/internal/loader"
+	"github.com/griffnb/core-swag/internal/loader"
 )
 
 func TestOrchestratorBasic(t *testing.T) {

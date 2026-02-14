@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/internal/parser/field"
-	structparser "github.com/swaggo/swag/internal/parser/struct"
+	"github.com/griffnb/core-swag/internal/parser/field"
+	structparser "github.com/griffnb/core-swag/internal/parser/struct"
 )
 
 // TestParseStructIntegration tests parsing a complete struct with multiple fields

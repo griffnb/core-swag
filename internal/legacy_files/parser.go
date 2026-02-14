@@ -18,12 +18,12 @@ import (
 	"strings"
 
 	"github.com/go-openapi/spec"
-	"github.com/griffnb/core-swag/console"
+	"github.com/griffnb/core-swag/internal/console"
 	"github.com/griffnb/core-swag/internal/loader"
 	"github.com/griffnb/core-swag/internal/parser/base"
 	"github.com/griffnb/core-swag/internal/registry"
 	"github.com/griffnb/core-swag/internal/schema"
-	"github.com/griffnb/core-swag/model"
+	"github.com/griffnb/core-swag/internal/model"
 )
 
 const (

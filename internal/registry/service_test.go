@@ -5,7 +5,7 @@ import (
 	"go/token"
 	"testing"
 
-	"github.com/swaggo/swag/internal/domain"
+	"github.com/griffnb/core-swag/internal/domain"
 )
 
 func TestNewService(t *testing.T) {

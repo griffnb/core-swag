@@ -10,14 +10,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/swaggo/swag"
 	"golang.org/x/sync/errgroup"
 )
 
 // Format implements `fmt` command for formatting swag comments in Go source
 // files.
 type Format struct {
-	formatter *swag.Formatter
+	formatter *Formatter
 
 	// exclude exclude dirs and files in SearchDir
 	exclude map[string]bool
@@ -27,7 +26,7 @@ type Format struct {
 func New() *Format {
 	return &Format{
 		exclude:   map[string]bool{},
-		formatter: swag.NewFormatter(),
+		formatter: NewFormatter(),
 	}
 }
 

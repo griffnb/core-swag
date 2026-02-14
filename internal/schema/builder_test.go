@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-openapi/spec"
-	"github.com/swaggo/swag/internal/domain"
+	"github.com/griffnb/core-swag/internal/domain"
 )
 
 func TestNewBuilder(t *testing.T) {

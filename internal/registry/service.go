@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/swaggo/swag/internal/domain"
+	"github.com/griffnb/core-swag/internal/domain"
 	"golang.org/x/tools/go/packages"
 )
 

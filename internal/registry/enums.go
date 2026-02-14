@@ -6,8 +6,8 @@ import (
 	"go/constant"
 	"go/types"
 
-	"github.com/swaggo/swag/console"
-	"github.com/swaggo/swag/internal/domain"
+	"github.com/griffnb/core-swag/internal/console"
+	"github.com/griffnb/core-swag/internal/domain"
 )
 
 func (s *Service) collectConstVariables(astFile *ast.File, packagePath string, generalDeclaration *ast.GenDecl) {

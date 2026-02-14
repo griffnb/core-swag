@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/griffnb/core-swag/console"
+	"github.com/griffnb/core-swag/internal/console"
 	"golang.org/x/tools/go/packages"
 )
 

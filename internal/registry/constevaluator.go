@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/swaggo/swag/internal/domain"
+	"github.com/griffnb/core-swag/internal/domain"
 )
 
 // evaluateConstValue evaluates a const expression value.

@@ -6,7 +6,7 @@ package route
 import (
 	"go/ast"
 
-	"github.com/swaggo/swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
 // Service handles parsing of route annotations from Go source files
