@@ -1,9 +1,11 @@
 package structparser
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"reflect"
+	"strings"
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/registry"
@@ -47,8 +49,36 @@ func (s *Service) ParseStruct(file *ast.File, fields *ast.FieldList) (*spec.Sche
 
 	// Process each field
 	for _, field := range fields.List {
-		// Handle embedded fields
+		// Handle embedded fields (no field name)
 		if len(field.Names) == 0 {
+			// Check if it has a json tag - if so, treat as named field
+			hasJSONTag := false
+			if field.Tag != nil {
+				tagValue := field.Tag.Value
+				if len(tagValue) >= 2 && tagValue[0] == '`' && tagValue[len(tagValue)-1] == '`' {
+					tagValue = tagValue[1 : len(tagValue)-1]
+				}
+				tag := reflect.StructTag(tagValue)
+				if jsonName := tag.Get("json"); jsonName != "" && jsonName != "-" {
+					hasJSONTag = true
+				}
+			}
+
+			if hasJSONTag {
+				// Has json tag - process as named field with the type as an object reference
+				// For this case, we'll create a simple object schema
+				properties, required, err := s.processEmbeddedWithTag(file, field)
+				if err != nil {
+					continue
+				}
+				for propName, propSchema := range properties {
+					schema.Properties[propName] = propSchema
+				}
+				schema.Required = append(schema.Required, required...)
+				continue
+			}
+
+			// True embedded field - merge properties
 			embeddedSchema, err := s.handleEmbeddedField(file, field)
 			if err != nil {
 				continue // Skip on error
@@ -233,12 +263,140 @@ func (s *Service) BuildPublicSchema(file *ast.File, fields *ast.FieldList) (*spe
 	return schema, nil
 }
 
-// handleEmbeddedField processes an embedded struct field and returns its schema
+// handleEmbeddedField processes an embedded struct field and returns its schema.
+// It resolves the embedded type, recursively parses its fields, and returns a schema
+// with all embedded properties merged.
 func (s *Service) handleEmbeddedField(file *ast.File, field *ast.Field) (*spec.Schema, error) {
-	// For now, we skip embedded fields as they require type resolution
-	// This will be implemented in future phases with registry integration
-	// TODO: Implement full embedded struct resolution with registry
-	return nil, nil
+	// Check for json tag - if present with a name, NOT truly embedded
+	if field.Tag != nil {
+		tagValue := field.Tag.Value
+		if len(tagValue) >= 2 && tagValue[0] == '`' && tagValue[len(tagValue)-1] == '`' {
+			tagValue = tagValue[1 : len(tagValue)-1]
+		}
+		tag := reflect.StructTag(tagValue)
+		if jsonName := tag.Get("json"); jsonName != "" && jsonName != "-" {
+			// Has json tag with a name, so it's a named field, not embedded
+			// Let processField handle it
+			return nil, nil
+		}
+	}
+
+	// Registry is required for embedded field resolution
+	if s.registry == nil {
+		return nil, nil
+	}
+
+	// Resolve embedded type name
+	typeName, err := s.resolveEmbeddedTypeName(file, field.Type)
+	if err != nil {
+		// Unable to resolve - skip this embedded field
+		return nil, nil
+	}
+
+	// Look up type in registry
+	typeDef := s.registry.FindTypeSpec(typeName, file)
+	if typeDef == nil {
+		// Unknown type - might be external package not in registry
+		return nil, nil
+	}
+
+	// Check if it's a struct type
+	structType, ok := typeDef.TypeSpec.Type.(*ast.StructType)
+	if !ok {
+		// Not a struct - can't embed non-struct types
+		return nil, nil
+	}
+
+	// Check if empty struct
+	if structType.Fields == nil || len(structType.Fields.List) == 0 {
+		// Empty struct - nothing to merge
+		return nil, nil
+	}
+
+	// Recursively parse the embedded struct's fields
+	embeddedSchema, err := s.ParseStruct(typeDef.File, structType.Fields)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the embedded schema to be merged
+	return embeddedSchema, nil
+}
+
+// resolveEmbeddedTypeName resolves the type name from an embedded field's AST expression.
+// It handles simple types (Ident), package-qualified types (SelectorExpr), and pointer types (StarExpr).
+func (s *Service) resolveEmbeddedTypeName(file *ast.File, expr ast.Expr) (string, error) {
+	switch t := expr.(type) {
+	case *ast.Ident:
+		// Simple type in same package: "BaseModel"
+		return t.Name, nil
+
+	case *ast.SelectorExpr:
+		// Package-qualified type: "model.BaseModel"
+		if pkg, ok := t.X.(*ast.Ident); ok {
+			return pkg.Name + "." + t.Sel.Name, nil
+		}
+		return "", fmt.Errorf("unsupported selector expression in embedded field")
+
+	case *ast.StarExpr:
+		// Pointer type: "*BaseModel" → strip pointer
+		return s.resolveEmbeddedTypeName(file, t.X)
+
+	default:
+		return "", fmt.Errorf("unsupported embedded type expression: %T", expr)
+	}
+}
+
+// processEmbeddedWithTag handles embedded fields that have a json tag.
+// These are treated as named fields rather than true embeddings.
+// Example: type Outer struct { Inner `json:"inner"` }
+func (s *Service) processEmbeddedWithTag(file *ast.File, field *ast.Field) (map[string]spec.Schema, []string, error) {
+	if field.Tag == nil {
+		return nil, nil, nil
+	}
+
+	// Parse the json tag to get the field name
+	tagValue := field.Tag.Value
+	if len(tagValue) >= 2 && tagValue[0] == '`' && tagValue[len(tagValue)-1] == '`' {
+		tagValue = tagValue[1 : len(tagValue)-1]
+	}
+	tag := reflect.StructTag(tagValue)
+	tagInfo := parseCombinedTags(tag)
+
+	// If ignored, skip
+	if tagInfo.Ignore {
+		return nil, nil, nil
+	}
+
+	// Use json name or fall back to type name
+	fieldName := tagInfo.JSONName
+	if fieldName == "" {
+		// Get type name from the field type
+		typeName, err := s.resolveEmbeddedTypeName(file, field.Type)
+		if err != nil {
+			return nil, nil, err
+		}
+		// Use simple type name (after last dot)
+		parts := strings.Split(typeName, ".")
+		fieldName = parts[len(parts)-1]
+	}
+
+	// Create a simple object schema for the embedded type
+	// This creates a reference to the type as a nested object
+	properties := make(map[string]spec.Schema)
+	properties[fieldName] = spec.Schema{
+		SchemaProps: spec.SchemaProps{
+			Type: []string{"object"},
+		},
+	}
+
+	// Check if required
+	var required []string
+	if tagInfo.Required {
+		required = append(required, fieldName)
+	}
+
+	return properties, required, nil
 }
 
 // hasPublicTag checks if a field has public:"view" or public:"edit" tag

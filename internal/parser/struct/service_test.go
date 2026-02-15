@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"testing"
 
+	"github.com/griffnb/core-swag/internal/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -116,7 +117,234 @@ type Account struct {
 
 // TestParseStruct_EmbeddedStruct tests embedded struct field merging
 func TestParseStruct_EmbeddedStruct(t *testing.T) {
-	source := `
+	t.Run("simple embedding same package", func(t *testing.T) {
+		source := `
+package testpkg
+
+type Inner struct {
+	Field string ` + "`json:\"field\"`" + `
+}
+
+type Outer struct {
+	Inner
+}
+`
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+		require.NoError(t, err)
+
+		// Create registry and register types
+		reg := setupTestRegistry(t, source)
+
+		structType := findStructType(t, file, "Outer")
+		service := NewService(reg, nil)
+
+		schema, err := service.ParseStruct(file, structType.Fields)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Outer should have "field" property from Inner
+		assert.Equal(t, 1, len(schema.Properties), "Should have 1 property from embedded Inner")
+		assert.Contains(t, schema.Properties, "field")
+		assert.Contains(t, schema.Properties["field"].Type, "string")
+	})
+
+	t.Run("pointer embedding", func(t *testing.T) {
+		source := `
+package testpkg
+
+type Inner struct {
+	Field string ` + "`json:\"field\"`" + `
+}
+
+type Outer struct {
+	*Inner
+}
+`
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+		require.NoError(t, err)
+
+		reg := setupTestRegistry(t, source)
+
+		structType := findStructType(t, file, "Outer")
+		service := NewService(reg, nil)
+
+		schema, err := service.ParseStruct(file, structType.Fields)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Should strip pointer and merge properties
+		assert.Equal(t, 1, len(schema.Properties))
+		assert.Contains(t, schema.Properties, "field")
+	})
+
+	t.Run("chained embeddings", func(t *testing.T) {
+		source := `
+package testpkg
+
+type Level3 struct {
+	Field string ` + "`json:\"field\"`" + `
+}
+
+type Level2 struct {
+	Level3
+}
+
+type Level1 struct {
+	Level2
+}
+`
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+		require.NoError(t, err)
+
+		reg := setupTestRegistry(t, source)
+
+		structType := findStructType(t, file, "Level1")
+		service := NewService(reg, nil)
+
+		schema, err := service.ParseStruct(file, structType.Fields)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Level1 should have "field" from Level3 through Level2
+		assert.Equal(t, 1, len(schema.Properties), "Should have field from Level3")
+		assert.Contains(t, schema.Properties, "field")
+	})
+
+	t.Run("multiple embeddings", func(t *testing.T) {
+		source := `
+package testpkg
+
+type Inner1 struct {
+	Field1 string ` + "`json:\"field1\"`" + `
+}
+
+type Inner2 struct {
+	Field2 string ` + "`json:\"field2\"`" + `
+}
+
+type Outer struct {
+	Inner1
+	Inner2
+}
+`
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+		require.NoError(t, err)
+
+		reg := setupTestRegistry(t, source)
+
+		structType := findStructType(t, file, "Outer")
+		service := NewService(reg, nil)
+
+		schema, err := service.ParseStruct(file, structType.Fields)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Should have properties from both Inner1 and Inner2
+		assert.Equal(t, 2, len(schema.Properties))
+		assert.Contains(t, schema.Properties, "field1")
+		assert.Contains(t, schema.Properties, "field2")
+	})
+
+	t.Run("embedded with json tag - not truly embedded", func(t *testing.T) {
+		source := `
+package testpkg
+
+type Inner struct {
+	Field string ` + "`json:\"field\"`" + `
+}
+
+type Outer struct {
+	Inner ` + "`json:\"inner\"`" + `
+}
+`
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+		require.NoError(t, err)
+
+		reg := setupTestRegistry(t, source)
+
+		structType := findStructType(t, file, "Outer")
+		service := NewService(reg, nil)
+
+		schema, err := service.ParseStruct(file, structType.Fields)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Should NOT merge - has json tag so treated as named field
+		assert.Equal(t, 1, len(schema.Properties))
+		assert.Contains(t, schema.Properties, "inner")
+		// "inner" should be object type, not merged
+		assert.Contains(t, schema.Properties["inner"].Type, "object")
+	})
+
+	t.Run("empty embedded struct", func(t *testing.T) {
+		source := `
+package testpkg
+
+type Empty struct {
+}
+
+type Outer struct {
+	Empty
+	Name string ` + "`json:\"name\"`" + `
+}
+`
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+		require.NoError(t, err)
+
+		reg := setupTestRegistry(t, source)
+
+		structType := findStructType(t, file, "Outer")
+		service := NewService(reg, nil)
+
+		schema, err := service.ParseStruct(file, structType.Fields)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Should skip empty embedded, only have Name
+		assert.Equal(t, 1, len(schema.Properties))
+		assert.Contains(t, schema.Properties, "name")
+	})
+
+	t.Run("mixed embedded and direct fields", func(t *testing.T) {
+		source := `
+package testpkg
+
+type Inner struct {
+	InnerField string ` + "`json:\"inner_field\"`" + `
+}
+
+type Outer struct {
+	Inner
+	DirectField string ` + "`json:\"direct_field\"`" + `
+}
+`
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+		require.NoError(t, err)
+
+		reg := setupTestRegistry(t, source)
+
+		structType := findStructType(t, file, "Outer")
+		service := NewService(reg, nil)
+
+		schema, err := service.ParseStruct(file, structType.Fields)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Should have both embedded and direct fields
+		assert.Equal(t, 2, len(schema.Properties))
+		assert.Contains(t, schema.Properties, "inner_field")
+		assert.Contains(t, schema.Properties, "direct_field")
+	})
+
+	t.Run("embedded with BaseModel pattern", func(t *testing.T) {
+		source := `
 package testpkg
 
 type BaseModel struct {
@@ -129,22 +357,25 @@ type Account struct {
 	Name string ` + "`json:\"name\"`" + `
 }
 `
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
-	require.NoError(t, err)
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+		require.NoError(t, err)
 
-	structType := findStructType(t, file, "Account")
-	service := NewService(nil, nil)
+		reg := setupTestRegistry(t, source)
 
-	schema, err := service.ParseStruct(file, structType.Fields)
-	require.NoError(t, err)
-	require.NotNil(t, schema)
+		structType := findStructType(t, file, "Account")
+		service := NewService(reg, nil)
 
-	// Should merge embedded fields
-	assert.Equal(t, 3, len(schema.Properties))
-	assert.Contains(t, schema.Properties, "id")
-	assert.Contains(t, schema.Properties, "created_at")
-	assert.Contains(t, schema.Properties, "name")
+		schema, err := service.ParseStruct(file, structType.Fields)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Should merge embedded BaseModel fields
+		assert.Equal(t, 3, len(schema.Properties))
+		assert.Contains(t, schema.Properties, "id")
+		assert.Contains(t, schema.Properties, "created_at")
+		assert.Contains(t, schema.Properties, "name")
+	})
 }
 
 // TestParseStruct_PointerFields tests pointer types (*string, *int64)
@@ -590,4 +821,23 @@ func findStructType(t *testing.T, file *ast.File, name string) *ast.StructType {
 	}
 	t.Fatalf("Struct %s not found in AST", name)
 	return nil
+}
+
+// Helper function to set up test registry with parsed types
+func setupTestRegistry(t *testing.T, source string) *registry.Service {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+	require.NoError(t, err)
+
+	reg := registry.NewService()
+
+	// Collect the file into registry
+	err = reg.CollectAstFile(fset, "testpkg", "test.go", file, 0)
+	require.NoError(t, err)
+
+	// Parse types to register them
+	_, err = reg.ParseTypes()
+	require.NoError(t, err)
+
+	return reg
 }
