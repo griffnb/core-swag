@@ -24,14 +24,11 @@ func (s *Service) buildAllOfResponseSchema(dataType, packageName string, isPubli
 	}
 
 	// Build base schema (qualified with package if needed)
+	// NOTE: Do NOT apply @Public suffix to the base response wrapper type.
+	// The @Public suffix should only apply to the data models in field overrides.
 	baseQualifiedType := baseType
 	if packageName != "" && !strings.Contains(baseType, ".") {
 		baseQualifiedType = packageName + "." + baseType
-	}
-
-	// Apply @Public suffix if needed
-	if isPublic {
-		baseQualifiedType = baseQualifiedType + "Public"
 	}
 
 	baseSchema := &spec.Schema{

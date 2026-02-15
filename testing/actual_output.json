@@ -66,14 +66,22 @@
             "description": "OK",
             "schema": {
               "type": "object",
-              "properties": {
-                "data": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/account.OrgAccountPublic"
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/account.OrgAccountPublic"
+                      }
+                    }
                   }
                 }
-              }
+              ]
             }
           },
           "400": {
@@ -138,14 +146,22 @@
             "description": "OK",
             "schema": {
               "type": "object",
-              "properties": {
-                "data": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/account.AccountJoinedPublic"
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/account.AccountJoinedPublic"
+                      }
+                    }
                   }
                 }
-              }
+              ]
             }
           },
           "400": {
@@ -193,11 +209,19 @@
             "description": "OK",
             "schema": {
               "type": "object",
-              "properties": {
-                "data": {
-                  "$ref": "#/definitions/account.Account"
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/account.Account"
+                    }
+                  }
                 }
-              }
+              ]
             }
           },
           "400": {
@@ -243,11 +267,19 @@
             "description": "OK",
             "schema": {
               "type": "object",
-              "properties": {
-                "data": {
-                  "$ref": "#/definitions/api.APIResponse"
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/api.APIResponse"
+                    }
+                  }
                 }
-              }
+              ]
             }
           },
           "400": {
@@ -278,11 +310,19 @@
             "description": "OK",
             "schema": {
               "type": "object",
-              "properties": {
-                "data": {
-                  "$ref": "#/definitions/account.AccountWithFeaturesPublic"
+              "allOf": [
+                {
+                  "$ref": "#/definitions/response.SuccessResponse"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/account.AccountWithFeaturesPublic"
+                    }
+                  }
                 }
-              }
+              ]
             }
           },
           "400": {

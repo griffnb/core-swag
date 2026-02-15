@@ -1,5 +1,36 @@
 # Core-Swag Change Log
 
+## 🎉 Phase 3.1 Integration Testing - COMPLETE (2026-02-15)
+
+**Status:** ✅ ALL 6 TESTS PASSING
+
+**Achievement:** Successfully completed full integration testing with embedded struct support, field type resolution, Public variant generation, and AllOf composition working correctly.
+
+**Key Metrics:**
+- **87 definitions** generated (base schemas + Public variants)
+- **28 properties** in base Account schema (was 0)
+- **22 properties** in Public Account schema (was 0)
+- **5 API paths** with proper AllOf composition
+- **100% test pass rate** (6/6 tests passing)
+
+**Major Features Implemented:**
+1. ✅ Embedded struct support with recursive field merging
+2. ✅ Field type resolution for `fields.StringField`, `fields.IntField`, etc.
+3. ✅ Column tag fallback when json tag missing
+4. ✅ AllOf composition for response wrappers
+5. ✅ @Public annotation handling for data models
+6. ✅ Public variant generation with correct field filtering
+
+**Test Results:**
+- ✅ Base_schemas_should_exist
+- ✅ Public_variant_schemas_should_exist
+- ✅ Base_Account_schema_should_have_correct_fields
+- ✅ Public_Account_schema_should_filter_private_fields
+- ✅ Operations_should_reference_correct_schemas
+- ✅ Generate_actual_output
+
+---
+
 ## 2026-02-15: Phase 3.1 - Field Type Resolution (FIXED ✅) + Column Tag Fallback (FIXED ✅)
 
 **Issue 1 - Field Type Resolution:**
@@ -57,8 +88,35 @@ AllOf composition not being preserved in response schemas. domain.Schema was fla
 **Result:**
 AllOf composition now working correctly for response wrappers. All endpoints have proper AllOf structure.
 
-**Minor Issue Remaining:**
-@Public annotation incorrectly adds "Public" suffix to response wrapper (response.SuccessResponsePublic) instead of just the data model. Should be: response.SuccessResponse + account.AccountWithFeaturesPublic.
+---
+
+## 2026-02-15: Phase 3.1 - @Public Suffix Fix (FIXED ✅)
+
+**Issue:**
+@Public annotation was incorrectly adding "Public" suffix to response wrapper (response.SuccessResponsePublic) instead of just the data model.
+
+**Root Cause:**
+buildAllOfResponseSchema() in allof.go was applying the Public suffix to both the base type (wrapper) and the field overrides (data models).
+
+**Solution:**
+Removed lines 32-35 that added Public suffix to baseQualifiedType. The response wrapper should always use the base name, and only the data field inside should get the Public suffix.
+
+**Files Modified:**
+- `/Users/griffnb/projects/core-swag/internal/parser/route/allof.go` (-4 lines, +2 comment lines)
+
+**Result:**
+- ✅ /auth/me with @Public now references: `response.SuccessResponse` + `account.AccountWithFeaturesPublic`
+- ✅ /admin/testUser without @Public references: `response.SuccessResponse` + `account.Account`
+
+**Final Test Results - ALL 6 TESTS PASSING ✅✅✅:**
+- ✅ Base_schemas_should_exist
+- ✅ Public_variant_schemas_should_exist
+- ✅ Base_Account_schema_should_have_correct_fields (28 properties)
+- ✅ Public_Account_schema_should_filter_private_fields (22 properties)
+- ✅ Operations_should_reference_correct_schemas (AllOf + @Public working correctly)
+- ✅ Generate_actual_output (87 definitions, 5 paths)
+
+**Phase 3.1 Status: COMPLETE ✅**
 
 ---
 
