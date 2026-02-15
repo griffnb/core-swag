@@ -1,6 +1,9 @@
 package route
 
 import (
+	"log"
+	"math"
+
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
@@ -68,6 +71,14 @@ func RouteToSpecOperation(route *domain.Route) *spec.Operation {
 
 // ParameterToSpec converts a domain.Parameter to spec.Parameter
 func ParameterToSpec(param domain.Parameter) spec.Parameter {
+	// Debug logging for infinity detection
+	if param.Maximum != nil && (math.IsInf(*param.Maximum, 0) || math.IsNaN(*param.Maximum)) {
+		log.Printf("INFINITY DETECTED: Parameter %s (in:%s) has invalid maximum: %v", param.Name, param.In, *param.Maximum)
+	}
+	if param.Minimum != nil && (math.IsInf(*param.Minimum, 0) || math.IsNaN(*param.Minimum)) {
+		log.Printf("INFINITY DETECTED: Parameter %s (in:%s) has invalid minimum: %v", param.Name, param.In, *param.Minimum)
+	}
+
 	specParam := spec.Parameter{
 		ParamProps: spec.ParamProps{
 			Name:        param.Name,
@@ -106,11 +117,19 @@ func ParameterToSpec(param domain.Parameter) spec.Parameter {
 		}
 
 		if param.Minimum != nil {
-			specParam.Minimum = param.Minimum
+			if math.IsInf(*param.Minimum, 0) || math.IsNaN(*param.Minimum) {
+				log.Printf("WARNING: Parameter %s has infinite/NaN minimum value: %v", param.Name, *param.Minimum)
+			} else {
+				specParam.Minimum = param.Minimum
+			}
 		}
 
 		if param.Maximum != nil {
-			specParam.Maximum = param.Maximum
+			if math.IsInf(*param.Maximum, 0) || math.IsNaN(*param.Maximum) {
+				log.Printf("WARNING: Parameter %s has infinite/NaN maximum value: %v", param.Name, *param.Maximum)
+			} else {
+				specParam.Maximum = param.Maximum
+			}
 		}
 
 		if param.MinLength != nil {

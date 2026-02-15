@@ -8,6 +8,7 @@ import (
 	"go/format"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -237,6 +238,11 @@ func (g *Gen) Build(config *Config) error {
 	if err != nil {
 		return err
 	}
+
+	// Sanitize swagger spec to remove infinity/NaN values before any output
+	// These values are not valid in JSON and will cause marshaling errors
+	g.debug.Printf("Sanitizing swagger spec to remove invalid numeric values...")
+	sanitizeSwaggerSpec(swagger)
 
 	// Remove unused schema definitions to keep the output clean
 	schema.RemoveUnusedDefinitions(swagger)
@@ -602,4 +608,191 @@ func parseTags(tags string) map[string]struct{} {
 		}
 	}
 	return result
+}
+
+// sanitizeSwaggerSpec removes infinity and NaN values from the swagger spec
+// to prevent JSON marshaling errors. These values are not valid in JSON.
+func sanitizeSwaggerSpec(swagger *spec.Swagger) {
+	if swagger == nil || swagger.Paths == nil {
+		return
+	}
+
+	// Walk through all paths and operations
+	for pathKey, pathItem := range swagger.Paths.Paths {
+		sanitizeOperation(pathKey, pathItem.Get)
+		sanitizeOperation(pathKey, pathItem.Put)
+		sanitizeOperation(pathKey, pathItem.Post)
+		sanitizeOperation(pathKey, pathItem.Delete)
+		sanitizeOperation(pathKey, pathItem.Options)
+		sanitizeOperation(pathKey, pathItem.Head)
+		sanitizeOperation(pathKey, pathItem.Patch)
+	}
+}
+
+// sanitizeOperation sanitizes parameters in an operation
+func sanitizeOperation(path string, op *spec.Operation) {
+	if op == nil {
+		return
+	}
+
+	for i := range op.Parameters {
+		param := &op.Parameters[i]
+		sanitizeParameter(path, param)
+	}
+}
+
+// sanitizeParameter removes infinity/NaN values from parameter constraints
+func sanitizeParameter(path string, param *spec.Parameter) {
+	if param == nil {
+		return
+	}
+
+	// Check and clear invalid Minimum values
+	if param.Minimum != nil && (math.IsInf(*param.Minimum, 0) || math.IsNaN(*param.Minimum)) {
+		param.Minimum = nil
+	}
+
+	// Check and clear invalid Maximum values
+	if param.Maximum != nil && (math.IsInf(*param.Maximum, 0) || math.IsNaN(*param.Maximum)) {
+		param.Maximum = nil
+	}
+
+	// Check and clear invalid MultipleOf values
+	if param.MultipleOf != nil && (math.IsInf(*param.MultipleOf, 0) || math.IsNaN(*param.MultipleOf)) {
+		param.MultipleOf = nil
+	}
+
+	// Check and clear invalid Default values if they're numeric
+	if param.Default != nil {
+		if f, ok := param.Default.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
+			param.Default = nil
+		}
+	}
+
+	// Check and clear invalid Example values if they're numeric
+	if param.Example != nil {
+		if f, ok := param.Example.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
+			param.Example = nil
+		}
+	}
+
+	// Check and sanitize Enum values
+	if len(param.Enum) > 0 {
+		validEnum := make([]interface{}, 0, len(param.Enum))
+		for _, enumVal := range param.Enum {
+			if f, ok := enumVal.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
+				continue // Skip infinity/NaN enum values
+			}
+			validEnum = append(validEnum, enumVal)
+		}
+		param.Enum = validEnum
+	}
+
+	// Sanitize schema if present (for body parameters)
+	if param.Schema != nil {
+		sanitizeSchema(param.Schema)
+	}
+
+	// Sanitize items if present (for array parameters)
+	if param.Items != nil {
+		sanitizeItems(param.Items)
+	}
+}
+
+// sanitizeSchema recursively sanitizes a schema
+func sanitizeSchema(schema *spec.Schema) {
+	if schema == nil {
+		return
+	}
+
+	// Sanitize numeric constraints
+	if schema.Minimum != nil && (math.IsInf(*schema.Minimum, 0) || math.IsNaN(*schema.Minimum)) {
+		schema.Minimum = nil
+	}
+	if schema.Maximum != nil && (math.IsInf(*schema.Maximum, 0) || math.IsNaN(*schema.Maximum)) {
+		schema.Maximum = nil
+	}
+	if schema.MultipleOf != nil && (math.IsInf(*schema.MultipleOf, 0) || math.IsNaN(*schema.MultipleOf)) {
+		schema.MultipleOf = nil
+	}
+
+	// Sanitize default if numeric
+	if schema.Default != nil {
+		if f, ok := schema.Default.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
+			schema.Default = nil
+		}
+	}
+
+	// Recursively sanitize properties
+	if schema.Properties != nil {
+		for k := range schema.Properties {
+			propSchema := schema.Properties[k]
+			sanitizeSchema(&propSchema)
+			schema.Properties[k] = propSchema
+		}
+	}
+
+	// Sanitize array items
+	if schema.Items != nil && schema.Items.Schema != nil {
+		sanitizeSchema(schema.Items.Schema)
+	}
+
+	// Sanitize AllOf schemas
+	for i := range schema.AllOf {
+		sanitizeSchema(&schema.AllOf[i])
+	}
+
+	// Sanitize AnyOf schemas
+	for i := range schema.AnyOf {
+		sanitizeSchema(&schema.AnyOf[i])
+	}
+
+	// Sanitize OneOf schemas
+	for i := range schema.OneOf {
+		sanitizeSchema(&schema.OneOf[i])
+	}
+
+	// Sanitize Not schema
+	if schema.Not != nil {
+		sanitizeSchema(schema.Not)
+	}
+
+	// Sanitize AdditionalProperties if it's a schema
+	if schema.AdditionalProperties != nil && schema.AdditionalProperties.Schema != nil {
+		sanitizeSchema(schema.AdditionalProperties.Schema)
+	}
+}
+
+// sanitizeItems sanitizes items in array parameters
+func sanitizeItems(items *spec.Items) {
+	if items == nil {
+		return
+	}
+
+	if items.Minimum != nil && (math.IsInf(*items.Minimum, 0) || math.IsNaN(*items.Minimum)) {
+		items.Minimum = nil
+	}
+	if items.Maximum != nil && (math.IsInf(*items.Maximum, 0) || math.IsNaN(*items.Maximum)) {
+		items.Maximum = nil
+	}
+	if items.MultipleOf != nil && (math.IsInf(*items.MultipleOf, 0) || math.IsNaN(*items.MultipleOf)) {
+		items.MultipleOf = nil
+	}
+
+	if items.Default != nil {
+		if f, ok := items.Default.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
+			items.Default = nil
+		}
+	}
+
+	if items.Example != nil {
+		if f, ok := items.Example.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
+			items.Example = nil
+		}
+	}
+
+	// Recursively sanitize nested items
+	if items.Items != nil {
+		sanitizeItems(items.Items)
+	}
 }

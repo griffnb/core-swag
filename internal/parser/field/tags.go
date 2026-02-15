@@ -2,6 +2,7 @@ package field
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -38,6 +39,11 @@ func getFloatTag(structTag reflect.StructTag, tagName string) (*float64, error) 
 	value, err := strconv.ParseFloat(strValue, 64)
 	if err != nil {
 		return nil, fmt.Errorf("can't parse numeric value of %q tag: %v", tagName, err)
+	}
+
+	// Reject infinity and NaN - they're not valid in JSON
+	if math.IsInf(value, 0) || math.IsNaN(value) {
+		return nil, fmt.Errorf("%q tag value must be finite, got: %s", tagName, strValue)
 	}
 
 	return &value, nil

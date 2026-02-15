@@ -2,6 +2,7 @@ package structparser
 
 import (
 	"go/ast"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -301,7 +302,7 @@ func buildPropertySchema(fieldType string, tags fieldTags) spec.Schema {
 				schema.MinLength = &minLen
 			}
 		} else if openAPIType == "integer" || openAPIType == "number" {
-			if minVal, err := strconv.ParseFloat(tags.Min, 64); err == nil {
+			if minVal, err := strconv.ParseFloat(tags.Min, 64); err == nil && !math.IsInf(minVal, 0) && !math.IsNaN(minVal) {
 				schema.Minimum = &minVal
 			}
 		}
@@ -313,7 +314,7 @@ func buildPropertySchema(fieldType string, tags fieldTags) spec.Schema {
 				schema.MaxLength = &maxLen
 			}
 		} else if openAPIType == "integer" || openAPIType == "number" {
-			if maxVal, err := strconv.ParseFloat(tags.Max, 64); err == nil {
+			if maxVal, err := strconv.ParseFloat(tags.Max, 64); err == nil && !math.IsInf(maxVal, 0) && !math.IsNaN(maxVal) {
 				schema.Maximum = &maxVal
 			}
 		}

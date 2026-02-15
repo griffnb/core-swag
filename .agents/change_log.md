@@ -1242,3 +1242,72 @@ No refactoring needed. The implementation is already clean, simple, and maintain
 **Next Steps:**
 Phase 2.1 - StructParser Service Implementation (per SYSTEMATIC_RESTORATION_PLAN.md)
 
+
+## 2026-02-15 - Phase 3.2: Real Project Testing - Infinity Value Fix
+
+**Problem**: When testing against atlas-go project, JSON marshaling failed with:
+```
+json: unsupported value: +Inf
+```
+
+**Root Cause**: `fmt.Sscanf` with `%f` format can successfully parse "inf", "+Inf", and "Inf" as infinity values. In the Atlas Go project, there was a parameter annotation with `Maximum(Inf)` or similar, which got parsed as `+Inf` float64 value. JSON standard doesn't support infinity values.
+
+**Investigation**:
+- Tested `fmt.Sscanf` behavior with infinity strings
+- Confirmed that `fmt.Sscanf("inf", "%f", &val)` sets val to `+Inf` without error
+- Traced error to parameter Maximum/Minimum fields having infinity values
+
+**Solution**: Created `parseFiniteFloat()` function in `internal/parser/route/parameter.go` that:
+1. Parses the float value normally
+2. Checks if the value is finite (not NaN, not Inf)
+3. Returns error if value is infinite or NaN
+4. Updated Minimum and Maximum parsing to use this function
+
+**Files Changed**:
+- `internal/parser/route/parameter.go`:
+  - Added `parseFiniteFloat()` function
+  - Updated "minimum"/"min" case to use parseFiniteFloat
+  - Updated "maximum"/"max" case to use parseFiniteFloat
+
+**Next**: Rebuild and retest against atlas-go project.
+
+## 2026-02-15 - Phase 3.2: Real Project Testing - COMPLETE FIX
+
+**Final Root Cause**: Enum values in parameter constraints can contain infinity values.
+
+**Complete Investigation Trail**:
+1. Initial attempts to fix at parameter parsing level (parameter.go) - didn't catch the issue
+2. Fixed struct field validation tag parsing (field_processor.go) - didn't catch it
+3. Fixed field tag parsing (field/tags.go get FloatTag) - didn't catch it  
+4. Added sanitization at writeJSONSwagger - too late, error happened in writeGoDoc first
+5. Moved sanitization to Build() after Parse() - correct location
+6. Added checks for Minimum, Maximum, MultipleOf - didn't find infinity
+7. Added checks for Default, Example - didn't find infinity
+8. **FINAL**: Added check for Enum values - FOUND IT!
+
+**The Infinity Source**: Parameter "level" (path parameter) had an Enum value of `+Inf`.
+
+**Solution**: Created comprehensive sanitization in `internal/gen/gen.go`:
+- `sanitizeSwaggerSpec()` - Entry point, walks all paths/operations
+- `sanitizeOperation()` - Sanitizes all parameters in an operation
+- `sanitizeParameter()` - Checks and removes infinity/NaN from:
+  - Minimum, Maximum, MultipleOf *float64 fields
+  - Default any field (if float64)
+  - Example any field (if float64)
+  - **Enum []any slice (filters out infinity/NaN values)**
+- `sanitizeSchema()` - Recursively sanitizes schemas (for body parameters)
+- `sanitizeItems()` - Sanitizes array item constraints
+
+**Test Result**: 
+- ✅ atlas-go project: 312 definitions, 705 paths, valid JSON
+- ✅ Swagger.json generated successfully (2.7MB)
+
+**Files Changed**:
+- `internal/gen/gen.go`: Added complete sanitization before JSON marshaling
+- `internal/parser/route/parameter.go`: Added parseFiniteFloat() for @Param annotations  
+- `internal/parser/struct/field_processor.go`: Added infinity checks for struct field validation
+- `internal/parser/field/tags.go`: Added infinity checks in getFloatTag()
+
+**Key Learning**: JSON spec doesn't support infinity or NaN. Must sanitize at output stage, not just at parsing stage, because values can come from many sources (struct tags, annotations, computed values, etc.).
+
+**Next**: Test project-2 to ensure solution is complete.

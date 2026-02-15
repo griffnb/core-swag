@@ -2,6 +2,7 @@ package route
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 
@@ -135,13 +136,11 @@ func parseParamAttributes(param *domain.Parameter, attrs string) error {
 			}
 			param.Enum = enums
 		case "minimum", "min":
-			var min float64
-			if _, err := fmt.Sscanf(attrValue, "%f", &min); err == nil {
+			if min, err := parseFiniteFloat(attrValue); err == nil {
 				param.Minimum = &min
 			}
 		case "maximum", "max":
-			var max float64
-			if _, err := fmt.Sscanf(attrValue, "%f", &max); err == nil {
+			if max, err := parseFiniteFloat(attrValue); err == nil {
 				param.Maximum = &max
 			}
 		case "minlength":
@@ -186,6 +185,21 @@ func parseFloat(s string) (float64, error) {
 	var f float64
 	_, err := fmt.Sscanf(s, "%f", &f)
 	return f, err
+}
+
+// parseFiniteFloat parses a string to float64 and rejects infinity and NaN values
+func parseFiniteFloat(s string) (float64, error) {
+	f, err := parseFloat(s)
+	if err != nil {
+		return 0, err
+	}
+
+	// Reject infinity and NaN - they're not valid in JSON
+	if math.IsInf(f, 0) || math.IsNaN(f) {
+		return 0, fmt.Errorf("value must be finite, got: %s", s)
+	}
+
+	return f, nil
 }
 
 // convertType converts Go types to OpenAPI types
