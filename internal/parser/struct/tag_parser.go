@@ -18,14 +18,21 @@ type TagInfo struct {
 }
 
 // parseJSONTag parses the json struct tag and returns field name, omitempty flag, and ignore flag.
+// If no json tag is present, falls back to column tag for custom model systems.
 //
 // Examples:
 //   - `json:"first_name"` → ("first_name", false, false)
 //   - `json:"count,omitempty"` → ("count", true, false)
 //   - `json:"-"` → ("", false, true)
+//   - `column:"external_id"` (no json tag) → ("external_id", false, false)
 func parseJSONTag(tag reflect.StructTag) (name string, omitEmpty bool, ignore bool) {
 	jsonTag := tag.Get("json")
 	if jsonTag == "" {
+		// Fallback to column tag for custom model systems
+		columnTag := tag.Get("column")
+		if columnTag != "" {
+			return strings.TrimSpace(columnTag), false, false
+		}
 		return "", false, false
 	}
 

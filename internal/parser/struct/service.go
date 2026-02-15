@@ -161,7 +161,7 @@ func (s *Service) ParseFile(astFile *ast.File, filePath string) error {
 			}
 
 			// Check if we should generate a Public variant
-			if s.ShouldGeneratePublic(structType.Fields) {
+			if s.shouldGeneratePublicInternal(astFile, structType.Fields) {
 				publicSchema, err := s.BuildPublicSchema(astFile, structType.Fields)
 				if err != nil {
 					// Log error but continue
@@ -195,14 +195,62 @@ func (s *Service) ParseDefinition(typeSpec ast.Expr) (*spec.Schema, error) {
 // ShouldGeneratePublic checks if a Public variant schema should be generated.
 // Returns true if any fields have public:"view" or public:"edit" tags.
 func (s *Service) ShouldGeneratePublic(fields *ast.FieldList) bool {
+	// For backward compatibility with tests, call with nil file
+	return s.shouldGeneratePublicInternal(nil, fields)
+}
+
+func (s *Service) shouldGeneratePublicInternal(file *ast.File, fields *ast.FieldList) bool {
 	if fields == nil {
 		return false
 	}
 
 	// Check if any field has public tag
 	for _, field := range fields.List {
-		if hasPublicTag(field) {
+		// Check direct fields
+		if len(field.Names) > 0 && hasPublicTag(field) {
 			return true
+		}
+
+		// Check embedded fields recursively
+		if len(field.Names) == 0 && s.registry != nil {
+			// Check for json tag - if present, not truly embedded
+			if field.Tag != nil {
+				tagValue := field.Tag.Value
+				if len(tagValue) >= 2 && tagValue[0] == '`' && tagValue[len(tagValue)-1] == '`' {
+					tagValue = tagValue[1 : len(tagValue)-1]
+				}
+				tag := reflect.StructTag(tagValue)
+				if jsonName := tag.Get("json"); jsonName != "" && jsonName != "-" {
+					// Has json tag - check if it has public tag
+					if hasPublicTag(field) {
+						return true
+					}
+					continue
+				}
+			}
+
+			// True embedded field - check if embedded type has public fields
+			typeName, err := s.resolveEmbeddedTypeName(file, field.Type)
+			if err != nil {
+				continue
+			}
+
+			// Look up type in registry (use file context if available)
+			typeDef := s.registry.FindTypeSpec(typeName, file)
+			if typeDef == nil {
+				continue
+			}
+
+			// Check if it's a struct type
+			structType, ok := typeDef.TypeSpec.Type.(*ast.StructType)
+			if !ok {
+				continue
+			}
+
+			// Recursively check if embedded struct has public fields
+			if s.shouldGeneratePublicInternal(typeDef.File, structType.Fields) {
+				return true
+			}
 		}
 	}
 
@@ -228,8 +276,59 @@ func (s *Service) BuildPublicSchema(file *ast.File, fields *ast.FieldList) (*spe
 
 	// Process each field
 	for _, field := range fields.List {
-		// Skip embedded fields for Public variant
+		// Handle embedded fields - recursively check for public fields
 		if len(field.Names) == 0 {
+			// Check for json tag - if present with a name, NOT truly embedded
+			hasJSONTag := false
+			if field.Tag != nil {
+				tagValue := field.Tag.Value
+				if len(tagValue) >= 2 && tagValue[0] == '`' && tagValue[len(tagValue)-1] == '`' {
+					tagValue = tagValue[1 : len(tagValue)-1]
+				}
+				tag := reflect.StructTag(tagValue)
+				if jsonName := tag.Get("json"); jsonName != "" && jsonName != "-" {
+					hasJSONTag = true
+				}
+			}
+
+			if hasJSONTag {
+				// Has json tag - skip for now (handled as named field)
+				continue
+			}
+
+			// True embedded field - need to get its TypeSpec to recursively build Public schema
+			if s.registry == nil {
+				continue
+			}
+
+			// Resolve embedded type name
+			typeName, err := s.resolveEmbeddedTypeName(file, field.Type)
+			if err != nil {
+				continue
+			}
+
+			// Look up type in registry
+			typeDef := s.registry.FindTypeSpec(typeName, file)
+			if typeDef == nil {
+				continue
+			}
+
+			// Check if it's a struct type
+			structType, ok := typeDef.TypeSpec.Type.(*ast.StructType)
+			if !ok {
+				continue
+			}
+
+			// Recursively build Public schema from embedded struct's fields
+			embeddedPublicSchema, err := s.BuildPublicSchema(typeDef.File, structType.Fields)
+			if err == nil && embeddedPublicSchema != nil {
+				// Merge public properties from embedded struct
+				for propName, propSchema := range embeddedPublicSchema.Properties {
+					schema.Properties[propName] = propSchema
+					hasPublicFields = true
+				}
+				schema.Required = append(schema.Required, embeddedPublicSchema.Required...)
+			}
 			continue
 		}
 

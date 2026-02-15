@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/go-openapi/spec"
 )
@@ -52,6 +53,13 @@ func processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []s
 		innerType, err := extractInnerType(fieldType)
 		if err == nil {
 			fieldType = innerType
+		}
+	}
+
+	// If it's still a fields.* named type, resolve it
+	if strings.HasPrefix(fieldType, "fields.") {
+		if resolvedType := resolveFieldsType(fieldType); resolvedType != "" {
+			fieldType = resolvedType
 		}
 	}
 
@@ -180,6 +188,11 @@ func resolveBasicType(typeName string) string {
 
 // resolvePackageType maps package-qualified types to OpenAPI types
 func resolvePackageType(fullType string) string {
+	// Check for fields.* named types first
+	if fieldsType := resolveFieldsType(fullType); fieldsType != "" {
+		return fieldsType
+	}
+
 	// Special handling for known types
 	if fullType == "time.Time" {
 		return "string"

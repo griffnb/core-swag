@@ -147,6 +147,9 @@ type Schema struct {
 	// Properties for object schemas
 	Properties map[string]*Schema
 
+	// AllOf for composed schemas
+	AllOf []*Schema
+
 	// Required property names
 	Required []string
 

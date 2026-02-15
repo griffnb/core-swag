@@ -126,18 +126,11 @@ func convertSpecSchemaToDomain(s *spec.Schema) *domain.Schema {
 
 	domainSchema := &domain.Schema{}
 
-	// Handle AllOf - extract properties from the second schema in the composition
-	// AllOf structure: [baseSchema, overrideSchema]
-	// The overrideSchema contains the properties we want
+	// Handle AllOf - preserve the composition structure
 	if len(s.AllOf) > 0 {
-		// Merge properties from all AllOf schemas
-		domainSchema.Properties = make(map[string]*domain.Schema)
+		domainSchema.AllOf = make([]*domain.Schema, 0, len(s.AllOf))
 		for _, allOfSchema := range s.AllOf {
-			if len(allOfSchema.Properties) > 0 {
-				for name, prop := range allOfSchema.Properties {
-					domainSchema.Properties[name] = convertSpecSchemaToDomain(&prop)
-				}
-			}
+			domainSchema.AllOf = append(domainSchema.AllOf, convertSpecSchemaToDomain(&allOfSchema))
 		}
 		// Use type "object" for AllOf compositions
 		domainSchema.Type = "object"

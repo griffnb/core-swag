@@ -54,15 +54,22 @@ func (b *BuilderService) SetTypeResolver(resolver TypeResolver) {
 // BuildSchema builds an OpenAPI schema from a TypeSpecDef.
 // Returns the schema name and any error encountered.
 func (b *BuilderService) BuildSchema(typeSpec *domain.TypeSpecDef) (string, error) {
-	// Check if already parsed
-	if schemaName, ok := b.parsedSchemas[typeSpec]; ok {
-		return schemaName, nil
-	}
-
-	// Get schema name
+	// Get schema name first
 	schemaName := typeSpec.SchemaName
 	if schemaName == "" {
 		schemaName = typeSpec.TypeName()
+	}
+
+	// Check if already parsed
+	if existingName, ok := b.parsedSchemas[typeSpec]; ok {
+		return existingName, nil
+	}
+
+	// Check if schema already exists in definitions (may have been built by StructParser)
+	if _, exists := b.definitions[schemaName]; exists {
+		// Schema already exists - mark as parsed and return
+		b.parsedSchemas[typeSpec] = schemaName
+		return schemaName, nil
 	}
 
 	// Build schema from TypeSpec by parsing the AST
@@ -293,6 +300,8 @@ func getFieldType(expr ast.Expr) string {
 // AddDefinition adds a schema definition with the given name.
 func (b *BuilderService) AddDefinition(name string, schema spec.Schema) error {
 	b.definitions[name] = schema
+	// Note: We don't have the TypeSpecDef here to add to parsedSchemas
+	// This is OK - BuildSchema will check definitions first
 	return nil
 }
 

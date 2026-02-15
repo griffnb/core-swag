@@ -190,6 +190,16 @@ func SchemaToSpec(schema *domain.Schema) *spec.Schema {
 		specSchema.Ref = spec.MustCreateRef(schema.Ref)
 	}
 
+	// Handle AllOf composition
+	if len(schema.AllOf) > 0 {
+		specSchema.AllOf = make([]spec.Schema, 0, len(schema.AllOf))
+		for _, allOfSchema := range schema.AllOf {
+			if converted := SchemaToSpec(allOfSchema); converted != nil {
+				specSchema.AllOf = append(specSchema.AllOf, *converted)
+			}
+		}
+	}
+
 	// Handle items for arrays
 	if schema.Items != nil {
 		specSchema.Items = &spec.SchemaOrArray{

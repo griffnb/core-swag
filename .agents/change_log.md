@@ -1,5 +1,67 @@
 # Core-Swag Change Log
 
+## 2026-02-15: Phase 3.1 - Field Type Resolution (FIXED ✅) + Column Tag Fallback (FIXED ✅)
+
+**Issue 1 - Field Type Resolution:**
+Integration test showed all properties with Type: []string{"object"} instead of actual types.
+
+**Root Cause:**
+Test data uses named field types like `*fields.StringField`, `*fields.IntField`, not generic `fields.StructField[T]`.
+
+**Solution Applied:**
+1. Added `resolveFieldsType()` in type_resolver.go to map fields.* types to OpenAPI types
+2. Updated `resolvePackageType()` to call resolveFieldsType() first
+3. Updated `processField()` to check for remaining fields.* types after extraction
+
+**Files Modified:**
+- `/Users/griffnb/projects/core-swag/internal/parser/struct/type_resolver.go` (+48 lines)
+- `/Users/griffnb/projects/core-swag/internal/parser/struct/field_processor.go` (+9 lines)
+
+**Issue 2 - Field Naming:**
+Test expected snake_case names ("external_id", "first_name") but got camelCase ("externalID", "firstName").
+
+**Root Cause:**
+Test data fields have `column:"external_id"` tags but no `json:` tags. Parser defaulted to camelCase naming.
+
+**Solution Applied:**
+Modified parseJSONTag() to fall back to column tag when json tag is missing.
+
+**Files Modified:**
+- `/Users/griffnb/projects/core-swag/internal/parser/struct/tag_parser.go` (+5 lines)
+
+**Test Results - 5 of 6 PASSING ✅:**
+- ✅ Base_schemas_should_exist
+- ✅ Public_variant_schemas_should_exist
+- ✅ Base_Account_schema_should_have_correct_fields (28 properties)
+- ✅ Public_Account_schema_should_filter_private_fields (22 properties)
+- ❌ Operations_should_reference_correct_schemas (AllOf working, but minor issue)
+- ✅ Generate_actual_output (87 definitions, 5 paths)
+
+---
+
+## 2026-02-15: Phase 3.1 - AllOf Composition Support (FIXED ✅)
+
+**Issue:**
+AllOf composition not being preserved in response schemas. domain.Schema was flattening AllOf.
+
+**Solution Applied:**
+1. Added AllOf field to domain.Schema
+2. Updated convertSpecSchemaToDomain() to preserve AllOf structure instead of flattening
+3. Updated SchemaToSpec() to convert AllOf back to spec.Schema
+
+**Files Modified:**
+- `/Users/griffnb/projects/core-swag/internal/parser/route/domain/route.go` (+3 lines)
+- `/Users/griffnb/projects/core-swag/internal/parser/route/allof.go` (modified convertSpecSchemaToDomain)
+- `/Users/griffnb/projects/core-swag/internal/parser/route/converter.go` (modified SchemaToSpec)
+
+**Result:**
+AllOf composition now working correctly for response wrappers. All endpoints have proper AllOf structure.
+
+**Minor Issue Remaining:**
+@Public annotation incorrectly adds "Public" suffix to response wrapper (response.SuccessResponsePublic) instead of just the data model. Should be: response.SuccessResponse + account.AccountWithFeaturesPublic.
+
+---
+
 ## 2026-02-15: Phase 3.1 - Embedded Struct Support Implementation (TDD GREEN PHASE COMPLETE)
 
 **Context:**

@@ -41,6 +41,49 @@ func isCustomModel(typeName string) bool {
 	return strings.HasPrefix(typeName, "fields.StructField")
 }
 
+// resolveFieldsType maps fields.* named types to OpenAPI types.
+// These are concrete field types (not generic) used in the custom model system.
+// Examples:
+//   - "fields.StringField" -> "string"
+//   - "fields.IntField" -> "integer"
+//   - "fields.BoolField" -> "boolean"
+//   - "fields.UUIDField" -> "string"
+//   - "fields.FloatField" -> "number"
+//   - "fields.IntConstantField" -> "integer"
+//   - "fields.StringConstantField" -> "string"
+//
+// Returns empty string if not a recognized fields.* type.
+func resolveFieldsType(typeName string) string {
+	if !strings.HasPrefix(typeName, "fields.") {
+		return ""
+	}
+
+	// Extract the field type name after "fields."
+	fieldType := strings.TrimPrefix(typeName, "fields.")
+
+	// Map to OpenAPI types
+	switch {
+	case strings.HasPrefix(fieldType, "String"):
+		return "string"
+	case strings.HasPrefix(fieldType, "Int"):
+		return "integer"
+	case strings.HasPrefix(fieldType, "Bool"):
+		return "boolean"
+	case strings.HasPrefix(fieldType, "Float") || strings.HasPrefix(fieldType, "Decimal"):
+		return "number"
+	case strings.HasPrefix(fieldType, "UUID"):
+		return "string"
+	case strings.HasPrefix(fieldType, "Time"):
+		return "string"
+	case strings.HasPrefix(fieldType, "Struct"):
+		// fields.StructField[T] is a generic type - caller should extract T
+		return ""
+	default:
+		// Unknown fields.* type - treat as object
+		return "object"
+	}
+}
+
 // getSliceElementType extracts the element type from a slice type.
 // Example: "[]string" -> "string"
 // Example: "[]*model.User" -> "*model.User"

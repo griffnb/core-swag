@@ -298,66 +298,61 @@
   },
   "definitions": {
     "account.Account": {
-      "type": "object"
-    },
-    "account.AccountJoined": {
-      "type": "object"
-    },
-    "account.AccountWithFeatures": {
-      "type": "object"
-    },
-    "account.Authentication": {
       "type": "object",
       "properties": {
-        "keys": {
-          "type": "object"
-        }
-      }
-    },
-    "account.DBColumns": {
-      "type": "object",
-      "properties": {
-        "addressVerification": {
-          "type": "object"
+        "config_key": {
+          "type": "string"
         },
-        "authentication": {
-          "type": "object"
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
         },
         "email": {
-          "type": "object"
+          "type": "string"
         },
-        "emailVerifiedAtTS": {
-          "type": "object"
+        "email_verified_at_ts": {
+          "type": "integer"
         },
-        "externalID": {
-          "type": "object"
+        "external_id": {
+          "type": "string"
         },
-        "firstName": {
-          "type": "object"
+        "first_name": {
+          "type": "string"
         },
         "flags": {
           "type": "object"
         },
-        "globalConfigKey": {
-          "type": "object"
+        "hashed_password": {
+          "type": "string"
         },
-        "hashedPassword": {
-          "type": "object"
+        "id": {
+          "type": "string"
         },
-        "lastLoginTS": {
-          "type": "object"
+        "is_super_user_session": {
+          "type": "integer"
         },
-        "lastName": {
-          "type": "object"
+        "last_login_ts": {
+          "type": "integer"
         },
-        "organizationID": {
-          "type": "object"
+        "last_name": {
+          "type": "string"
         },
-        "passwordUpdatedAtTS": {
-          "type": "object"
+        "organization_id": {
+          "type": "string"
+        },
+        "password_updated_at_ts": {
+          "type": "integer"
         },
         "phone": {
-          "type": "object"
+          "type": "string"
         },
         "properties": {
           "type": "object"
@@ -366,12 +361,581 @@
           "type": "object"
         },
         "role": {
+          "type": "integer"
+        },
+        "signup_properties": {
           "type": "object"
         },
-        "signupProperties": {
+        "status": {
+          "type": "integer"
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "account.AccountJoined": {
+      "type": "object",
+      "properties": {
+        "config_key": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_name": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "email_verified_at_ts": {
+          "type": "integer"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
           "type": "object"
         },
-        "testUserType": {
+        "hashed_password": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_login_ts": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nested_settings": {
+          "type": "object"
+        },
+        "organization_id": {
+          "type": "string"
+        },
+        "organization_name": {
+          "type": "string"
+        },
+        "password_updated_at_ts": {
+          "type": "integer"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "signup_properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_name": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "account.AccountJoinedPublic": {
+      "type": "object",
+      "properties": {
+        "config_key": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "nested_settings": {
+          "type": "object"
+        },
+        "organization_id": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "account.AccountPublic": {
+      "type": "object",
+      "properties": {
+        "config_key": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "organization_id": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "account.AccountWithFeatures": {
+      "type": "object",
+      "properties": {
+        "billing_plan_feature_set": {
+          "type": "object"
+        },
+        "billing_plan_id": {
+          "type": "string"
+        },
+        "billing_plan_level": {
+          "type": "integer"
+        },
+        "billing_plan_name": {
+          "type": "string"
+        },
+        "billing_plan_price": {
+          "type": "number"
+        },
+        "config_key": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "email_verified_at_ts": {
+          "type": "integer"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "feature_set_overrides": {
+          "type": "object"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "object"
+        },
+        "hashed_password": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_login_ts": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "organization_id": {
+          "type": "string"
+        },
+        "password_updated_at_ts": {
+          "type": "integer"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "signup_properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "account.AccountWithFeaturesPublic": {
+      "type": "object",
+      "properties": {
+        "billing_plan_id": {
+          "type": "string"
+        },
+        "billing_plan_level": {
+          "type": "integer"
+        },
+        "billing_plan_name": {
+          "type": "string"
+        },
+        "billing_plan_price": {
+          "type": "number"
+        },
+        "config_key": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "organization_id": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "account.Authentication": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "account.DBColumns": {
+      "type": "object",
+      "properties": {
+        "config_key": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "email_verified_at_ts": {
+          "type": "integer"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "object"
+        },
+        "hashed_password": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "last_login_ts": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "organization_id": {
+          "type": "string"
+        },
+        "password_updated_at_ts": {
+          "type": "integer"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "signup_properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
           "type": "object"
         }
       }
@@ -379,40 +943,67 @@
     "account.DBColumnsPublic": {
       "type": "object",
       "properties": {
-        "addressVerification": {
-          "type": "object"
+        "config_key": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
         },
         "email": {
-          "type": "object"
+          "type": "string"
         },
-        "externalID": {
-          "type": "object"
+        "external_id": {
+          "type": "string"
         },
-        "firstName": {
-          "type": "object"
+        "first_name": {
+          "type": "string"
         },
         "flags": {
           "type": "object"
         },
-        "globalConfigKey": {
-          "type": "object"
+        "id": {
+          "type": "string"
         },
-        "lastName": {
-          "type": "object"
+        "last_name": {
+          "type": "string"
         },
-        "organizationID": {
-          "type": "object"
+        "organization_id": {
+          "type": "string"
         },
         "phone": {
-          "type": "object"
+          "type": "string"
         },
         "questions": {
           "type": "object"
         },
         "role": {
-          "type": "object"
+          "type": "integer"
         },
-        "testUserType": {
+        "status": {
+          "type": "integer"
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
           "type": "object"
         }
       }
@@ -457,7 +1048,10 @@
           "type": "integer"
         },
         "shared_address_update": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "show_new_data_brokers": {
           "type": "integer"
@@ -559,22 +1153,25 @@
       "type": "object",
       "properties": {
         "created_by_name": {
-          "type": "object"
+          "type": "string"
         },
         "name": {
-          "type": "object"
+          "type": "string"
         },
         "nested_settings": {
           "type": "object"
         },
         "organization_name": {
-          "type": "object"
+          "type": "string"
         },
         "tags": {
-          "type": "object"
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
         },
         "updated_by_name": {
-          "type": "object"
+          "type": "string"
         }
       }
     },
@@ -660,7 +1257,7 @@
       "type": "object",
       "properties": {
         "is_super_user_session": {
-          "type": "object"
+          "type": "integer"
         }
       }
     },
@@ -668,7 +1265,7 @@
       "type": "object",
       "properties": {
         "is_super_user_session": {
-          "type": "object"
+          "type": "integer"
         }
       }
     },
@@ -779,7 +1376,10 @@
           "type": "string"
         },
         "organization_subscription_plan_properties": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "organization_verification": {
           "type": "integer"
@@ -888,19 +1488,19 @@
       "type": "object",
       "properties": {
         "org_member_email": {
-          "type": "object"
+          "type": "string"
         },
         "org_member_id": {
-          "type": "object"
+          "type": "string"
         },
         "org_member_local_member_id": {
-          "type": "object"
+          "type": "string"
         },
         "org_member_status": {
-          "type": "object"
+          "type": "integer"
         },
         "org_member_union_status": {
-          "type": "object"
+          "type": "integer"
         }
       }
     },
@@ -911,16 +1511,16 @@
           "type": "object"
         },
         "billing_plan_id": {
-          "type": "object"
+          "type": "string"
         },
         "billing_plan_level": {
-          "type": "object"
+          "type": "integer"
         },
         "billing_plan_name": {
-          "type": "object"
+          "type": "string"
         },
         "billing_plan_price": {
-          "type": "object"
+          "type": "number"
         },
         "feature_set": {
           "type": "object"
@@ -934,16 +1534,16 @@
       "type": "object",
       "properties": {
         "billing_plan_id": {
-          "type": "object"
+          "type": "string"
         },
         "billing_plan_level": {
-          "type": "object"
+          "type": "integer"
         },
         "billing_plan_name": {
-          "type": "object"
+          "type": "string"
         },
         "billing_plan_price": {
-          "type": "object"
+          "type": "number"
         },
         "feature_set": {
           "type": "object"
@@ -1008,82 +1608,595 @@
       }
     },
     "account.Structure": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "billing_plan_feature_set": {
+          "type": "object"
+        },
+        "billing_plan_id": {
+          "type": "string"
+        },
+        "billing_plan_level": {
+          "type": "integer"
+        },
+        "billing_plan_name": {
+          "type": "string"
+        },
+        "billing_plan_price": {
+          "type": "number"
+        },
+        "config_key": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_name": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "email_verified_at_ts": {
+          "type": "integer"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "feature_set_overrides": {
+          "type": "object"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "object"
+        },
+        "hashed_password": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_login_ts": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nested_settings": {
+          "type": "object"
+        },
+        "organization_id": {
+          "type": "string"
+        },
+        "organization_name": {
+          "type": "string"
+        },
+        "password_updated_at_ts": {
+          "type": "integer"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "signup_properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_name": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "account.StructurePublic": {
+      "type": "object",
+      "properties": {
+        "billing_plan_id": {
+          "type": "string"
+        },
+        "billing_plan_level": {
+          "type": "integer"
+        },
+        "billing_plan_name": {
+          "type": "string"
+        },
+        "billing_plan_price": {
+          "type": "number"
+        },
+        "config_key": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_super_user_session": {
+          "type": "integer"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "nested_settings": {
+          "type": "object"
+        },
+        "organization_id": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "test_user_type": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
     },
     "account.initializable": {
       "type": "object"
     },
     "address.Address": {
-      "type": "object"
-    },
-    "address.AddressJoined": {
-      "type": "object"
-    },
-    "address.DBColumns": {
       "type": "object",
       "properties": {
-        "accountID": {
-          "type": "object"
+        "account_id": {
+          "type": "string"
         },
-        "appliedChangesFromID": {
-          "type": "object"
+        "applied_changes_from_id": {
+          "type": "string"
         },
-        "autoConfirmed": {
-          "type": "object"
+        "auto_confirmed": {
+          "type": "integer"
         },
         "city": {
-          "type": "object"
+          "type": "string"
         },
-        "isLocked": {
-          "type": "object"
+        "is_locked": {
+          "type": "integer"
         },
-        "isPrimary": {
-          "type": "object"
+        "is_primary": {
+          "type": "integer"
         },
-        "isShared": {
-          "type": "object"
+        "is_shared": {
+          "type": "integer"
         },
-        "lockedParentID": {
-          "type": "object"
+        "last_recommendation_id": {
+          "type": "string"
         },
-        "manualConfirmed": {
-          "type": "object"
+        "locked_parent_id": {
+          "type": "string"
+        },
+        "manual_confirmed": {
+          "type": "integer"
         },
         "normalization": {
           "type": "object"
         },
-        "normalizedFullKey": {
-          "type": "object"
+        "normalized_full_key": {
+          "type": "string"
         },
-        "normalizedLookupKey": {
-          "type": "object"
+        "normalized_lookup_key": {
+          "type": "string"
         },
-        "originID": {
-          "type": "object"
+        "origin_id": {
+          "type": "string"
         },
-        "originRelatedAddressID": {
-          "type": "object"
+        "origin_related_address_id": {
+          "type": "string"
         },
-        "postalCode": {
-          "type": "object"
+        "postal_code": {
+          "type": "string"
         },
         "properties": {
           "type": "object"
         },
-        "rawVerification": {
+        "raw_verification": {
           "type": "object"
         },
-        "relatedAddressID": {
-          "type": "object"
+        "related_address_id": {
+          "type": "string"
+        },
+        "sent_count": {
+          "type": "integer"
+        },
+        "shared_with_me": {
+          "type": "integer"
         },
         "state": {
-          "type": "object"
+          "type": "string"
         },
         "street": {
+          "type": "string"
+        },
+        "street_2": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "address.AddressJoined": {
+      "type": "object",
+      "properties": {
+        "account_family_id": {
+          "type": "string"
+        },
+        "account_id": {
+          "type": "string"
+        },
+        "applied_changes_from_id": {
+          "type": "string"
+        },
+        "auto_confirmed": {
+          "type": "integer"
+        },
+        "city": {
+          "type": "string"
+        },
+        "is_locked": {
+          "type": "integer"
+        },
+        "is_primary": {
+          "type": "integer"
+        },
+        "is_shared": {
+          "type": "integer"
+        },
+        "last_recommendation_id": {
+          "type": "string"
+        },
+        "locked_parent_id": {
+          "type": "string"
+        },
+        "manual_confirmed": {
+          "type": "integer"
+        },
+        "normalization": {
           "type": "object"
         },
-        "street2": {
+        "normalized_full_key": {
+          "type": "string"
+        },
+        "normalized_lookup_key": {
+          "type": "string"
+        },
+        "origin_id": {
+          "type": "string"
+        },
+        "origin_related_address_id": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "properties": {
           "type": "object"
+        },
+        "raw_verification": {
+          "type": "object"
+        },
+        "related_address_account_id": {
+          "type": "string"
+        },
+        "related_address_account_name": {
+          "type": "string"
+        },
+        "related_address_id": {
+          "type": "string"
+        },
+        "sent_count": {
+          "type": "integer"
+        },
+        "shared_with_me": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "street": {
+          "type": "string"
+        },
+        "street_2": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "address.AddressJoinedPublic": {
+      "type": "object",
+      "properties": {
+        "account_family_id": {
+          "type": "string"
+        },
+        "account_id": {
+          "type": "string"
+        },
+        "applied_changes_from_id": {
+          "type": "string"
+        },
+        "auto_confirmed": {
+          "type": "integer"
+        },
+        "city": {
+          "type": "string"
+        },
+        "is_primary": {
+          "type": "integer"
+        },
+        "is_shared": {
+          "type": "integer"
+        },
+        "last_recommendation_id": {
+          "type": "string"
+        },
+        "locked_parent_id": {
+          "type": "string"
+        },
+        "manual_confirmed": {
+          "type": "integer"
+        },
+        "origin_id": {
+          "type": "string"
+        },
+        "origin_related_address_id": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "related_address_account_id": {
+          "type": "string"
+        },
+        "related_address_account_name": {
+          "type": "string"
+        },
+        "related_address_id": {
+          "type": "string"
+        },
+        "sent_count": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "street": {
+          "type": "string"
+        },
+        "street_2": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "address.AddressPublic": {
+      "type": "object",
+      "properties": {
+        "account_id": {
+          "type": "string"
+        },
+        "applied_changes_from_id": {
+          "type": "string"
+        },
+        "auto_confirmed": {
+          "type": "integer"
+        },
+        "city": {
+          "type": "string"
+        },
+        "is_primary": {
+          "type": "integer"
+        },
+        "is_shared": {
+          "type": "integer"
+        },
+        "last_recommendation_id": {
+          "type": "string"
+        },
+        "locked_parent_id": {
+          "type": "string"
+        },
+        "manual_confirmed": {
+          "type": "integer"
+        },
+        "origin_id": {
+          "type": "string"
+        },
+        "origin_related_address_id": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "related_address_id": {
+          "type": "string"
+        },
+        "sent_count": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "street": {
+          "type": "string"
+        },
+        "street_2": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "address.DBColumns": {
+      "type": "object",
+      "properties": {
+        "account_id": {
+          "type": "string"
+        },
+        "applied_changes_from_id": {
+          "type": "string"
+        },
+        "auto_confirmed": {
+          "type": "integer"
+        },
+        "city": {
+          "type": "string"
+        },
+        "is_locked": {
+          "type": "integer"
+        },
+        "is_primary": {
+          "type": "integer"
+        },
+        "is_shared": {
+          "type": "integer"
+        },
+        "locked_parent_id": {
+          "type": "string"
+        },
+        "manual_confirmed": {
+          "type": "integer"
+        },
+        "normalization": {
+          "type": "object"
+        },
+        "normalized_full_key": {
+          "type": "string"
+        },
+        "normalized_lookup_key": {
+          "type": "string"
+        },
+        "origin_id": {
+          "type": "string"
+        },
+        "origin_related_address_id": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "raw_verification": {
+          "type": "object"
+        },
+        "related_address_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "street": {
+          "type": "string"
+        },
+        "street_2": {
+          "type": "string"
         },
         "verification": {
           "type": "object"
@@ -1093,50 +2206,50 @@
     "address.DBColumnsPublic": {
       "type": "object",
       "properties": {
-        "accountID": {
-          "type": "object"
+        "account_id": {
+          "type": "string"
         },
-        "appliedChangesFromID": {
-          "type": "object"
+        "applied_changes_from_id": {
+          "type": "string"
         },
-        "autoConfirmed": {
-          "type": "object"
+        "auto_confirmed": {
+          "type": "integer"
         },
         "city": {
-          "type": "object"
+          "type": "string"
         },
-        "isPrimary": {
-          "type": "object"
+        "is_primary": {
+          "type": "integer"
         },
-        "isShared": {
-          "type": "object"
+        "is_shared": {
+          "type": "integer"
         },
-        "lockedParentID": {
-          "type": "object"
+        "locked_parent_id": {
+          "type": "string"
         },
-        "manualConfirmed": {
-          "type": "object"
+        "manual_confirmed": {
+          "type": "integer"
         },
-        "originID": {
-          "type": "object"
+        "origin_id": {
+          "type": "string"
         },
-        "originRelatedAddressID": {
-          "type": "object"
+        "origin_related_address_id": {
+          "type": "string"
         },
-        "postalCode": {
-          "type": "object"
+        "postal_code": {
+          "type": "string"
         },
-        "relatedAddressID": {
-          "type": "object"
+        "related_address_id": {
+          "type": "string"
         },
         "state": {
-          "type": "object"
+          "type": "string"
         },
         "street": {
-          "type": "object"
+          "type": "string"
         },
-        "street2": {
-          "type": "object"
+        "street_2": {
+          "type": "string"
         },
         "verification": {
           "type": "object"
@@ -1187,13 +2300,13 @@
       "type": "object",
       "properties": {
         "account_family_id": {
-          "type": "object"
+          "type": "string"
         },
         "related_address_account_id": {
-          "type": "object"
+          "type": "string"
         },
         "related_address_account_name": {
-          "type": "object"
+          "type": "string"
         }
       }
     },
@@ -1201,13 +2314,13 @@
       "type": "object",
       "properties": {
         "account_family_id": {
-          "type": "object"
+          "type": "string"
         },
         "related_address_account_id": {
-          "type": "object"
+          "type": "string"
         },
         "related_address_account_name": {
-          "type": "object"
+          "type": "string"
         }
       }
     },
@@ -1215,13 +2328,13 @@
       "type": "object",
       "properties": {
         "last_recommendation_id": {
-          "type": "object"
+          "type": "string"
         },
         "sent_count": {
-          "type": "object"
+          "type": "integer"
         },
         "shared_with_me": {
-          "type": "object"
+          "type": "integer"
         }
       }
     },
@@ -1229,10 +2342,10 @@
       "type": "object",
       "properties": {
         "last_recommendation_id": {
-          "type": "object"
+          "type": "string"
         },
         "sent_count": {
-          "type": "object"
+          "type": "integer"
         }
       }
     },
@@ -1289,7 +2402,161 @@
       }
     },
     "address.Structure": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "account_family_id": {
+          "type": "string"
+        },
+        "account_id": {
+          "type": "string"
+        },
+        "applied_changes_from_id": {
+          "type": "string"
+        },
+        "auto_confirmed": {
+          "type": "integer"
+        },
+        "city": {
+          "type": "string"
+        },
+        "is_locked": {
+          "type": "integer"
+        },
+        "is_primary": {
+          "type": "integer"
+        },
+        "is_shared": {
+          "type": "integer"
+        },
+        "last_recommendation_id": {
+          "type": "string"
+        },
+        "locked_parent_id": {
+          "type": "string"
+        },
+        "manual_confirmed": {
+          "type": "integer"
+        },
+        "normalization": {
+          "type": "object"
+        },
+        "normalized_full_key": {
+          "type": "string"
+        },
+        "normalized_lookup_key": {
+          "type": "string"
+        },
+        "origin_id": {
+          "type": "string"
+        },
+        "origin_related_address_id": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "raw_verification": {
+          "type": "object"
+        },
+        "related_address_account_id": {
+          "type": "string"
+        },
+        "related_address_account_name": {
+          "type": "string"
+        },
+        "related_address_id": {
+          "type": "string"
+        },
+        "sent_count": {
+          "type": "integer"
+        },
+        "shared_with_me": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "street": {
+          "type": "string"
+        },
+        "street_2": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "address.StructurePublic": {
+      "type": "object",
+      "properties": {
+        "account_family_id": {
+          "type": "string"
+        },
+        "account_id": {
+          "type": "string"
+        },
+        "applied_changes_from_id": {
+          "type": "string"
+        },
+        "auto_confirmed": {
+          "type": "integer"
+        },
+        "city": {
+          "type": "string"
+        },
+        "is_primary": {
+          "type": "integer"
+        },
+        "is_shared": {
+          "type": "integer"
+        },
+        "last_recommendation_id": {
+          "type": "string"
+        },
+        "locked_parent_id": {
+          "type": "string"
+        },
+        "manual_confirmed": {
+          "type": "integer"
+        },
+        "origin_id": {
+          "type": "string"
+        },
+        "origin_related_address_id": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "related_address_account_id": {
+          "type": "string"
+        },
+        "related_address_account_name": {
+          "type": "string"
+        },
+        "related_address_id": {
+          "type": "string"
+        },
+        "sent_count": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "street": {
+          "type": "string"
+        },
+        "street_2": {
+          "type": "string"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
     },
     "address.Verification": {
       "type": "object",
@@ -1446,128 +2713,406 @@
     "base.Structure": {
       "type": "object",
       "properties": {
-        "createdAt": {
-          "type": "object"
+        "created_at": {
+          "type": "string"
         },
-        "createdByURN": {
-          "type": "object"
+        "created_by_urn": {
+          "type": "string"
         },
         "deleted": {
-          "type": "object"
+          "type": "integer"
         },
         "disabled": {
-          "type": "object"
+          "type": "integer"
         },
-        "iD_": {
-          "type": "object"
+        "id": {
+          "type": "string"
         },
         "status": {
-          "type": "object"
+          "type": "integer"
         },
-        "uRN": {
-          "type": "object"
+        "updated_at": {
+          "type": "string"
         },
-        "updatedAt": {
-          "type": "object"
+        "updated_by_urn": {
+          "type": "string"
         },
-        "updatedByURN": {
-          "type": "object"
+        "urn": {
+          "type": "string"
         }
       }
     },
     "base.StructurePublic": {
       "type": "object",
       "properties": {
-        "createdAt": {
-          "type": "object"
+        "created_at": {
+          "type": "string"
         },
-        "createdByURN": {
-          "type": "object"
+        "created_by_urn": {
+          "type": "string"
         },
         "deleted": {
-          "type": "object"
+          "type": "integer"
         },
         "disabled": {
-          "type": "object"
+          "type": "integer"
         },
-        "iD_": {
-          "type": "object"
+        "id": {
+          "type": "string"
         },
         "status": {
-          "type": "object"
+          "type": "integer"
         },
-        "uRN": {
-          "type": "object"
+        "updated_at": {
+          "type": "string"
         },
-        "updatedAt": {
-          "type": "object"
+        "updated_by_urn": {
+          "type": "string"
         },
-        "updatedByURN": {
-          "type": "object"
+        "urn": {
+          "type": "string"
         }
       }
     },
     "billing_plan.BillingPlan": {
-      "type": "object"
-    },
-    "billing_plan.BillingPlanJoined": {
-      "type": "object"
-    },
-    "billing_plan.DBColumns": {
       "type": "object",
       "properties": {
-        "description": {
-          "type": "object"
+        "created_at": {
+          "type": "string"
         },
-        "featureSet": {
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
           "type": "object"
         },
         "fees": {
           "type": "object"
         },
-        "internalName": {
-          "type": "object"
+        "id": {
+          "type": "string"
         },
-        "isDefault": {
-          "type": "object"
+        "internal_name": {
+          "type": "string"
+        },
+        "is_default": {
+          "type": "integer"
         },
         "level": {
-          "type": "object"
+          "type": "integer"
         },
         "name": {
-          "type": "object"
+          "type": "string"
         },
         "properties": {
           "type": "object"
         },
-        "stripeProductID": {
+        "status": {
+          "type": "integer"
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.BillingPlanJoined": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_name": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
           "type": "object"
+        },
+        "fees": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "internal_name": {
+          "type": "string"
+        },
+        "is_default": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_name": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.BillingPlanJoinedPublic": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_default": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.BillingPlanPublic": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_default": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.DBColumns": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "fees": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "internal_name": {
+          "type": "string"
+        },
+        "is_default": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
         }
       }
     },
     "billing_plan.DBColumnsPublic": {
       "type": "object",
       "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
         "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
           "type": "object"
         },
-        "featureSet": {
-          "type": "object"
+        "id": {
+          "type": "string"
         },
-        "isDefault": {
-          "type": "object"
+        "is_default": {
+          "type": "integer"
         },
         "level": {
-          "type": "object"
+          "type": "integer"
         },
         "name": {
-          "type": "object"
+          "type": "string"
         },
         "properties": {
           "type": "object"
         },
-        "stripeProductID": {
-          "type": "object"
+        "status": {
+          "type": "integer"
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
         }
       }
     },
@@ -1617,10 +3162,10 @@
       "type": "object",
       "properties": {
         "created_by_name": {
-          "type": "object"
+          "type": "string"
         },
         "updated_by_name": {
-          "type": "object"
+          "type": "string"
         }
       }
     },
@@ -1647,7 +3192,122 @@
       }
     },
     "billing_plan.Structure": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_name": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "fees": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "internal_name": {
+          "type": "string"
+        },
+        "is_default": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_name": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.StructurePublic": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "created_by_urn": {
+          "type": "string"
+        },
+        "deleted": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "integer"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_default": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "stripe_product_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "updated_by_urn": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
     },
     "billing_plan.initializable": {
       "type": "object"
@@ -1659,10 +3319,10 @@
       "type": "object",
       "properties": {
         "callers": {
-          "type": "object"
-        },
-        "mut": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1738,11 +3398,11 @@
     "relationship.relationshipRegistry": {
       "type": "object",
       "properties": {
-        "mut": {
-          "type": "object"
-        },
         "relationships": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
