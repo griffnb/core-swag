@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/griffnb/core-swag/internal/loader"
+	"github.com/griffnb/core-swag/internal/orchestrator"
 	"github.com/griffnb/core/lib/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,16 +15,23 @@ import (
 func TestRealProjectIntegration(t *testing.T) {
 	mainAPIFile := "main.go"
 
-	p := New(SetParseDependency(1), ParseUsingGoList(true))
-	p.ParseInternal = true // Include internal packages for this test
-	err := p.ParseAPIMultiSearchDir([]string{
+	// Create orchestrator with config
+	config := &orchestrator.Config{
+		ParseDependency: loader.ParseFlag(1),
+		ParseGoList:     true,
+		ParseInternal:   true, // Include internal packages for this test
+	}
+	service := orchestrator.New(config)
+
+	// Parse using new API
+	swagger, err := service.Parse([]string{
 		"/Users/griffnb/projects/Crowdshield/atlas-go/cmd/server",
 		"/Users/griffnb/projects/Crowdshield/atlas-go/internal/controllers",
 		"/Users/griffnb/projects/Crowdshield/atlas-go/internal/models",
 	}, mainAPIFile, 100)
 	require.NoError(t, err, "Failed to parse API")
 
-	actualJSON, err := json.MarshalIndent(p.GetSwagger(), "", "  ")
+	actualJSON, err := json.MarshalIndent(swagger, "", "  ")
 	require.NoError(t, err, "Failed to marshal swagger to JSON")
 
 	err = os.WriteFile("real_actual_output.json", actualJSON, 0o644)
@@ -35,30 +44,36 @@ func TestCoreModelsIntegration(t *testing.T) {
 	searchDir := "testdata/core_models"
 	mainAPIFile := "main.go"
 
-	p := New(SetParseDependency(1))
-	err := p.ParseAPI(searchDir, mainAPIFile, 100)
+	// Create orchestrator with config
+	config := &orchestrator.Config{
+		ParseDependency: loader.ParseFlag(1),
+	}
+	service := orchestrator.New(config)
+
+	// Parse using new API
+	swagger, err := service.Parse([]string{searchDir}, mainAPIFile, 100)
 	require.NoError(t, err, "Failed to parse API")
 
 	// Debug: Print all definitions
-	t.Logf("Total definitions generated: %d", len(p.GetSwagger().Definitions))
-	for name := range p.GetSwagger().Definitions {
+	t.Logf("Total definitions generated: %d", len(swagger.Definitions))
+	for name := range swagger.Definitions {
 		t.Logf("  - %s", name)
 	}
 
 	// Test that base schemas exist
 	t.Run("Base schemas should exist", func(t *testing.T) {
-		assert.Contains(t, p.GetSwagger().Definitions, "account.Account", "account.Account definition should exist")
-		assert.Contains(t, p.GetSwagger().Definitions, "account.AccountJoined", "account.AccountJoined definition should exist")
-		assert.Contains(t, p.GetSwagger().Definitions, "billing_plan.BillingPlanJoined", "billing_plan.BillingPlanJoined definition should exist")
+		assert.Contains(t, swagger.Definitions, "account.Account", "account.Account definition should exist")
+		assert.Contains(t, swagger.Definitions, "account.AccountJoined", "account.AccountJoined definition should exist")
+		assert.Contains(t, swagger.Definitions, "billing_plan.BillingPlanJoined", "billing_plan.BillingPlanJoined definition should exist")
 	})
 
 	// Test that Public variant schemas exist
 	t.Run("Public variant schemas should exist", func(t *testing.T) {
-		assert.Contains(t, p.GetSwagger().Definitions, "account.AccountPublic", "account.AccountPublic definition should exist")
-		assert.Contains(t, p.GetSwagger().Definitions, "account.AccountJoinedPublic", "account.AccountJoinedPublic definition should exist")
+		assert.Contains(t, swagger.Definitions, "account.AccountPublic", "account.AccountPublic definition should exist")
+		assert.Contains(t, swagger.Definitions, "account.AccountJoinedPublic", "account.AccountJoinedPublic definition should exist")
 		assert.Contains(
 			t,
-			p.GetSwagger().Definitions,
+			swagger.Definitions,
 			"billing_plan.BillingPlanJoinedPublic",
 			"billing_plan.BillingPlanJoinedPublic definition should exist",
 		)
@@ -66,7 +81,7 @@ func TestCoreModelsIntegration(t *testing.T) {
 
 	// Test field properties in base Account schema
 	t.Run("Base Account schema should have correct fields", func(t *testing.T) {
-		accountSchema := p.GetSwagger().Definitions["account.Account"]
+		accountSchema := swagger.Definitions["account.Account"]
 		require.NotNil(t, accountSchema, "account.Account schema should exist")
 
 		props := accountSchema.Properties
@@ -88,7 +103,7 @@ func TestCoreModelsIntegration(t *testing.T) {
 
 	// Test field properties in Public Account schema
 	t.Run("Public Account schema should filter private fields", func(t *testing.T) {
-		accountPublicSchema := p.GetSwagger().Definitions["account.AccountPublic"]
+		accountPublicSchema := swagger.Definitions["account.AccountPublic"]
 		require.NotNil(t, accountPublicSchema, "account.AccountPublic schema should exist")
 
 		props := accountPublicSchema.Properties
@@ -112,8 +127,6 @@ func TestCoreModelsIntegration(t *testing.T) {
 
 	// Test operations and their schema references
 	t.Run("Operations should reference correct schemas", func(t *testing.T) {
-		swagger := p.GetSwagger()
-
 		// Test /auth/me endpoint (has @Public annotation)
 		authMePath := swagger.Paths.Paths["/auth/me"]
 		require.NotNil(t, authMePath, "/auth/me path should exist")
@@ -190,15 +203,15 @@ func TestCoreModelsIntegration(t *testing.T) {
 
 	// Write actual output to a file for comparison
 	t.Run("Generate actual output", func(t *testing.T) {
-		actualJSON, err := json.MarshalIndent(p.GetSwagger(), "", "  ")
+		actualJSON, err := json.MarshalIndent(swagger, "", "  ")
 		require.NoError(t, err, "Failed to marshal swagger to JSON")
 
 		err = os.WriteFile("actual_output.json", actualJSON, 0o644)
 		require.NoError(t, err, "Failed to write actual output")
 
 		t.Logf("Actual swagger output written to actual_output.json")
-		t.Logf("Total paths: %d", len(p.GetSwagger().Paths.Paths))
-		for path := range p.GetSwagger().Paths.Paths {
+		t.Logf("Total paths: %d", len(swagger.Paths.Paths))
+		for path := range swagger.Paths.Paths {
 			t.Logf("  - %s", path)
 		}
 	})
@@ -208,12 +221,18 @@ func TestAccountJoinedSchema(t *testing.T) {
 	searchDir := "testdata/core_models"
 	mainAPIFile := "main.go"
 
-	p := New(SetParseDependency(1))
-	err := p.ParseAPI(searchDir, mainAPIFile, 100)
+	// Create orchestrator with config
+	config := &orchestrator.Config{
+		ParseDependency: loader.ParseFlag(1),
+	}
+	service := orchestrator.New(config)
+
+	// Parse using new API
+	swagger, err := service.Parse([]string{searchDir}, mainAPIFile, 100)
 	require.NoError(t, err)
 
 	t.Run("AccountJoined should include JoinData fields", func(t *testing.T) {
-		schema := p.GetSwagger().Definitions["account.AccountJoined"]
+		schema := swagger.Definitions["account.AccountJoined"]
 		require.NotNil(t, schema, "account.AccountJoined should exist")
 
 		props := schema.Properties
@@ -232,7 +251,7 @@ func TestAccountJoinedSchema(t *testing.T) {
 	})
 
 	t.Run("AccountJoinedPublic should filter private fields but keep public JoinData", func(t *testing.T) {
-		schema := p.GetSwagger().Definitions["account.AccountJoinedPublic"]
+		schema := swagger.Definitions["account.AccountJoinedPublic"]
 		require.NotNil(t, schema, "account.AccountJoinedPublic should exist")
 
 		props := schema.Properties
@@ -257,12 +276,18 @@ func TestBillingPlanSchema(t *testing.T) {
 	searchDir := "testdata/core_models"
 	mainAPIFile := "main.go"
 
-	p := New(SetParseDependency(1))
-	err := p.ParseAPI(searchDir, mainAPIFile, 100)
+	// Create orchestrator with config
+	config := &orchestrator.Config{
+		ParseDependency: loader.ParseFlag(1),
+	}
+	service := orchestrator.New(config)
+
+	// Parse using new API
+	swagger, err := service.Parse([]string{searchDir}, mainAPIFile, 100)
 	require.NoError(t, err)
 
 	t.Run("BillingPlanJoined should have nested StructField types", func(t *testing.T) {
-		schema := p.GetSwagger().Definitions["billing_plan.BillingPlanJoined"]
+		schema := swagger.Definitions["billing_plan.BillingPlanJoined"]
 		require.NotNil(t, schema, "billing_plan.BillingPlanJoined should exist")
 
 		props := schema.Properties
@@ -282,7 +307,7 @@ func TestBillingPlanSchema(t *testing.T) {
 	})
 
 	t.Run("BillingPlanJoinedPublic should filter private fields", func(t *testing.T) {
-		schema := p.GetSwagger().Definitions["billing_plan.BillingPlanJoinedPublic"]
+		schema := swagger.Definitions["billing_plan.BillingPlanJoinedPublic"]
 		require.NotNil(t, schema, "billing_plan.BillingPlanJoinedPublic should exist")
 
 		props := schema.Properties

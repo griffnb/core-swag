@@ -2,24 +2,27 @@ package structparser
 
 import (
 	"go/ast"
+	"go/token"
 	"reflect"
 
 	"github.com/go-openapi/spec"
+	"github.com/griffnb/core-swag/internal/registry"
+	"github.com/griffnb/core-swag/internal/schema"
 )
 
 // Service handles struct parsing for OpenAPI schema generation.
 // It supports both standard Go structs and custom model structs with fields.StructField[T].
 type Service struct {
-	// TODO: Add dependencies as we extract functionality in later phases
-	// registry          *registry.Service
-	// schemaBuilder     *schema.BuilderService
-	// propNamingStrategy string
-	// requiredByDefault  bool
+	registry      *registry.Service
+	schemaBuilder *schema.BuilderService
 }
 
 // NewService creates a new struct parser service
-func NewService() *Service {
-	return &Service{}
+func NewService(registry *registry.Service, schemaBuilder *schema.BuilderService) *Service {
+	return &Service{
+		registry:      registry,
+		schemaBuilder: schemaBuilder,
+	}
 }
 
 // ParseStruct parses a struct's fields and returns its OpenAPI schema.
@@ -83,6 +86,72 @@ func (s *Service) ParseStruct(file *ast.File, fields *ast.FieldList) (*spec.Sche
 // This is the public entry point that delegates to processField.
 func (s *Service) ParseField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []string, error) {
 	return processField(file, field)
+}
+
+// ParseFile parses all struct types in a file and registers them with the schema builder.
+// This is the main entry point for orchestrator integration.
+func (s *Service) ParseFile(astFile *ast.File, filePath string) error {
+	if astFile == nil {
+		return nil
+	}
+
+	// Iterate through all declarations in the file
+	for _, decl := range astFile.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.TYPE {
+			continue
+		}
+
+		// Process each type specification
+		for _, spec := range genDecl.Specs {
+			typeSpec, ok := spec.(*ast.TypeSpec)
+			if !ok {
+				continue
+			}
+
+			// Only process struct types
+			structType, ok := typeSpec.Type.(*ast.StructType)
+			if !ok {
+				continue
+			}
+
+			// Parse the base struct schema
+			baseSchema, err := s.ParseStruct(astFile, structType.Fields)
+			if err != nil {
+				// Log error but continue with other types
+				continue
+			}
+
+			// Generate schema name (package.TypeName format)
+			schemaName := astFile.Name.Name + "." + typeSpec.Name.Name
+
+			// Register base schema with schema builder
+			if s.schemaBuilder != nil {
+				s.schemaBuilder.AddDefinition(schemaName, *baseSchema)
+			}
+
+			// Check if we should generate a Public variant
+			if s.ShouldGeneratePublic(structType.Fields) {
+				publicSchema, err := s.BuildPublicSchema(astFile, structType.Fields)
+				if err != nil {
+					// Log error but continue
+					continue
+				}
+
+				if publicSchema != nil {
+					// Generate Public variant schema name
+					publicSchemaName := schemaName + "Public"
+
+					// Register Public variant with schema builder
+					if s.schemaBuilder != nil {
+						s.schemaBuilder.AddDefinition(publicSchemaName, *publicSchema)
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // ParseDefinition parses a type definition and generates schema(s).

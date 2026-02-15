@@ -1,5 +1,164 @@
 # Core-Swag Change Log
 
+## 2026-02-15: Phase 3.1 - StructParserService Integration (PARTIAL SUCCESS)
+
+**Context:**
+Integrated the StructParserService into the orchestrator to enable struct schema generation with Public variant support.
+
+**What We Did:**
+1. Updated `/Users/griffnb/projects/core-swag/internal/parser/struct/service.go`:
+   - Changed `NewService()` signature to accept `registry` and `schemaBuilder` dependencies
+   - Added `ParseFile(astFile *ast.File, filePath string) error` method
+   - ParseFile iterates through type declarations, parses structs, generates base and Public schemas
+
+2. Updated `/Users/griffnb/projects/core-swag/internal/orchestrator/service.go`:
+   - Added import for `structparser` package
+   - Added `structParser *structparser.Service` field to Service struct
+   - Initialize structParser in `New()` function
+   - Added Step 3.5 in `Parse()` method to call `structParser.ParseFile()` for all files
+
+3. Updated all test files:
+   - Changed all `NewService()` calls to `NewService(nil, nil)` to match new signature
+
+**Test Results:**
+✅ **Significant Progress Made:**
+- Total definitions increased from 59 → 77 (18 new schemas!)
+- Many Public variant schemas are being generated: OrgAccountPublic, ManualFieldsPublic, PropertiesPublic, etc.
+- StructParser tests: 16/17 passing (1 expected failure for embedded structs)
+
+❌ **Remaining Issues:**
+- Base schemas have ZERO properties (empty Properties map)
+- account.AccountPublic, account.AccountJoinedPublic, billing_plan.BillingPlanJoinedPublic still missing
+- Test output shows "Base Account properties (0 total)"
+
+**Root Cause Identified:**
+The test data structs use **embedded fields** which are not being processed:
+
+```go
+type Account struct {
+    model.BaseModel    // embedded
+    DBColumns          // embedded - contains all the actual fields!
+    ManualFields       // embedded
+}
+
+type DBColumns struct {
+    base.Structure                        // embedded
+    FirstName  *fields.StringField       // actual field
+    LastName   *fields.StringField       // actual field
+    Email      *fields.StringField       // actual field
+    // ... more fields
+}
+```
+
+The ParseStruct method only processes direct fields, not embedded struct fields. The Account struct itself has NO direct fields - everything is embedded from DBColumns.
+
+**What Works:**
+✅ StructParserService integration complete
+✅ ParseFile method correctly iterates through files
+✅ Schemas are being registered with SchemaBuilder
+✅ Public variant detection works (ShouldGeneratePublic)
+✅ Public schema generation works (BuildPublicSchema)
+
+**What Doesn't Work:**
+❌ Embedded struct fields are not being expanded/flattened
+❌ Properties remain empty for structs with only embedded fields
+❌ handleEmbeddedField() method returns nil (TODO comment in service.go line 169-172)
+
+**Next Steps:**
+To fix the empty properties issue, we need to:
+1. Implement handleEmbeddedField() to resolve embedded struct types
+2. Use registry.FindTypeSpec() to look up embedded struct definitions
+3. Recursively parse embedded struct fields and merge into parent schema
+4. Handle circular embedding protection
+
+**Files Modified:**
+1. `/Users/griffnb/projects/core-swag/internal/parser/struct/service.go` - Added ParseFile, updated NewService
+2. `/Users/griffnb/projects/core-swag/internal/orchestrator/service.go` - Integrated struct parser
+3. `/Users/griffnb/projects/core-swag/internal/parser/struct/service_test.go` - Updated all NewService calls
+
+**Lessons Learned:**
+1. Integration is working but the underlying parsing logic needs embedded struct support
+2. The registry already has all types registered, we just need to look them up
+3. Test-driven development revealed the issue quickly through integration tests
+4. Embedded structs are a critical pattern in the test data (and likely real codebases)
+
+---
+
+## 2026-02-15: Phase 3.1 - Integration Test Migration to Orchestrator API
+
+**Context:**
+The integration test file `testing/core_models_integration_test.go` was using old legacy API functions that no longer exist. Updated to use the new orchestrator API from Phase 3.
+
+**What We Did:**
+1. Added new imports to test file:
+   - `github.com/griffnb/core-swag/internal/loader`
+   - `github.com/griffnb/core-swag/internal/orchestrator`
+
+2. Updated `testing/go.mod`:
+   - Added `github.com/griffnb/core-swag v0.0.0` as dependency
+   - Added replace directive: `replace github.com/griffnb/core-swag => ../`
+   - Ran `go mod tidy` to update dependencies
+
+3. Migrated all test functions to new API:
+   - **TestRealProjectIntegration**: Updated to use orchestrator.New() with Config
+   - **TestCoreModelsIntegration**: Updated to use service.Parse() instead of p.ParseAPI()
+   - **TestAccountJoinedSchema**: Updated to use new API
+   - **TestBillingPlanSchema**: Updated to use new API
+
+**API Migration Pattern:**
+```go
+// OLD API
+p := New(SetParseDependency(1), ParseUsingGoList(true))
+p.ParseInternal = true
+err := p.ParseAPI(searchDir, mainAPIFile, 100)
+swagger := p.GetSwagger()
+
+// NEW API
+config := &orchestrator.Config{
+    ParseDependency: loader.ParseFlag(1),
+    ParseGoList:     true,
+    ParseInternal:   true,
+}
+service := orchestrator.New(config)
+swagger, err := service.Parse([]string{searchDir}, mainAPIFile, 100)
+```
+
+**Test Results:**
+✅ **Tests compile successfully**
+- No compilation errors
+- All imports resolved correctly
+- Tests execute (though fail due to incomplete orchestrator integration)
+
+**Current Status:**
+- ✅ Tests updated to new API
+- ✅ Tests compile and run
+- ⚠️ Tests fail because orchestrator is still in development
+  - Public variant schemas not generated yet
+  - Schema properties appear empty (schema building incomplete)
+  - Expected failures at this stage
+
+**Key Files Modified:**
+1. `/Users/griffnb/projects/core-swag/testing/core_models_integration_test.go`
+   - Updated all 4 test functions to use orchestrator API
+   - Replaced all `p.GetSwagger()` calls with direct `swagger` usage
+
+2. `/Users/griffnb/projects/core-swag/testing/go.mod`
+   - Added core-swag dependency with local replace directive
+
+**Lessons Learned:**
+1. Testing module needs explicit dependency on parent module
+2. Replace directives enable local development without publishing
+3. API migration was straightforward due to clean orchestrator design
+4. Tests reveal orchestrator is not yet fully functional (expected)
+
+**Next Steps:**
+Complete orchestrator implementation to make integration tests pass:
+- Finish schema building integration
+- Enable Public variant generation
+- Fix schema property population
+
+---
+
 ## 2026-02-15: Phase 2.2 COMPLETE ✅ - RouteParserService Integration & Testing
 
 **Context:**

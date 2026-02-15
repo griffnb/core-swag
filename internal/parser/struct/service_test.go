@@ -30,7 +30,7 @@ type Account struct {
 	structType := findStructType(t, file, "Account")
 
 	// Create service
-	service := NewService()
+	service := NewService(nil, nil)
 
 	// Parse the struct
 	schema, err := service.ParseStruct(file, structType.Fields)
@@ -65,7 +65,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	// This test verifies that ParseStruct correctly identifies public fields
 	// The actual "Public" variant generation will be tested separately
@@ -98,7 +98,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -134,7 +134,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -163,7 +163,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -191,7 +191,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -223,7 +223,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -251,7 +251,7 @@ type Empty struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Empty")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -279,7 +279,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -309,7 +309,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -341,7 +341,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -388,7 +388,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -417,7 +417,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	schema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)
@@ -444,7 +444,7 @@ type Account struct {
 	structType := findStructType(t, file, "Account")
 	field := structType.Fields.List[0]
 
-	service := NewService()
+	service := NewService(nil, nil)
 
 	properties, required, err := service.ParseField(file, field)
 	require.NoError(t, err)
@@ -475,7 +475,7 @@ type Account struct {
 	structType := findStructType(t, file, "Account")
 	field := structType.Fields.List[0]
 
-	service := NewService()
+	service := NewService(nil, nil)
 
 	properties, required, err := service.ParseField(file, field)
 	require.NoError(t, err)
@@ -504,7 +504,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	// Check if public variant should be generated
 	shouldGenerate := service.ShouldGeneratePublic(structType.Fields)
@@ -526,7 +526,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	// Should detect public fields
 	shouldGenerate := service.ShouldGeneratePublic(structType.Fields)
@@ -550,7 +550,7 @@ type Account struct {
 	require.NoError(t, err)
 
 	structType := findStructType(t, file, "Account")
-	service := NewService()
+	service := NewService(nil, nil)
 
 	baseSchema, err := service.ParseStruct(file, structType.Fields)
 	require.NoError(t, err)

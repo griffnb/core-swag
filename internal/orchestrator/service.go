@@ -10,6 +10,7 @@ import (
 	"github.com/griffnb/core-swag/internal/loader"
 	"github.com/griffnb/core-swag/internal/parser/base"
 	"github.com/griffnb/core-swag/internal/parser/route"
+	structparser "github.com/griffnb/core-swag/internal/parser/struct"
 	"github.com/griffnb/core-swag/internal/registry"
 	"github.com/griffnb/core-swag/internal/schema"
 )
@@ -21,6 +22,7 @@ type Service struct {
 	schemaBuilder *schema.BuilderService
 	baseParser    *base.Service
 	routeParser   *route.Service
+	structParser  *structparser.Service
 	swagger       *spec.Swagger
 	config        *Config
 }
@@ -146,12 +148,16 @@ func New(config *Config) *Service {
 		routeParser.SetMarkdownFileDir(config.MarkdownFileDir)
 	}
 
+	// Create struct parser service
+	structParserService := structparser.NewService(registryService, schemaBuilder)
+
 	return &Service{
 		loader:        loaderService,
 		registry:      registryService,
 		schemaBuilder: schemaBuilder,
 		baseParser:    baseParser,
 		routeParser:   routeParser,
+		structParser:  structParserService,
 		swagger:       swagger,
 		config:        config,
 	}
@@ -258,6 +264,31 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 	err = s.baseParser.ParseGeneralAPIInfo(mainFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse general API info: %w", err)
+	}
+
+	// Step 3.5: Parse struct definitions from all files
+	if s.config.Debug != nil {
+		s.config.Debug.Printf("Orchestrator: Step 3.5 - Parsing struct definitions")
+	}
+
+	// Parse structs from each file
+	if s.structParser != nil {
+		structCount := 0
+		for astFile, fileInfo := range loadResult.Files {
+			err = s.structParser.ParseFile(astFile, fileInfo.Path)
+			if err != nil {
+				// Log error but continue (some files may not have structs)
+				if s.config.Debug != nil {
+					s.config.Debug.Printf("Warning: failed to parse structs in %s: %v", fileInfo.Path, err)
+				}
+			} else {
+				structCount++
+			}
+		}
+
+		if s.config.Debug != nil {
+			s.config.Debug.Printf("Orchestrator: Parsed structs from %d files", structCount)
+		}
 	}
 
 	// Step 4: Parse routes from all files

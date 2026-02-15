@@ -1,0 +1,1764 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Parse external models.",
+    "title": "Swagger Example API",
+    "contact": {},
+    "version": "1.0"
+  },
+  "basePath": "/v1",
+  "paths": {
+    "/account/organization/member": {
+      "get": {
+        "description": "Lists all members in the organization (requires local admin role)",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Account"
+        ],
+        "summary": "List organization members",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "search by q",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int",
+            "default": 100,
+            "description": "limit results",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "minimum": 0,
+            "type": "integer",
+            "format": "int",
+            "default": 0,
+            "description": "offset results",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "default": "created_at desc",
+            "description": "sort results e.g. 'created_at desc'",
+            "name": "order",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "filters, see readme",
+            "name": "filters",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/account.OrgAccountPublic"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponsePublic"
+            }
+          },
+          "404": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponsePublic"
+            }
+          },
+          "500": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponsePublic"
+            }
+          }
+        },
+        "x-function": "authOrganization"
+      }
+    },
+    "/admin/accounts": {
+      "get": {
+        "description": "Retrieves a paginated list of accounts with optional search",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "accounts"
+        ],
+        "summary": "List accounts",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Search query",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "format": "int",
+            "description": "Results per page",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "format": "int",
+            "description": "Page offset",
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/account.AccountJoinedPublic"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponsePublic"
+            }
+          }
+        },
+        "x-function": "publicIndex"
+      }
+    },
+    "/admin/testUser": {
+      "post": {
+        "description": "Creates a test account with the provided details and optionally logs in as that account",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Create test account",
+        "parameters": [
+          {
+            "description": "Test user details",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TestUserInput"
+            }
+          },
+          {
+            "type": "string",
+            "description": "Set to login as the created user",
+            "name": "login_as",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "$ref": "#/definitions/account.Account"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          }
+        },
+        "x-function": "CreateTestAccount"
+      }
+    },
+    "/api/account/{id}": {
+      "get": {
+        "description": "Retrieves account and associated organization data by account ID",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get account with organization",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Account ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "$ref": "#/definitions/api.APIResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponse"
+            }
+          }
+        },
+        "x-function": "InternalAPIAccount"
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "description": "Retrieves the authenticated user's account details with joined data",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get current user",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "$ref": "#/definitions/account.AccountWithFeaturesPublic"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/response.ErrorResponsePublic"
+            }
+          }
+        },
+        "x-function": "Me"
+      }
+    }
+  },
+  "definitions": {
+    "account.Account": {
+      "type": "object"
+    },
+    "account.AccountJoined": {
+      "type": "object"
+    },
+    "account.AccountWithFeatures": {
+      "type": "object"
+    },
+    "account.Authentication": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "object"
+        }
+      }
+    },
+    "account.DBColumns": {
+      "type": "object",
+      "properties": {
+        "addressVerification": {
+          "type": "object"
+        },
+        "authentication": {
+          "type": "object"
+        },
+        "email": {
+          "type": "object"
+        },
+        "emailVerifiedAtTS": {
+          "type": "object"
+        },
+        "externalID": {
+          "type": "object"
+        },
+        "firstName": {
+          "type": "object"
+        },
+        "flags": {
+          "type": "object"
+        },
+        "globalConfigKey": {
+          "type": "object"
+        },
+        "hashedPassword": {
+          "type": "object"
+        },
+        "lastLoginTS": {
+          "type": "object"
+        },
+        "lastName": {
+          "type": "object"
+        },
+        "organizationID": {
+          "type": "object"
+        },
+        "passwordUpdatedAtTS": {
+          "type": "object"
+        },
+        "phone": {
+          "type": "object"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "object"
+        },
+        "signupProperties": {
+          "type": "object"
+        },
+        "testUserType": {
+          "type": "object"
+        }
+      }
+    },
+    "account.DBColumnsPublic": {
+      "type": "object",
+      "properties": {
+        "addressVerification": {
+          "type": "object"
+        },
+        "email": {
+          "type": "object"
+        },
+        "externalID": {
+          "type": "object"
+        },
+        "firstName": {
+          "type": "object"
+        },
+        "flags": {
+          "type": "object"
+        },
+        "globalConfigKey": {
+          "type": "object"
+        },
+        "lastName": {
+          "type": "object"
+        },
+        "organizationID": {
+          "type": "object"
+        },
+        "phone": {
+          "type": "object"
+        },
+        "questions": {
+          "type": "object"
+        },
+        "role": {
+          "type": "object"
+        },
+        "testUserType": {
+          "type": "object"
+        }
+      }
+    },
+    "account.Flags": {
+      "type": "object",
+      "properties": {
+        "address_update_by": {
+          "type": "string"
+        },
+        "authorization_needed": {
+          "type": "integer"
+        },
+        "classification_changed": {
+          "type": "integer"
+        },
+        "force_pending_restart_flow": {
+          "type": "integer"
+        },
+        "last_broker_email_ts": {
+          "type": "integer"
+        },
+        "lexis_freeze": {
+          "type": "integer"
+        },
+        "never_sent_dsrs": {
+          "type": "integer"
+        },
+        "new_classification_id": {
+          "type": "object"
+        },
+        "new_data_brokers": {
+          "type": "integer"
+        },
+        "no_coverage": {
+          "type": "integer"
+        },
+        "pending_restart_flow": {
+          "type": "integer"
+        },
+        "send_dsrs": {
+          "type": "integer"
+        },
+        "shared_address_update": {
+          "type": "object"
+        },
+        "show_new_data_brokers": {
+          "type": "integer"
+        },
+        "simplify_login": {
+          "type": "integer"
+        },
+        "terms_needed": {
+          "type": "integer"
+        },
+        "welcome_back": {
+          "type": "integer"
+        }
+      }
+    },
+    "account.FlagsPublic": {
+      "type": "object",
+      "properties": {
+        "address_update_by": {
+          "type": "string"
+        },
+        "authorization_needed": {
+          "type": "integer"
+        },
+        "classification_changed": {
+          "type": "integer"
+        },
+        "force_pending_restart_flow": {
+          "type": "integer"
+        },
+        "lexis_freeze": {
+          "type": "integer"
+        },
+        "never_sent_dsrs": {
+          "type": "integer"
+        },
+        "new_classification_id": {
+          "type": "object"
+        },
+        "new_data_brokers": {
+          "type": "integer"
+        },
+        "no_coverage": {
+          "type": "integer"
+        },
+        "pending_restart_flow": {
+          "type": "integer"
+        },
+        "send_dsrs": {
+          "type": "integer"
+        },
+        "shared_address_update": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "show_new_data_brokers": {
+          "type": "integer"
+        },
+        "simplify_login": {
+          "type": "integer"
+        },
+        "terms_needed": {
+          "type": "integer"
+        },
+        "welcome_back": {
+          "type": "integer"
+        }
+      }
+    },
+    "account.IconTagJoin": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "object"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "urn": {
+          "type": "string"
+        }
+      }
+    },
+    "account.JoinData": {
+      "type": "object",
+      "properties": {
+        "created_by_name": {
+          "type": "object"
+        },
+        "name": {
+          "type": "object"
+        },
+        "nested_settings": {
+          "type": "object"
+        },
+        "organization_name": {
+          "type": "object"
+        },
+        "tags": {
+          "type": "object"
+        },
+        "updated_by_name": {
+          "type": "object"
+        }
+      }
+    },
+    "account.JoinDataPublic": {
+      "type": "object",
+      "properties": {
+        "nested_settings": {
+          "type": "object"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "account.JoinedOrgMember": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "object"
+        },
+        "local_member_id": {
+          "type": "object"
+        },
+        "meta_data": {
+          "type": "object"
+        },
+        "status": {
+          "type": "object"
+        },
+        "union_id": {
+          "type": "string"
+        },
+        "union_local_id": {
+          "type": "object"
+        },
+        "union_local_name": {
+          "type": "string"
+        },
+        "union_local_number": {
+          "type": "string"
+        },
+        "union_status": {
+          "type": "object"
+        }
+      }
+    },
+    "account.JoinedOrgMemberPublic": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "object"
+        },
+        "local_member_id": {
+          "type": "object"
+        },
+        "meta_data": {
+          "type": "object"
+        },
+        "status": {
+          "type": "object"
+        },
+        "union_id": {
+          "type": "string"
+        },
+        "union_local_id": {
+          "type": "object"
+        },
+        "union_local_name": {
+          "type": "string"
+        },
+        "union_local_number": {
+          "type": "string"
+        },
+        "union_status": {
+          "type": "object"
+        }
+      }
+    },
+    "account.ManualFields": {
+      "type": "object",
+      "properties": {
+        "is_super_user_session": {
+          "type": "object"
+        }
+      }
+    },
+    "account.ManualFieldsPublic": {
+      "type": "object",
+      "properties": {
+        "is_super_user_session": {
+          "type": "object"
+        }
+      }
+    },
+    "account.NestedSettings": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "object"
+        }
+      }
+    },
+    "account.OAuthData": {
+      "type": "object",
+      "properties": {
+        "access_token": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "expire_ts": {
+          "type": "integer"
+        },
+        "expires_in": {
+          "type": "integer"
+        },
+        "ext_id": {
+          "type": "object"
+        },
+        "locationId": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "integer"
+        },
+        "refresh_token": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "token_type": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userType": {
+          "type": "string"
+        }
+      }
+    },
+    "account.OrgAccount": {
+      "type": "object",
+      "properties": {
+        "account_id": {
+          "type": "object"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "object"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "middle_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "onboard_action_finished_ts": {
+          "type": "integer"
+        },
+        "org_member": {
+          "type": "object"
+        },
+        "org_member_email": {
+          "type": "string"
+        },
+        "org_member_id": {
+          "type": "object"
+        },
+        "org_member_local_member_id": {
+          "type": "string"
+        },
+        "org_member_status": {
+          "type": "object"
+        },
+        "org_member_union_status": {
+          "type": "object"
+        },
+        "organization_id": {
+          "type": "object"
+        },
+        "organization_name": {
+          "type": "string"
+        },
+        "organization_subscription_plan_id": {
+          "type": "object"
+        },
+        "organization_subscription_plan_name": {
+          "type": "string"
+        },
+        "organization_subscription_plan_properties": {
+          "type": "object"
+        },
+        "organization_verification": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "object"
+        },
+        "union_id": {
+          "type": "object"
+        },
+        "union_local_id": {
+          "type": "object"
+        },
+        "union_local_name": {
+          "type": "string"
+        },
+        "union_local_number": {
+          "type": "string"
+        }
+      }
+    },
+    "account.OrgAccountPublic": {
+      "type": "object",
+      "properties": {
+        "account_id": {
+          "type": "object"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "first_name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "object"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "middle_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "onboard_action_finished_ts": {
+          "type": "integer"
+        },
+        "org_member": {
+          "type": "object"
+        },
+        "org_member_email": {
+          "type": "string"
+        },
+        "org_member_id": {
+          "type": "object"
+        },
+        "org_member_local_member_id": {
+          "type": "string"
+        },
+        "org_member_status": {
+          "type": "object"
+        },
+        "org_member_union_status": {
+          "type": "object"
+        },
+        "organization_id": {
+          "type": "object"
+        },
+        "organization_name": {
+          "type": "string"
+        },
+        "organization_subscription_plan_id": {
+          "type": "object"
+        },
+        "organization_subscription_plan_name": {
+          "type": "string"
+        },
+        "organization_subscription_plan_properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "organization_verification": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "object"
+        },
+        "union_id": {
+          "type": "object"
+        },
+        "union_local_id": {
+          "type": "object"
+        },
+        "union_local_name": {
+          "type": "string"
+        },
+        "union_local_number": {
+          "type": "string"
+        }
+      }
+    },
+    "account.OrgManagementJoins": {
+      "type": "object",
+      "properties": {
+        "org_member_email": {
+          "type": "object"
+        },
+        "org_member_id": {
+          "type": "object"
+        },
+        "org_member_local_member_id": {
+          "type": "object"
+        },
+        "org_member_status": {
+          "type": "object"
+        },
+        "org_member_union_status": {
+          "type": "object"
+        }
+      }
+    },
+    "account.PlanJoins": {
+      "type": "object",
+      "properties": {
+        "billing_plan_feature_set": {
+          "type": "object"
+        },
+        "billing_plan_id": {
+          "type": "object"
+        },
+        "billing_plan_level": {
+          "type": "object"
+        },
+        "billing_plan_name": {
+          "type": "object"
+        },
+        "billing_plan_price": {
+          "type": "object"
+        },
+        "feature_set": {
+          "type": "object"
+        },
+        "feature_set_overrides": {
+          "type": "object"
+        }
+      }
+    },
+    "account.PlanJoinsPublic": {
+      "type": "object",
+      "properties": {
+        "billing_plan_id": {
+          "type": "object"
+        },
+        "billing_plan_level": {
+          "type": "object"
+        },
+        "billing_plan_name": {
+          "type": "object"
+        },
+        "billing_plan_price": {
+          "type": "object"
+        },
+        "feature_set": {
+          "type": "object"
+        }
+      }
+    },
+    "account.Properties": {
+      "type": "object",
+      "properties": {
+        "external_user_info": {},
+        "invite_key": {
+          "type": "string"
+        },
+        "invite_ts": {
+          "type": "integer"
+        },
+        "last_seen": {
+          "type": "integer"
+        },
+        "verify_email_key": {
+          "type": "string"
+        }
+      }
+    },
+    "account.SharedAddressUpdate": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "object"
+        },
+        "previous_id": {
+          "type": "object"
+        },
+        "update_type": {
+          "type": "object"
+        }
+      }
+    },
+    "account.SharedAddressUpdatePublic": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "object"
+        },
+        "previous_id": {
+          "type": "object"
+        },
+        "update_type": {
+          "type": "object"
+        }
+      }
+    },
+    "account.SharedAddressUpdateType": {
+      "type": "object"
+    },
+    "account.SignupProperties": {
+      "type": "object",
+      "properties": {
+        "is_oauth": {
+          "type": "integer"
+        }
+      }
+    },
+    "account.Structure": {
+      "type": "object"
+    },
+    "account.initializable": {
+      "type": "object"
+    },
+    "address.Address": {
+      "type": "object"
+    },
+    "address.AddressJoined": {
+      "type": "object"
+    },
+    "address.DBColumns": {
+      "type": "object",
+      "properties": {
+        "accountID": {
+          "type": "object"
+        },
+        "appliedChangesFromID": {
+          "type": "object"
+        },
+        "autoConfirmed": {
+          "type": "object"
+        },
+        "city": {
+          "type": "object"
+        },
+        "isLocked": {
+          "type": "object"
+        },
+        "isPrimary": {
+          "type": "object"
+        },
+        "isShared": {
+          "type": "object"
+        },
+        "lockedParentID": {
+          "type": "object"
+        },
+        "manualConfirmed": {
+          "type": "object"
+        },
+        "normalization": {
+          "type": "object"
+        },
+        "normalizedFullKey": {
+          "type": "object"
+        },
+        "normalizedLookupKey": {
+          "type": "object"
+        },
+        "originID": {
+          "type": "object"
+        },
+        "originRelatedAddressID": {
+          "type": "object"
+        },
+        "postalCode": {
+          "type": "object"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "rawVerification": {
+          "type": "object"
+        },
+        "relatedAddressID": {
+          "type": "object"
+        },
+        "state": {
+          "type": "object"
+        },
+        "street": {
+          "type": "object"
+        },
+        "street2": {
+          "type": "object"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "address.DBColumnsPublic": {
+      "type": "object",
+      "properties": {
+        "accountID": {
+          "type": "object"
+        },
+        "appliedChangesFromID": {
+          "type": "object"
+        },
+        "autoConfirmed": {
+          "type": "object"
+        },
+        "city": {
+          "type": "object"
+        },
+        "isPrimary": {
+          "type": "object"
+        },
+        "isShared": {
+          "type": "object"
+        },
+        "lockedParentID": {
+          "type": "object"
+        },
+        "manualConfirmed": {
+          "type": "object"
+        },
+        "originID": {
+          "type": "object"
+        },
+        "originRelatedAddressID": {
+          "type": "object"
+        },
+        "postalCode": {
+          "type": "object"
+        },
+        "relatedAddressID": {
+          "type": "object"
+        },
+        "state": {
+          "type": "object"
+        },
+        "street": {
+          "type": "object"
+        },
+        "street2": {
+          "type": "object"
+        },
+        "verification": {
+          "type": "object"
+        }
+      }
+    },
+    "address.FieldVerification": {
+      "type": "object",
+      "properties": {
+        "confirmation_level": {
+          "type": "string"
+        },
+        "google_value": {
+          "type": "string"
+        },
+        "is_different": {
+          "type": "integer"
+        },
+        "is_unconfirmed": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "address.FieldVerificationPublic": {
+      "type": "object",
+      "properties": {
+        "confirmation_level": {
+          "type": "string"
+        },
+        "google_value": {
+          "type": "string"
+        },
+        "is_different": {
+          "type": "integer"
+        },
+        "is_unconfirmed": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "address.JoinData": {
+      "type": "object",
+      "properties": {
+        "account_family_id": {
+          "type": "object"
+        },
+        "related_address_account_id": {
+          "type": "object"
+        },
+        "related_address_account_name": {
+          "type": "object"
+        }
+      }
+    },
+    "address.JoinDataPublic": {
+      "type": "object",
+      "properties": {
+        "account_family_id": {
+          "type": "object"
+        },
+        "related_address_account_id": {
+          "type": "object"
+        },
+        "related_address_account_name": {
+          "type": "object"
+        }
+      }
+    },
+    "address.ManualFields": {
+      "type": "object",
+      "properties": {
+        "last_recommendation_id": {
+          "type": "object"
+        },
+        "sent_count": {
+          "type": "object"
+        },
+        "shared_with_me": {
+          "type": "object"
+        }
+      }
+    },
+    "address.ManualFieldsPublic": {
+      "type": "object",
+      "properties": {
+        "last_recommendation_id": {
+          "type": "object"
+        },
+        "sent_count": {
+          "type": "object"
+        }
+      }
+    },
+    "address.Normalization": {
+      "type": "object",
+      "properties": {
+        "aws_address_number": {
+          "type": "string"
+        },
+        "aws_country": {
+          "type": "string"
+        },
+        "aws_label": {
+          "type": "string"
+        },
+        "aws_municipality": {
+          "type": "string"
+        },
+        "aws_neighborhood": {
+          "type": "string"
+        },
+        "aws_place_id": {
+          "type": "string"
+        },
+        "aws_postal_code": {
+          "type": "string"
+        },
+        "aws_postal_code_5": {
+          "type": "string"
+        },
+        "aws_region": {
+          "type": "string"
+        },
+        "aws_street": {
+          "type": "string"
+        },
+        "aws_subregion": {
+          "type": "string"
+        },
+        "query_string": {
+          "type": "string"
+        },
+        "secondary": {
+          "type": "object"
+        }
+      }
+    },
+    "address.Properties": {
+      "type": "object",
+      "properties": {
+        "ignore_match": {
+          "type": "integer"
+        }
+      }
+    },
+    "address.Structure": {
+      "type": "object"
+    },
+    "address.Verification": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "object"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "google_administrative_area_level_1": {
+          "type": "object"
+        },
+        "google_administrative_area_level_2": {
+          "type": "object"
+        },
+        "google_country": {
+          "type": "object"
+        },
+        "google_formatted_address": {
+          "type": "string"
+        },
+        "google_locality": {
+          "type": "object"
+        },
+        "google_neighborhood": {
+          "type": "object"
+        },
+        "google_postal_code": {
+          "type": "object"
+        },
+        "google_postal_code_suffix": {
+          "type": "object"
+        },
+        "google_route": {
+          "type": "object"
+        },
+        "google_street_number": {
+          "type": "object"
+        },
+        "google_sublocality": {
+          "type": "object"
+        },
+        "google_subpremise": {
+          "type": "object"
+        },
+        "is_match": {
+          "type": "integer"
+        },
+        "is_unconfirmed": {
+          "type": "integer"
+        },
+        "postal_code": {
+          "type": "object"
+        },
+        "state": {
+          "type": "object"
+        },
+        "street": {
+          "type": "object"
+        },
+        "street_2": {
+          "type": "object"
+        }
+      }
+    },
+    "address.VerificationPublic": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "object"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "google_administrative_area_level_1": {
+          "type": "object"
+        },
+        "google_administrative_area_level_2": {
+          "type": "object"
+        },
+        "google_country": {
+          "type": "object"
+        },
+        "google_formatted_address": {
+          "type": "string"
+        },
+        "google_locality": {
+          "type": "object"
+        },
+        "google_neighborhood": {
+          "type": "object"
+        },
+        "google_postal_code": {
+          "type": "object"
+        },
+        "google_postal_code_suffix": {
+          "type": "object"
+        },
+        "google_route": {
+          "type": "object"
+        },
+        "google_street_number": {
+          "type": "object"
+        },
+        "google_sublocality": {
+          "type": "object"
+        },
+        "google_subpremise": {
+          "type": "object"
+        },
+        "is_match": {
+          "type": "integer"
+        },
+        "is_unconfirmed": {
+          "type": "integer"
+        },
+        "postal_code": {
+          "type": "object"
+        },
+        "state": {
+          "type": "object"
+        },
+        "street": {
+          "type": "object"
+        },
+        "street_2": {
+          "type": "object"
+        }
+      }
+    },
+    "address.initializable": {
+      "type": "object"
+    },
+    "api.APIResponse": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "object"
+        },
+        "billing_plan": {
+          "type": "object"
+        }
+      }
+    },
+    "api.TestUserInput": {
+      "type": "object",
+      "properties": {
+        "organization_id": {
+          "type": "object"
+        }
+      }
+    },
+    "base.Structure": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "object"
+        },
+        "createdByURN": {
+          "type": "object"
+        },
+        "deleted": {
+          "type": "object"
+        },
+        "disabled": {
+          "type": "object"
+        },
+        "iD_": {
+          "type": "object"
+        },
+        "status": {
+          "type": "object"
+        },
+        "uRN": {
+          "type": "object"
+        },
+        "updatedAt": {
+          "type": "object"
+        },
+        "updatedByURN": {
+          "type": "object"
+        }
+      }
+    },
+    "base.StructurePublic": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "object"
+        },
+        "createdByURN": {
+          "type": "object"
+        },
+        "deleted": {
+          "type": "object"
+        },
+        "disabled": {
+          "type": "object"
+        },
+        "iD_": {
+          "type": "object"
+        },
+        "status": {
+          "type": "object"
+        },
+        "uRN": {
+          "type": "object"
+        },
+        "updatedAt": {
+          "type": "object"
+        },
+        "updatedByURN": {
+          "type": "object"
+        }
+      }
+    },
+    "billing_plan.BillingPlan": {
+      "type": "object"
+    },
+    "billing_plan.BillingPlanJoined": {
+      "type": "object"
+    },
+    "billing_plan.DBColumns": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "object"
+        },
+        "featureSet": {
+          "type": "object"
+        },
+        "fees": {
+          "type": "object"
+        },
+        "internalName": {
+          "type": "object"
+        },
+        "isDefault": {
+          "type": "object"
+        },
+        "level": {
+          "type": "object"
+        },
+        "name": {
+          "type": "object"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "stripeProductID": {
+          "type": "object"
+        }
+      }
+    },
+    "billing_plan.DBColumnsPublic": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "object"
+        },
+        "featureSet": {
+          "type": "object"
+        },
+        "isDefault": {
+          "type": "object"
+        },
+        "level": {
+          "type": "object"
+        },
+        "name": {
+          "type": "object"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "stripeProductID": {
+          "type": "object"
+        }
+      }
+    },
+    "billing_plan.FeatureSet": {
+      "type": "object",
+      "properties": {
+        "advanced_analytics": {
+          "type": "integer"
+        },
+        "custom_branding": {
+          "type": "integer"
+        },
+        "priority_support": {
+          "type": "integer"
+        }
+      }
+    },
+    "billing_plan.FeatureSetPublic": {
+      "type": "object",
+      "properties": {
+        "advanced_analytics": {
+          "type": "integer"
+        }
+      }
+    },
+    "billing_plan.Fees": {
+      "type": "object",
+      "properties": {
+        "mms_rate": {
+          "type": "number"
+        },
+        "monthly_rate": {
+          "type": "number"
+        },
+        "setup_rate": {
+          "type": "number"
+        },
+        "sms_rate": {
+          "type": "number"
+        },
+        "voice_rate": {
+          "type": "number"
+        }
+      }
+    },
+    "billing_plan.JoinData": {
+      "type": "object",
+      "properties": {
+        "created_by_name": {
+          "type": "object"
+        },
+        "updated_by_name": {
+          "type": "object"
+        }
+      }
+    },
+    "billing_plan.MergeableFeatureSet": {
+      "type": "object"
+    },
+    "billing_plan.Properties": {
+      "type": "object",
+      "properties": {
+        "default_discount_code": {
+          "type": "string"
+        },
+        "pricing_text": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.PropertiesPublic": {
+      "type": "object",
+      "properties": {
+        "pricing_text": {
+          "type": "string"
+        }
+      }
+    },
+    "billing_plan.Structure": {
+      "type": "object"
+    },
+    "billing_plan.initializable": {
+      "type": "object"
+    },
+    "caller.Caller": {
+      "type": "object"
+    },
+    "caller.callerRegistry": {
+      "type": "object",
+      "properties": {
+        "callers": {
+          "type": "object"
+        },
+        "mut": {
+          "type": "object"
+        }
+      }
+    },
+    "constants.ExternalID": {
+      "type": "object"
+    },
+    "constants.GlobalConfigKey": {
+      "type": "object"
+    },
+    "constants.Role": {
+      "type": "object"
+    },
+    "constants.Status": {
+      "type": "object"
+    },
+    "constants.StyleType": {
+      "type": "object"
+    },
+    "constants.TagType": {
+      "type": "object"
+    },
+    "constants.UnionStatus": {
+      "type": "object"
+    },
+    "org_member.MetaData": {
+      "type": "object",
+      "properties": {
+        "pending_local_id": {
+          "type": "object"
+        },
+        "pending_plan_id": {
+          "type": "object"
+        },
+        "pending_removal": {
+          "type": "integer"
+        },
+        "unknown_local": {
+          "type": "integer"
+        }
+      }
+    },
+    "org_member.MetaDataPublic": {
+      "type": "object",
+      "properties": {
+        "pending_local_id": {
+          "type": "object"
+        },
+        "pending_plan_id": {
+          "type": "object"
+        },
+        "pending_removal": {
+          "type": "integer"
+        },
+        "unknown_local": {
+          "type": "integer"
+        }
+      }
+    },
+    "relationship.Relationship": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "package": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "relationship.relationshipRegistry": {
+      "type": "object",
+      "properties": {
+        "mut": {
+          "type": "object"
+        },
+        "relationships": {
+          "type": "object"
+        }
+      }
+    },
+    "response.ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "response.SuccessResponse": {
+      "type": "object",
+      "properties": {
+        "data": {}
+      }
+    }
+  }
+}
