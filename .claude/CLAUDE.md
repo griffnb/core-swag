@@ -8,7 +8,9 @@ Previous Project is located here: `/Users/griffnb/projects/swag`
 `testing/core_models_integration_test.go` :  `TestRealProjectIntegration`
 To run on ACTUAL projects, theres 2 make commands to give full true outputs on real projects:
 `make test-project-1`
+Example output: testing/project-1-example-swagger.json
 `make test-project-2`
+Example output: testing/project-2-example-swagger.json
 
 ## ⚠️ CRITICAL: ALWAYS FOLLOW DOCUMENTATION AND PRD
 **MANDATORY REQUIREMENT**: Before making ANY changes to this codebase, you MUST:
