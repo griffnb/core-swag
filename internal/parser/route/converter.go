@@ -26,8 +26,16 @@ func RouteToSpecOperation(route *domain.Route) *spec.Operation {
 		},
 	}
 
-	// Note: Source location extensions (x-path, x-function, x-line) removed
-	// to match expected test output. Can be re-enabled if needed.
+	// Add source location extensions for debugging/tooling
+	if route.FilePath != "" {
+		operation.Extensions["x-path"] = route.FilePath
+	}
+	if route.FunctionName != "" {
+		operation.Extensions["x-function"] = route.FunctionName
+	}
+	if route.LineNumber > 0 {
+		operation.Extensions["x-line"] = route.LineNumber
+	}
 
 	// Convert parameters
 	for _, param := range route.Parameters {

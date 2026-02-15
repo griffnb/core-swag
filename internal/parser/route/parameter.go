@@ -59,14 +59,35 @@ func (s *Service) parseParam(op *operation, line string) error {
 		param.Format = format
 	}
 
-	if isArray {
-		param.Type = "array"
-		param.Items = &domain.Items{
-			Type:   schemaType,
-			Format: param.Format,
+	// For body parameters with model types, use Schema instead of Type
+	// Body parameters need proper schema references for complex types
+	if paramType == "body" && isModelType(dataType) {
+		// Build schema for model type
+		if isArray {
+			// Array of models
+			param.Schema = &domain.Schema{
+				Type: "array",
+				Items: &domain.Schema{
+					Ref: "#/definitions/" + dataType,
+				},
+			}
+		} else {
+			// Single model
+			param.Schema = &domain.Schema{
+				Ref: "#/definitions/" + dataType,
+			}
 		}
 	} else {
-		param.Type = schemaType
+		// For non-body parameters or primitives, use Type field
+		if isArray {
+			param.Type = "array"
+			param.Items = &domain.Items{
+				Type:   schemaType,
+				Format: param.Format,
+			}
+		} else {
+			param.Type = schemaType
+		}
 	}
 
 	op.parameters = append(op.parameters, param)

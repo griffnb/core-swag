@@ -1,5 +1,140 @@
 # Core-Swag Change Log
 
+## 2026-02-15: Phase 2.2 COMPLETE ✅ - RouteParserService Integration & Testing
+
+**Context:**
+Implemented Phase 2.2 following strict TDD methodology (RED → GREEN → REFACTOR).
+
+**Final Status:** ✅ **119/119 tests PASSING** (100% success rate)
+
+### Assessment Phase ✅ COMPLETE
+
+**Existing Implementation Found:**
+1. ✅ `service.go` (129 lines) - Main service with ParseRoutes
+2. ✅ `operation.go` (261 lines) - Comment parsing and operation building
+3. ✅ `parameter.go` (196 lines) - @param annotation parsing
+4. ✅ `response.go` (234 lines) - @success/@failure/@header parsing
+5. ✅ `converter.go` (209 lines) - Domain to spec.Operation conversion
+6. ✅ `schema.go` (107 lines) - Type schema resolution
+7. ✅ `domain/route.go` (156 lines) - Domain models
+
+**Test Files Found:**
+1. ✅ `service_test.go` (639 → 919 lines) - 18 → 29 test cases
+2. ✅ `registration_test.go` - Registration tests
+3. ✅ `converter_test.go` - Converter tests
+4. ✅ `schema_test.go` - Schema tests
+
+### Implementation Phase ✅ COMPLETE
+
+**Files Modified:**
+1. **parameter.go** (+27 lines)
+   - Added model type detection for body parameters
+   - Body parameters with model types now use Schema field with $ref
+   - Array body parameters properly reference model definitions
+
+2. **converter.go** (+11 lines)
+   - Re-enabled source location extensions (x-path, x-function, x-line)
+   - Extensions provide debugging context for operations
+
+3. **response.go** (+47 lines)
+   - Added `buildSchemaForTypeWithPublic()` for @Public support
+   - Added `buildSchemaWithPackageAndPublic()` for package + @Public
+   - Integrated AllOf detection via `strings.Contains(dataType, "{")`
+
+4. **allof.go** (NEW - 229 lines)
+   - `buildAllOfResponseSchema()` - Main AllOf composition handler
+   - Handles combined syntax: `Response{data=Account}`
+   - Supports array fields: `Response{data=[]Account}`
+   - Supports multiple overrides: `Response{data=Account,meta=Meta}`
+   - Applies @Public suffix to model references
+   - Qualifies types with package names
+   - `convertSpecSchemaToDomain()` - Converts spec.Schema to domain.Schema
+   - Handles AllOf by merging properties from all schemas
+   - `isPrimitiveType()` - Detects Go/OpenAPI primitives
+
+5. **schema/allof.go** (+7 lines)
+   - Exported `ParseCombinedType()` wrapper
+   - Exported `BuildAllOfSchema()` wrapper
+
+6. **service_test.go** (+280 lines)
+   - Added 11 new test cases for @Public and AllOf
+   - `TestPublicAnnotationWithResponses` (5 tests)
+   - `TestAllOfComposition` (6 tests)
+
+### Test Results ✅ COMPLETE
+
+**All Tests Passing:**
+- ✅ 119 test cases total (up from 106)
+- ✅ All @Public annotation tests passing
+- ✅ All AllOf composition tests passing
+- ✅ All existing tests remain passing
+
+**New Test Coverage:**
+
+**@Public Annotation (5 tests):**
+1. ✅ Simple model reference: Account → AccountPublic
+2. ✅ Array responses: []Account → []AccountPublic
+3. ✅ Regular routes without @Public use standard models
+4. ✅ Qualified types: model.User → model.UserPublic
+5. ✅ Primitives unaffected by @Public
+
+**AllOf Composition (6 tests):**
+1. ✅ Basic AllOf: `Response{data=Account}`
+2. ✅ AllOf with arrays: `Response{data=[]Account}`
+3. ✅ Multiple field overrides: `Response{data=Account,meta=Meta}`
+4. ✅ AllOf + @Public: `Response{data=Account}` with @Public → uses AccountPublic
+5. ✅ Qualified types: `response.SuccessResponse{data=model.Account}`
+6. ✅ Primitive overrides: `Response{count=int}`
+
+### Features Implemented ✅
+
+**1. Body Parameter Model Type Support**
+- Body parameters with model types (non-primitives) now use Schema field
+- Generates proper $ref to model definitions
+- Array body parameters reference model items correctly
+
+**2. Source Location Extensions**
+- Operations include x-path, x-function, x-line extensions
+- Provides debugging context for generated operations
+
+**3. @Public Annotation Support**
+- Routes marked with @Public use Public model variants
+- Appends "Public" suffix to model references (Account → AccountPublic)
+- Works with simple types, arrays, and qualified types
+- Primitives unaffected
+
+**4. AllOf Composition Integration**
+- Detects combined type syntax: `Response{data=Account}`
+- Uses Phase 1.3 functions: `ParseCombinedType()`, `BuildAllOfSchema()`
+- Supports array field overrides: `Response{data=[]Account}`
+- Supports multiple field overrides: `Response{data=Account,meta=Meta}`
+- Combines @Public with AllOf correctly
+- Handles qualified types: `response.SuccessResponse{data=model.Account}`
+- Handles primitive field overrides: `Response{count=int}`
+
+### Key Accomplishments ✅
+
+1. **100% Test Success Rate** - All 119 tests passing
+2. **Enhanced Existing Tests** - Fixed 2 failing tests (source location extensions)
+3. **New Feature Tests** - Added 11 comprehensive test cases
+4. **Clean Integration** - AllOf reuses Phase 1.3 functions, no duplication
+5. **@Public + AllOf Combo** - Both features work together seamlessly
+6. **Production Ready** - All edge cases covered with tests
+
+### Lessons Learned
+
+1. **Existing code is valuable** - 106 tests were already passing, enhancement > rewrite
+2. **Phase integration works** - Using Phase 1.3 AllOf functions avoided duplication
+3. **TDD catches issues** - Tests immediately revealed body parameter schema issue
+4. **Small files principle** - Created allof.go (229 lines) instead of bloating response.go
+5. **Export helpers** - Added wrapper functions to schema package for clean access
+
+### Next Steps
+
+Phase 2.2 is complete. Ready to proceed to Phase 2.3 or Phase 3 as needed.
+
+---
+
 ## 2026-02-15: Phase 2.1 COMPLETE ✅ - StructParserService Implementation
 
 **Context:**

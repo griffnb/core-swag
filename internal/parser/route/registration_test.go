@@ -9,7 +9,7 @@ import (
 
 func TestRegisterRoutes(t *testing.T) {
 	t.Run("registers single route", func(t *testing.T) {
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		swagger := &spec.Swagger{
 			SwaggerProps: spec.SwaggerProps{
 				Paths: &spec.Paths{
@@ -51,7 +51,7 @@ func TestRegisterRoutes(t *testing.T) {
 	})
 
 	t.Run("registers multiple routes to same path", func(t *testing.T) {
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		swagger := &spec.Swagger{
 			SwaggerProps: spec.SwaggerProps{
 				Paths: &spec.Paths{
@@ -89,7 +89,7 @@ func TestRegisterRoutes(t *testing.T) {
 	})
 
 	t.Run("registers routes to different paths", func(t *testing.T) {
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		swagger := &spec.Swagger{
 			SwaggerProps: spec.SwaggerProps{
 				Paths: &spec.Paths{
@@ -129,7 +129,7 @@ func TestRegisterRoutes(t *testing.T) {
 	})
 
 	t.Run("handles duplicate routes in non-strict mode", func(t *testing.T) {
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		swagger := &spec.Swagger{
 			SwaggerProps: spec.SwaggerProps{
 				Paths: &spec.Paths{
@@ -165,7 +165,7 @@ func TestRegisterRoutes(t *testing.T) {
 	})
 
 	t.Run("errors on duplicate routes in strict mode", func(t *testing.T) {
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		swagger := &spec.Swagger{
 			SwaggerProps: spec.SwaggerProps{
 				Paths: &spec.Paths{
@@ -195,7 +195,7 @@ func TestRegisterRoutes(t *testing.T) {
 	})
 
 	t.Run("initializes swagger.Paths if nil", func(t *testing.T) {
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		swagger := &spec.Swagger{}
 
 		routes := []*domain.Route{
@@ -223,7 +223,7 @@ func TestRegisterRoutes(t *testing.T) {
 
 func TestRegisterRoute(t *testing.T) {
 	t.Run("registers route with extensions", func(t *testing.T) {
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		swagger := &spec.Swagger{
 			SwaggerProps: spec.SwaggerProps{
 				Paths: &spec.Paths{
@@ -263,7 +263,7 @@ func TestRegisterRoute(t *testing.T) {
 	})
 
 	t.Run("filters invalid path parameters", func(t *testing.T) {
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		swagger := &spec.Swagger{
 			SwaggerProps: spec.SwaggerProps{
 				Paths: &spec.Paths{

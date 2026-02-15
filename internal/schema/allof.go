@@ -7,6 +7,16 @@ import (
 	"github.com/go-openapi/spec"
 )
 
+// ParseCombinedType is the exported version of parseCombinedType
+func ParseCombinedType(refType string) (string, map[string]string, error) {
+	return parseCombinedType(refType)
+}
+
+// BuildAllOfSchema is the exported version of buildAllOfSchema
+func BuildAllOfSchema(baseSchema *spec.Schema, overrideProperties map[string]spec.Schema) *spec.Schema {
+	return buildAllOfSchema(baseSchema, overrideProperties)
+}
+
 // parseFieldOverrides parses field override syntax: "field1=Type1,field2=Type2"
 // Returns map of field names to type strings.
 // Handles nested braces and respects bracket depth.

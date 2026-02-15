@@ -45,8 +45,8 @@ func (s *Service) parseResponseWithSchema(op *operation, matches []string) error
 		description = "OK" // Default description
 	}
 
-	// Build the schema with package context for type qualification
-	schema := s.buildSchemaWithPackage(schemaType, dataType, op.packageName)
+	// Build the schema with package context and @Public support
+	schema := s.buildSchemaWithPackageAndPublic(schemaType, dataType, op.packageName, op.isPublic)
 
 	// Parse status codes (can be comma-separated)
 	for _, codeStr := range strings.Split(statusCodes, ",") {
@@ -113,16 +113,27 @@ func (s *Service) buildSchema(schemaType, dataType string) *domain.Schema {
 
 // buildSchemaWithPackage builds a schema with package qualification for custom types
 func (s *Service) buildSchemaWithPackage(schemaType, dataType, packageName string) *domain.Schema {
+	return s.buildSchemaWithPackageAndPublic(schemaType, dataType, packageName, false)
+}
+
+// buildSchemaWithPackageAndPublic builds a schema with package qualification and @Public support
+func (s *Service) buildSchemaWithPackageAndPublic(schemaType, dataType, packageName string, isPublic bool) *domain.Schema {
 	schema := &domain.Schema{}
+
+	// Check for AllOf combined type syntax: Response{data=Account}
+	if strings.Contains(dataType, "{") {
+		// Use AllOf composition
+		return s.buildAllOfResponseSchema(dataType, packageName, isPublic)
+	}
 
 	if schemaType == "array" {
 		schema.Type = "array"
-		// For array items, check if it's a model type
-		itemSchema := s.buildSchemaForTypeWithPackage(dataType, packageName)
+		// For array items, apply @Public flag
+		itemSchema := s.buildSchemaForTypeWithPublic(dataType, packageName, isPublic)
 		schema.Items = itemSchema
 	} else {
-		// Build schema for the type
-		return s.buildSchemaForTypeWithPackage(dataType, packageName)
+		// Build schema for the type with @Public flag
+		return s.buildSchemaForTypeWithPublic(dataType, packageName, isPublic)
 	}
 
 	return schema
@@ -135,6 +146,11 @@ func (s *Service) buildSchemaForType(dataType string) *domain.Schema {
 
 // buildSchemaForTypeWithPackage builds a schema for a single type with package qualification
 func (s *Service) buildSchemaForTypeWithPackage(dataType, packageName string) *domain.Schema {
+	return s.buildSchemaForTypeWithPublic(dataType, packageName, false)
+}
+
+// buildSchemaForTypeWithPublic builds a schema for a single type with optional Public suffix
+func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isPublic bool) *domain.Schema {
 	// Check if it's a primitive type
 	primitiveType := convertTypeToSchemaType(dataType)
 	if primitiveType != "object" {
@@ -148,6 +164,11 @@ func (s *Service) buildSchemaForTypeWithPackage(dataType, packageName string) *d
 	qualifiedType := dataType
 	if packageName != "" && !strings.Contains(dataType, ".") {
 		qualifiedType = packageName + "." + dataType
+	}
+
+	// If @Public annotation is present, append "Public" suffix to model name
+	if isPublic {
+		qualifiedType = qualifiedType + "Public"
 	}
 
 	ref := "#/definitions/" + qualifiedType

@@ -30,8 +30,8 @@ func GetUser() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		// Create service (will fail - not implemented yet)
-		service := NewService(nil, nil)
+		// Create service
+		service := NewService(nil, "")
 		require.NotNil(t, service)
 
 		routes, err := service.ParseRoutes(astFile)
@@ -60,7 +60,7 @@ func GetOrCreateUser() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 2)
@@ -82,7 +82,7 @@ func Helper() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		assert.Empty(t, routes)
@@ -102,7 +102,7 @@ func GetUsers() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -122,7 +122,7 @@ func GetUser() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -141,7 +141,7 @@ func OldEndpoint() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -174,7 +174,7 @@ func Handler() {}
 				astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 				require.NoError(t, err)
 
-				service := NewService(nil, nil)
+				service := NewService(nil, "")
 				routes, err := service.ParseRoutes(astFile)
 				require.NoError(t, err)
 				require.Len(t, routes, 1)
@@ -199,7 +199,7 @@ func GetUser() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -226,7 +226,7 @@ func GetUsers() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -251,7 +251,7 @@ func GetUsers() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -275,7 +275,7 @@ func CreateUser() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -302,7 +302,7 @@ func Health() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -325,7 +325,7 @@ func GetUsers() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -349,7 +349,7 @@ func GetUsers() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -372,7 +372,7 @@ func CreateUser() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -398,7 +398,7 @@ func CreateUser() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -421,7 +421,7 @@ func GetUsers() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -447,7 +447,7 @@ func Login() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -466,7 +466,7 @@ func GetUsers() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -490,7 +490,7 @@ func GetUsers() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -519,7 +519,7 @@ func CreateUser() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -548,7 +548,7 @@ func GetUsers() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -568,7 +568,7 @@ func CreateUser() {}
 		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 		require.NoError(t, err)
 
-		service := NewService(nil, nil)
+		service := NewService(nil, "")
 		routes, err := service.ParseRoutes(astFile)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
@@ -602,7 +602,7 @@ func GetUser() {}
 	astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
 	require.NoError(t, err)
 
-	service := NewService(nil, nil)
+	service := NewService(nil, "")
 	routes, err := service.ParseRoutes(astFile)
 	require.NoError(t, err)
 	require.Len(t, routes, 1)
@@ -635,4 +635,359 @@ func GetUser() {}
 	// Content types
 	assert.Contains(t, route.Consumes, "application/json")
 	assert.Contains(t, route.Produces, "application/json")
+}
+
+// TestPublicAnnotationWithResponses tests @Public annotation affects response schema refs
+func TestPublicAnnotationWithResponses(t *testing.T) {
+	t.Run("should use Public variant for model references when @Public is set", func(t *testing.T) {
+		src := `
+package test
+
+// @Public
+// @Success 200 {object} Account "Success"
+// @Router /auth/me [get]
+func GetMe() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		route := routes[0]
+		assert.True(t, route.IsPublic)
+
+		// Check response schema uses AccountPublic
+		responses := route.Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+		assert.Contains(t, schema.Ref, "AccountPublic")
+		assert.NotContains(t, schema.Ref, "Account\"")
+	})
+
+	t.Run("should use Public variant for array responses", func(t *testing.T) {
+		src := `
+package test
+
+// @Public
+// @Success 200 {array} Account "List of accounts"
+// @Router /public/accounts [get]
+func GetAccounts() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		route := routes[0]
+		assert.True(t, route.IsPublic)
+
+		// Check array items use AccountPublic
+		responses := route.Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+		assert.Equal(t, "array", schema.Type)
+		require.NotNil(t, schema.Items)
+		assert.Contains(t, schema.Items.Ref, "AccountPublic")
+	})
+
+	t.Run("should use regular model when @Public is not set", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {object} Account "Success"
+// @Router /internal/account [get]
+func GetAccount() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		route := routes[0]
+		assert.False(t, route.IsPublic)
+
+		// Check response schema uses Account (not AccountPublic)
+		responses := route.Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+		assert.Contains(t, schema.Ref, "Account")
+		assert.NotContains(t, schema.Ref, "Public")
+	})
+
+	t.Run("should handle qualified types with @Public", func(t *testing.T) {
+		src := `
+package test
+
+// @Public
+// @Success 200 {object} model.User "User details"
+// @Router /public/user [get]
+func GetUser() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		route := routes[0]
+		assert.True(t, route.IsPublic)
+
+		// Check response schema uses model.UserPublic
+		responses := route.Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+		assert.Contains(t, schema.Ref, "model.UserPublic")
+	})
+
+	t.Run("should not affect primitive types", func(t *testing.T) {
+		src := `
+package test
+
+// @Public
+// @Success 200 {object} string "Success message"
+// @Router /public/status [get]
+func GetStatus() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		route := routes[0]
+		assert.True(t, route.IsPublic)
+
+		// Check response schema is still string type (primitives not affected)
+		responses := route.Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+		assert.Equal(t, "string", schema.Type)
+		assert.Empty(t, schema.Ref) // No reference for primitives
+	})
+}
+
+// TestAllOfComposition tests AllOf composition for combined types
+func TestAllOfComposition(t *testing.T) {
+	t.Run("should build AllOf for combined type Response{data=Account}", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {object} Response{data=Account} "Success with account data"
+// @Router /account [get]
+func GetAccount() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		// Check response schema uses AllOf composition
+		responses := routes[0].Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+
+		// AllOf creates an object with properties
+		// The base Response is referenced, and data field is overridden
+		assert.NotNil(t, schema.Properties)
+		assert.Contains(t, schema.Properties, "data")
+	})
+
+	t.Run("should build AllOf with array field Response{data=[]Account}", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {object} Response{data=[]Account} "Success with account list"
+// @Router /accounts [get]
+func GetAccounts() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		// Check response schema
+		responses := routes[0].Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+
+		// Should have data property with array type
+		assert.NotNil(t, schema.Properties)
+		assert.Contains(t, schema.Properties, "data")
+
+		dataSchema := schema.Properties["data"]
+		assert.Equal(t, "array", dataSchema.Type)
+		assert.NotNil(t, dataSchema.Items)
+	})
+
+	t.Run("should build AllOf with multiple fields Response{data=Account,meta=Meta}", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {object} Response{data=Account,meta=Meta} "Success with account and metadata"
+// @Router /account/detail [get]
+func GetAccountDetail() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		// Check response schema has both overrides
+		responses := routes[0].Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+
+		// Should have both data and meta properties
+		assert.NotNil(t, schema.Properties)
+		assert.Contains(t, schema.Properties, "data")
+		assert.Contains(t, schema.Properties, "meta")
+	})
+
+	t.Run("should build AllOf with @Public annotation Response{data=Account}", func(t *testing.T) {
+		src := `
+package test
+
+// @Public
+// @Success 200 {object} Response{data=Account} "Success with public account"
+// @Router /public/account [get]
+func GetPublicAccount() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		route := routes[0]
+		assert.True(t, route.IsPublic)
+
+		// Check response schema uses Public variants
+		responses := route.Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+
+		// Base type should be ResponsePublic (if Response has Public variant)
+		// Or just Response if it doesn't
+		// Data field should reference AccountPublic
+		assert.NotNil(t, schema.Properties)
+		assert.Contains(t, schema.Properties, "data")
+
+		dataSchema := schema.Properties["data"]
+		assert.Contains(t, dataSchema.Ref, "AccountPublic")
+	})
+
+	t.Run("should build AllOf with qualified types Response{data=model.Account}", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {object} response.SuccessResponse{data=model.Account} "Success"
+// @Router /api/account [get]
+func GetAPIAccount() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		// Check response schema handles qualified types
+		responses := routes[0].Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+
+		// Should reference qualified types
+		assert.NotNil(t, schema.Properties)
+		assert.Contains(t, schema.Properties, "data")
+
+		dataSchema := schema.Properties["data"]
+		assert.Contains(t, dataSchema.Ref, "model.Account")
+	})
+
+	t.Run("should handle primitive field overrides Response{count=int}", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {object} Response{count=int} "Success with count"
+// @Router /count [get]
+func GetCount() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		// Check response schema handles primitive overrides
+		responses := routes[0].Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+
+		// Should have count property with integer type
+		assert.NotNil(t, schema.Properties)
+		assert.Contains(t, schema.Properties, "count")
+
+		countSchema := schema.Properties["count"]
+		assert.Equal(t, "integer", countSchema.Type)
+	})
 }
