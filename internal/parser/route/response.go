@@ -2,11 +2,12 @@ package route
 
 import (
 	"fmt"
+	"go/ast"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/griffnb/core-swag/internal/parser/route/domain"
+	routedomain "github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
 var (
@@ -58,10 +59,10 @@ func (s *Service) parseResponseWithSchema(op *operation, matches []string) error
 		}
 
 		// Create or update the response
-		response := domain.Response{
+		response := routedomain.Response{
 			Description: description,
 			Schema:      schema,
-			Headers:     make(map[string]domain.Header),
+			Headers:     make(map[string]routedomain.Header),
 		}
 
 		// Preserve existing headers if response already exists
@@ -90,9 +91,9 @@ func (s *Service) parseEmptyResponse(op *operation, matches []string) error {
 		}
 
 		// Create or update the response
-		response := domain.Response{
+		response := routedomain.Response{
 			Description: description,
-			Headers:     make(map[string]domain.Header),
+			Headers:     make(map[string]routedomain.Header),
 		}
 
 		// Preserve existing headers if response already exists
@@ -107,18 +108,18 @@ func (s *Service) parseEmptyResponse(op *operation, matches []string) error {
 }
 
 // buildSchema builds a schema from the schemaType and dataType
-func (s *Service) buildSchema(schemaType, dataType string) *domain.Schema {
+func (s *Service) buildSchema(schemaType, dataType string) *routedomain.Schema {
 	return s.buildSchemaWithPackage(schemaType, dataType, "")
 }
 
 // buildSchemaWithPackage builds a schema with package qualification for custom types
-func (s *Service) buildSchemaWithPackage(schemaType, dataType, packageName string) *domain.Schema {
+func (s *Service) buildSchemaWithPackage(schemaType, dataType, packageName string) *routedomain.Schema {
 	return s.buildSchemaWithPackageAndPublic(schemaType, dataType, packageName, false)
 }
 
 // buildSchemaWithPackageAndPublic builds a schema with package qualification and @Public support
-func (s *Service) buildSchemaWithPackageAndPublic(schemaType, dataType, packageName string, isPublic bool) *domain.Schema {
-	schema := &domain.Schema{}
+func (s *Service) buildSchemaWithPackageAndPublic(schemaType, dataType, packageName string, isPublic bool) *routedomain.Schema {
+	schema := &routedomain.Schema{}
 
 	// Check for AllOf combined type syntax: Response{data=Account}
 	if strings.Contains(dataType, "{") {
@@ -140,22 +141,22 @@ func (s *Service) buildSchemaWithPackageAndPublic(schemaType, dataType, packageN
 }
 
 // buildSchemaForType builds a schema for a single type, creating refs for model types
-func (s *Service) buildSchemaForType(dataType string) *domain.Schema {
+func (s *Service) buildSchemaForType(dataType string) *routedomain.Schema {
 	return s.buildSchemaForTypeWithPackage(dataType, "")
 }
 
 // buildSchemaForTypeWithPackage builds a schema for a single type with package qualification
-func (s *Service) buildSchemaForTypeWithPackage(dataType, packageName string) *domain.Schema {
+func (s *Service) buildSchemaForTypeWithPackage(dataType, packageName string) *routedomain.Schema {
 	return s.buildSchemaForTypeWithPublic(dataType, packageName, false)
 }
 
 // buildSchemaForTypeWithPublic builds a schema for a single type with optional Public suffix
-func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isPublic bool) *domain.Schema {
+func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isPublic bool) *routedomain.Schema {
 	// Check if it's a primitive type
 	primitiveType := convertTypeToSchemaType(dataType)
 	if primitiveType != "object" {
 		// It's a primitive - return with type
-		return &domain.Schema{Type: primitiveType}
+		return &routedomain.Schema{Type: primitiveType}
 	}
 
 	// It's a custom type - create a reference
@@ -166,13 +167,13 @@ func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isP
 		qualifiedType = packageName + "." + dataType
 	}
 
-	// If @Public annotation is present, append "Public" suffix to model name
-	if isPublic {
+	// If @Public annotation is present, check if type has @NoPublic before appending suffix
+	if isPublic && !s.hasNoPublicAnnotation(qualifiedType) {
 		qualifiedType = qualifiedType + "Public"
 	}
 
 	ref := "#/definitions/" + qualifiedType
-	return &domain.Schema{Ref: ref}
+	return &routedomain.Schema{Ref: ref}
 }
 
 // convertTypeToSchemaType converts a data type to a schema type
@@ -207,7 +208,7 @@ func (s *Service) parseHeader(op *operation, line string) error {
 	headerName := matches[3]
 	description := matches[4]
 
-	header := domain.Header{
+	header := routedomain.Header{
 		Type:        convertTypeToSchemaType(headerType),
 		Description: description,
 	}
@@ -217,7 +218,7 @@ func (s *Service) parseHeader(op *operation, line string) error {
 		// Add header to all existing responses
 		for code, response := range op.responses {
 			if response.Headers == nil {
-				response.Headers = make(map[string]domain.Header)
+				response.Headers = make(map[string]routedomain.Header)
 			}
 			response.Headers[headerName] = header
 			op.responses[code] = response
@@ -237,13 +238,13 @@ func (s *Service) parseHeader(op *operation, line string) error {
 		// Get or create the response
 		response, ok := op.responses[code]
 		if !ok {
-			response = domain.Response{
-				Headers: make(map[string]domain.Header),
+			response = routedomain.Response{
+				Headers: make(map[string]routedomain.Header),
 			}
 		}
 
 		if response.Headers == nil {
-			response.Headers = make(map[string]domain.Header)
+			response.Headers = make(map[string]routedomain.Header)
 		}
 
 		response.Headers[headerName] = header
@@ -251,4 +252,40 @@ func (s *Service) parseHeader(op *operation, line string) error {
 	}
 
 	return nil
+}
+
+// hasNoPublicAnnotation checks if a type has @NoPublic annotation
+func (s *Service) hasNoPublicAnnotation(qualifiedTypeName string) bool {
+	if s.registry == nil {
+		return false
+	}
+
+	// Look up the type in registry
+	typeDef := s.registry.FindTypeSpec(qualifiedTypeName, nil)
+	if typeDef == nil {
+		return false
+	}
+
+	// Check if the type has @NoPublic in its documentation
+	// The comment is attached to the GenDecl (not TypeSpec)
+	if genDecl, ok := typeDef.ParentSpec.(*ast.GenDecl); ok && genDecl != nil {
+		if genDecl.Doc != nil {
+			for _, comment := range genDecl.Doc.List {
+				if strings.Contains(comment.Text, "@NoPublic") {
+					return true
+				}
+			}
+		}
+	}
+
+	// Also check TypeSpec.Doc as a fallback
+	if typeDef.TypeSpec != nil && typeDef.TypeSpec.Doc != nil {
+		for _, comment := range typeDef.TypeSpec.Doc.List {
+			if strings.Contains(comment.Text, "@NoPublic") {
+				return true
+			}
+		}
+	}
+
+	return false
 }

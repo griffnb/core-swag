@@ -35,9 +35,10 @@ func (s *Service) parseTypesFromFile(astFile *ast.File, packagePath string, pars
 			for _, astSpec := range generalDeclaration.Specs {
 				if typeSpec, ok := astSpec.(*ast.TypeSpec); ok {
 					typeSpecDef := &domain.TypeSpecDef{
-						PkgPath:  packagePath,
-						File:     astFile,
-						TypeSpec: typeSpec,
+						PkgPath:    packagePath,
+						File:       astFile,
+						TypeSpec:   typeSpec,
+						ParentSpec: astDeclaration,
 					}
 
 					if idt, ok := typeSpec.Type.(*ast.Ident); ok && domain.IsGolangPrimitiveType(idt.Name) && parsedSchemas != nil {

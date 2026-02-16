@@ -147,6 +147,8 @@ func New(config *Config) *Service {
 	if config.MarkdownFileDir != "" {
 		routeParser.SetMarkdownFileDir(config.MarkdownFileDir)
 	}
+	// Inject registry for @NoPublic annotation support
+	routeParser.SetRegistry(registryService)
 
 	// Create struct parser service
 	structParserService := structparser.NewService(registryService, schemaBuilder)

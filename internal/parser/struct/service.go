@@ -161,7 +161,7 @@ func (s *Service) ParseFile(astFile *ast.File, filePath string) error {
 			}
 
 			// Check if we should generate a Public variant
-			if s.shouldGeneratePublicInternal(astFile, structType.Fields) {
+			if s.shouldGeneratePublicInternal(astFile, genDecl, typeSpec, structType.Fields) {
 				publicSchema, err := s.BuildPublicSchema(astFile, structType.Fields)
 				if err != nil {
 					// Log error but continue
@@ -195,13 +195,22 @@ func (s *Service) ParseDefinition(typeSpec ast.Expr) (*spec.Schema, error) {
 // ShouldGeneratePublic checks if a Public variant schema should be generated.
 // Returns true if any fields have public:"view" or public:"edit" tags.
 func (s *Service) ShouldGeneratePublic(fields *ast.FieldList) bool {
-	// For backward compatibility with tests, call with nil file
-	return s.shouldGeneratePublicInternal(nil, fields)
+	// For backward compatibility with tests, call with nil file, genDecl and typeSpec
+	return s.shouldGeneratePublicInternal(nil, nil, nil, fields)
 }
 
-func (s *Service) shouldGeneratePublicInternal(file *ast.File, fields *ast.FieldList) bool {
+func (s *Service) shouldGeneratePublicInternal(file *ast.File, genDecl *ast.GenDecl, typeSpec *ast.TypeSpec, fields *ast.FieldList) bool {
 	if fields == nil {
 		return false
+	}
+
+	// Check for @NoPublic annotation in struct comments (attached to GenDecl)
+	if genDecl != nil && genDecl.Doc != nil {
+		for _, comment := range genDecl.Doc.List {
+			if strings.Contains(comment.Text, "@NoPublic") {
+				return false
+			}
+		}
 	}
 
 	// Check if any field has public tag
@@ -248,7 +257,8 @@ func (s *Service) shouldGeneratePublicInternal(file *ast.File, fields *ast.Field
 			}
 
 			// Recursively check if embedded struct has public fields
-			if s.shouldGeneratePublicInternal(typeDef.File, structType.Fields) {
+			// Note: We don't have genDecl for embedded types, so pass nil
+			if s.shouldGeneratePublicInternal(typeDef.File, nil, typeDef.TypeSpec, structType.Fields) {
 				return true
 			}
 		}

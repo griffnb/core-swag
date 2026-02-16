@@ -6,12 +6,18 @@ package route
 import (
 	"go/ast"
 
-	"github.com/griffnb/core-swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/domain"
+	routedomain "github.com/griffnb/core-swag/internal/parser/route/domain"
 )
+
+// TypeRegistry provides type lookup functionality
+type TypeRegistry interface {
+	FindTypeSpec(typeName string, file *ast.File) *domain.TypeSpecDef
+}
 
 // Service handles parsing of route annotations from Go source files
 type Service struct {
-	registry            interface{} // TODO: type this properly
+	registry            TypeRegistry
 	structParser        interface{} // TODO: type this properly
 	typeResolver        interface{} // TODO: type this properly - resolves types to schemas
 	codeExampleFilesDir string
@@ -36,9 +42,14 @@ func (s *Service) SetMarkdownFileDir(dir string) {
 	s.markdownFileDir = dir
 }
 
+// SetRegistry sets the registry service for type lookups
+func (s *Service) SetRegistry(registry TypeRegistry) {
+	s.registry = registry
+}
+
 // ParseRoutes extracts all routes from an AST file
-func (s *Service) ParseRoutes(astFile *ast.File) ([]*domain.Route, error) {
-	var routes []*domain.Route
+func (s *Service) ParseRoutes(astFile *ast.File) ([]*routedomain.Route, error) {
+	var routes []*routedomain.Route
 
 	// Get package name from the file
 	packageName := ""
@@ -74,8 +85,8 @@ func (s *Service) parseOperation(funcDecl *ast.FuncDecl, packageName string) *op
 		functionName: funcDecl.Name.Name,
 		packageName:  packageName,
 		routerPaths:  []routerPath{},
-		parameters:   []domain.Parameter{},
-		responses:    make(map[int]domain.Response),
+		parameters:   []routedomain.Parameter{},
+		responses:    make(map[int]routedomain.Response),
 		security:     []map[string][]string{},
 		tags:         []string{},
 		consumes:     []string{},
@@ -99,12 +110,12 @@ func (s *Service) parseOperation(funcDecl *ast.FuncDecl, packageName string) *op
 }
 
 // operationToRoutes converts an operation into one or more routes
-func (s *Service) operationToRoutes(op *operation) []*domain.Route {
-	var routes []*domain.Route
+func (s *Service) operationToRoutes(op *operation) []*routedomain.Route {
+	var routes []*routedomain.Route
 
 	// Create one route for each router path
 	for _, routerPath := range op.routerPaths {
-		route := &domain.Route{
+		route := &routedomain.Route{
 			Method:       routerPath.method,
 			Path:         routerPath.path,
 			Summary:      op.summary,

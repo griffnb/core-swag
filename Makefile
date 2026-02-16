@@ -45,15 +45,6 @@ test:
 	done
 
 
-.PHONY: install-core
-install-core: ## Install private Go modules
-	@bash -c '\
-		export GOPRIVATE=github.com/griffnb/core/*; \
-		export GH_TOKEN=$$(gh auth token); \
-		go get github.com/griffnb/core/lib@latest \
-	'
-
-
 #CKB targets
 
 .PHONY: ckb-init

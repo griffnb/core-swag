@@ -841,3 +841,74 @@ func setupTestRegistry(t *testing.T, source string) *registry.Service {
 
 	return reg
 }
+
+// TestNoPublicAnnotation tests that @NoPublic annotation prevents Public variant generation
+func TestNoPublicAnnotation(t *testing.T) {
+	source := `
+package testpkg
+
+// ErrorResponse represents an error response
+// @NoPublic
+type ErrorResponse struct {
+	Success bool   ` + "`json:\"success\" public:\"view\"`" + `
+	Error   string ` + "`json:\"error\" public:\"view\"`" + `
+}
+
+// SuccessResponse represents a success response
+type SuccessResponse struct {
+	Success bool ` + "`json:\"success\" public:\"view\"`" + `
+	Data    any  ` + "`json:\"data\" public:\"view\"`" + `
+}
+`
+
+	// Parse source into AST
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", source, parser.ParseComments)
+	require.NoError(t, err)
+
+	// Create service
+	service := NewService(nil, nil)
+
+	// Find ErrorResponse genDecl, typeSpec, and struct
+	errorResponseGenDecl, errorResponseTypeSpec := findGenDeclAndTypeSpec(t, file, "ErrorResponse")
+	errorResponseStruct := findStructType(t, file, "ErrorResponse")
+
+	// ErrorResponse has @NoPublic, so shouldGeneratePublicInternal should return false
+	shouldGenerate := service.shouldGeneratePublicInternal(file, errorResponseGenDecl, errorResponseTypeSpec, errorResponseStruct.Fields)
+	assert.False(t, shouldGenerate, "ErrorResponse with @NoPublic should not generate Public variant")
+
+	// Find SuccessResponse genDecl, typeSpec, and struct
+	successResponseGenDecl, successResponseTypeSpec := findGenDeclAndTypeSpec(t, file, "SuccessResponse")
+	successResponseStruct := findStructType(t, file, "SuccessResponse")
+
+	// SuccessResponse does NOT have @NoPublic, so shouldGeneratePublicInternal should return true
+	shouldGenerate = service.shouldGeneratePublicInternal(file, successResponseGenDecl, successResponseTypeSpec, successResponseStruct.Fields)
+	assert.True(t, shouldGenerate, "SuccessResponse without @NoPublic should generate Public variant")
+}
+
+// Helper to find GenDecl and TypeSpec by name
+func findGenDeclAndTypeSpec(t *testing.T, file *ast.File, name string) (*ast.GenDecl, *ast.TypeSpec) {
+	for _, decl := range file.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+		for _, spec := range genDecl.Specs {
+			typeSpec, ok := spec.(*ast.TypeSpec)
+			if !ok {
+				continue
+			}
+			if typeSpec.Name.Name == name {
+				return genDecl, typeSpec
+			}
+		}
+	}
+	t.Fatalf("TypeSpec %s not found", name)
+	return nil, nil
+}
+
+// Helper to find TypeSpec by name
+func findTypeSpec(t *testing.T, file *ast.File, name string) *ast.TypeSpec {
+	_, typeSpec := findGenDeclAndTypeSpec(t, file, name)
+	return typeSpec
+}
