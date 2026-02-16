@@ -43,6 +43,8 @@ const (
 var overrideNameRegex = regexp.MustCompile(`(?i)^@name\s+(\S+)`)
 
 // IsGolangPrimitiveType checks if a type is a Go primitive type.
+// This only checks for basic Go types. For extended primitives (time.Time, UUID, decimal),
+// use IsExtendedPrimitiveType instead.
 func IsGolangPrimitiveType(typeName string) bool {
 	switch typeName {
 	case "uint",
@@ -61,6 +63,32 @@ func IsGolangPrimitiveType(typeName string) bool {
 		"float64",
 		"bool",
 		"string":
+		return true
+	}
+
+	return false
+}
+
+// IsExtendedPrimitiveType checks if a type should be treated as a primitive in OpenAPI,
+// including time.Time, UUID, and decimal types that are commonly treated as primitives.
+func IsExtendedPrimitiveType(typeName string) bool {
+	// Strip pointer prefix for checking
+	cleanType := strings.TrimPrefix(typeName, "*")
+
+	// Check basic Go primitives first
+	if IsGolangPrimitiveType(cleanType) {
+		return true
+	}
+
+	// Check extended primitives (commonly treated as primitives in OpenAPI)
+	switch cleanType {
+	case "time.Time",
+		"decimal.Decimal",
+		"github.com/shopspring/decimal.Decimal",
+		"types.UUID",
+		"uuid.UUID",
+		"github.com/griffnb/core/lib/types.UUID",
+		"github.com/google/uuid.UUID":
 		return true
 	}
 
@@ -93,20 +121,33 @@ func fullTypeName(parts ...string) string {
 }
 
 // TransToValidPrimitiveSchema transfer golang basic type to swagger schema with format considered.
+// Handles both basic Go types and extended primitives (time.Time, UUID, decimal).
 func TransToValidPrimitiveSchema(typeName string) *spec.Schema {
-	switch typeName {
+	// Strip pointer prefix for processing
+	cleanType := strings.TrimPrefix(typeName, "*")
+
+	switch cleanType {
 	case "int", "uint":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{INTEGER}}}
 	case "uint8", "int8", "uint16", "int16", "byte", "int32", "uint32", "rune":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{INTEGER}, Format: "int32"}}
 	case "uint64", "int64":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{INTEGER}, Format: "int64"}}
-	case "float32", "float64":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{NUMBER}, Format: typeName}}
+	case "float32":
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{NUMBER}, Format: "float"}}
+	case "float64":
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{NUMBER}, Format: "double"}}
 	case "bool":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{BOOLEAN}}}
 	case "string":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}}}
+	// Extended primitives
+	case "time.Time":
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "date-time"}}
+	case "types.UUID", "uuid.UUID", "github.com/griffnb/core/lib/types.UUID", "github.com/google/uuid.UUID":
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "uuid"}}
+	case "decimal.Decimal", "github.com/shopspring/decimal.Decimal":
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{NUMBER}}}
 	}
 	return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{typeName}}}
 }

@@ -11,8 +11,12 @@ import (
 
 // isModelType checks if a type name represents a model type (not a primitive).
 // Returns true for custom types and qualified types (package.Type), false for Go primitives.
+// Also returns false for extended primitives like time.Time, UUID, and decimal.
 func isModelType(typeName string) bool {
-	// Primitive types
+	// Strip pointer prefix for checking
+	cleanType := strings.TrimPrefix(typeName, "*")
+
+	// Basic Go primitive types
 	primitives := map[string]bool{
 		"int":     true,
 		"int8":    true,
@@ -35,12 +39,28 @@ func isModelType(typeName string) bool {
 		"file":    true, // Special type for file uploads
 	}
 
-	if primitives[typeName] {
+	if primitives[cleanType] {
+		return false
+	}
+
+	// Extended primitives (commonly treated as primitives in OpenAPI)
+	extendedPrimitives := map[string]bool{
+		"time.Time":                                 true,
+		"decimal.Decimal":                           true,
+		"github.com/shopspring/decimal.Decimal":     true,
+		"types.UUID":                                true,
+		"uuid.UUID":                                 true,
+		"github.com/griffnb/core/lib/types.UUID":    true,
+		"github.com/google/uuid.UUID":               true,
+	}
+
+	if extendedPrimitives[cleanType] {
 		return false
 	}
 
 	// If it contains a dot, it's likely a qualified type (package.Type)
-	if strings.Contains(typeName, ".") {
+	// We already checked extended primitives above, so this is a real model
+	if strings.Contains(cleanType, ".") {
 		return true
 	}
 

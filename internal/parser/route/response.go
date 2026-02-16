@@ -176,10 +176,14 @@ func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isP
 	return &routedomain.Schema{Ref: ref}
 }
 
-// convertTypeToSchemaType converts a data type to a schema type
+// convertTypeToSchemaType converts a data type to a schema type.
+// Handles basic Go types and extended primitives (time.Time, UUID, decimal).
 func convertTypeToSchemaType(dataType string) string {
-	switch dataType {
-	case "int", "int32", "int64", "uint", "uint32", "uint64":
+	// Strip pointer prefix for processing
+	cleanType := strings.TrimPrefix(dataType, "*")
+
+	switch cleanType {
+	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "byte", "rune":
 		return "integer"
 	case "float32", "float64":
 		return "number"
@@ -187,6 +191,13 @@ func convertTypeToSchemaType(dataType string) string {
 		return "boolean"
 	case "string":
 		return "string"
+	// Extended primitives
+	case "time.Time":
+		return "string" // with format: date-time
+	case "types.UUID", "uuid.UUID", "github.com/griffnb/core/lib/types.UUID", "github.com/google/uuid.UUID":
+		return "string" // with format: uuid
+	case "decimal.Decimal", "github.com/shopspring/decimal.Decimal":
+		return "number"
 	default:
 		// For custom types, treat as object
 		return "object"

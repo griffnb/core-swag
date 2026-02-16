@@ -346,3 +346,78 @@ func TestIsModelType(t *testing.T) {
 		})
 	}
 }
+
+// TestIsModelType_ExtendedPrimitives tests that extended primitives are NOT treated as models
+func TestIsModelType_ExtendedPrimitives(t *testing.T) {
+	testCases := []struct {
+		name     string
+		typeName string
+		isModel  bool
+	}{
+		// Extended primitives should NOT be models
+		{"time.Time", "time.Time", false},
+		{"*time.Time", "*time.Time", false},
+		{"uuid.UUID", "uuid.UUID", false},
+		{"*uuid.UUID", "*uuid.UUID", false},
+		{"types.UUID", "types.UUID", false},
+		{"github.com/google/uuid.UUID", "github.com/google/uuid.UUID", false},
+		{"github.com/griffnb/core/lib/types.UUID", "github.com/griffnb/core/lib/types.UUID", false},
+		{"decimal.Decimal", "decimal.Decimal", false},
+		{"*decimal.Decimal", "*decimal.Decimal", false},
+		{"github.com/shopspring/decimal.Decimal", "github.com/shopspring/decimal.Decimal", false},
+
+		// Real models SHOULD be models
+		{"model.User", "model.User", true},
+		{"time.Timer", "time.Timer", true}, // Not time.Time
+		{"*model.Account", "*model.Account", true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := isModelType(tc.typeName)
+			assert.Equal(t, tc.isModel, result, "isModelType(%s) = %v, want %v", tc.typeName, result, tc.isModel)
+		})
+	}
+}
+
+// TestConvertTypeToSchemaType tests conversion of Go types to OpenAPI schema types
+func TestConvertTypeToSchemaType(t *testing.T) {
+	testCases := []struct {
+		name       string
+		dataType   string
+		schemaType string
+	}{
+		// Basic Go types
+		{"string", "string", "string"},
+		{"int", "int", "integer"},
+		{"int32", "int32", "integer"},
+		{"int64", "int64", "integer"},
+		{"uint", "uint", "integer"},
+		{"float32", "float32", "number"},
+		{"float64", "float64", "number"},
+		{"bool", "bool", "boolean"},
+
+		// Extended primitives - should have correct schema types
+		{"time.Time", "time.Time", "string"},
+		{"*time.Time", "*time.Time", "string"},
+		{"uuid.UUID", "uuid.UUID", "string"},
+		{"*uuid.UUID", "*uuid.UUID", "string"},
+		{"types.UUID", "types.UUID", "string"},
+		{"github.com/google/uuid.UUID", "github.com/google/uuid.UUID", "string"},
+		{"decimal.Decimal", "decimal.Decimal", "number"},
+		{"*decimal.Decimal", "*decimal.Decimal", "number"},
+		{"github.com/shopspring/decimal.Decimal", "github.com/shopspring/decimal.Decimal", "number"},
+
+		// Custom types should be object
+		{"User", "User", "object"},
+		{"model.User", "model.User", "object"},
+		{"github.com/myapp/model.Account", "github.com/myapp/model.Account", "object"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := convertTypeToSchemaType(tc.dataType)
+			assert.Equal(t, tc.schemaType, result, "convertTypeToSchemaType(%s) = %s, want %s", tc.dataType, result, tc.schemaType)
+		})
+	}
+}

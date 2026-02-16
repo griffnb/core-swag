@@ -1,5 +1,34 @@
 # Core-Swag Change Log
 
+## 2026-02-16: Extended Primitive Type Support - ADDED ✅
+
+**Status**: ✅ COMPLETE - Extended primitive types now handled consistently
+
+**Problem**: Multiple functions across the codebase had incomplete primitive type checking. While `internal/model/struct_field.go` had comprehensive support (including time.Time, UUID, decimal.Decimal), other parts of the codebase only handled basic Go types.
+
+**What Was Missing**:
+- `internal/domain/utils.go`: `IsGolangPrimitiveType()` and `TransToValidPrimitiveSchema()` only handled basic Go types
+- `internal/parser/route/schema.go`: `isModelType()` treated time.Time, UUID, decimal as models (WRONG!)
+- `internal/parser/route/response.go`: `convertTypeToSchemaType()` treated unknowns as "object"
+
+**Solution**:
+1. Added `IsExtendedPrimitiveType()` to `internal/domain/utils.go` - checks for both basic and extended primitives
+2. Updated `TransToValidPrimitiveSchema()` to handle:
+   - `time.Time` → string with format: date-time
+   - `types.UUID`, `uuid.UUID`, `github.com/google/uuid.UUID` → string with format: uuid
+   - `decimal.Decimal`, `github.com/shopspring/decimal.Decimal` → number
+3. Updated `isModelType()` to recognize extended primitives (not treat them as models)
+4. Updated `convertTypeToSchemaType()` to properly convert extended primitives
+
+**Result**: All parts of the codebase now consistently recognize and handle:
+- Basic Go types (int, string, bool, float, etc.)
+- time.Time and *time.Time
+- UUID types (types.UUID, uuid.UUID, etc.)
+- decimal.Decimal types
+- All with proper OpenAPI formats (date-time, uuid, etc.)
+
+---
+
 ## 2026-02-16: StructField[T] Schema Generation - FIXED ✅
 
 **Status**: ✅ COMPLETE - All references now properly generated!
