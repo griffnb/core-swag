@@ -453,7 +453,14 @@ func shouldTreatAsSwaggerPrimitive(named *types.Named) bool {
 func (c *CoreStructParser) checkNamed(fieldType types.Type) ([]*StructField, *types.Named, bool) {
 	named, ok := fieldType.(*types.Named)
 	if ok {
-		if strings.Contains(named.Obj().Pkg().Path(), "/lib/model/fields") {
+		// Check if package is nil (can happen for built-in/universe types)
+		pkg := named.Obj().Pkg()
+		if pkg == nil {
+			// Built-in type without package (like error interface) - skip
+			return nil, nil, false
+		}
+
+		if strings.Contains(pkg.Path(), "/lib/model/fields") {
 			return nil, nil, false
 		}
 		// Skip types that should be treated as primitives in Swagger
@@ -461,10 +468,10 @@ func (c *CoreStructParser) checkNamed(fieldType types.Type) ([]*StructField, *ty
 			return nil, nil, false
 		}
 		if _, ok := named.Underlying().(*types.Struct); ok {
-			console.Logger.Debug("Found sub type Package %s Name %s\n", named.Obj().Pkg().Path(), named.Obj().Name())
-			nextPackage, ok := c.packageMap[named.Obj().Pkg().Path()]
+			console.Logger.Debug("Found sub type Package %s Name %s\n", pkg.Path(), named.Obj().Name())
+			nextPackage, ok := c.packageMap[pkg.Path()]
 			if !ok {
-				console.Logger.Debug("Package not found for %s\n", named.Obj().Pkg().Path())
+				console.Logger.Debug("Package not found for %s\n", pkg.Path())
 				return nil, nil, true
 			}
 			console.Logger.Debug("Next Package: %s\n", nextPackage.PkgPath)

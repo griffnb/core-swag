@@ -368,7 +368,7 @@
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "hashed_password": {
           "type": "string"
@@ -395,7 +395,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.Properties"
         },
         "questions": {
           "type": "object"
@@ -404,7 +404,7 @@
           "type": "integer"
         },
         "signup_properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
           "type": "integer"
@@ -422,7 +422,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -460,7 +460,7 @@
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "hashed_password": {
           "type": "string"
@@ -481,7 +481,7 @@
           "type": "string"
         },
         "nested_settings": {
-          "type": "object"
+          "$ref": "#/definitions/account.NestedSettings"
         },
         "organization_id": {
           "type": "string"
@@ -496,7 +496,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.Properties"
         },
         "questions": {
           "type": "object"
@@ -505,7 +505,7 @@
           "type": "integer"
         },
         "signup_properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
           "type": "integer"
@@ -513,7 +513,7 @@
         "tags": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/definitions/account.IconTagJoin"
           }
         },
         "test_user_type": {
@@ -532,7 +532,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -564,7 +564,7 @@
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "id": {
           "type": "string"
@@ -576,7 +576,7 @@
           "type": "string"
         },
         "nested_settings": {
-          "type": "object"
+          "$ref": "#/definitions/account.NestedSettings"
         },
         "organization_id": {
           "type": "string"
@@ -596,7 +596,7 @@
         "tags": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/definitions/account.IconTagJoin"
           }
         },
         "test_user_type": {
@@ -612,7 +612,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -644,7 +644,7 @@
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "id": {
           "type": "string"
@@ -683,7 +683,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -691,7 +691,7 @@
       "type": "object",
       "properties": {
         "billing_plan_feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "billing_plan_id": {
           "type": "string"
@@ -730,16 +730,16 @@
           "type": "string"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "feature_set_overrides": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.MergeableFeatureSet"
         },
         "first_name": {
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "hashed_password": {
           "type": "string"
@@ -766,7 +766,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.Properties"
         },
         "questions": {
           "type": "object"
@@ -775,7 +775,7 @@
           "type": "integer"
         },
         "signup_properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
           "type": "integer"
@@ -793,7 +793,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -834,13 +834,13 @@
           "type": "string"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "first_name": {
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "id": {
           "type": "string"
@@ -879,7 +879,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -925,7 +925,7 @@
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "hashed_password": {
           "type": "string"
@@ -949,7 +949,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.Properties"
         },
         "questions": {
           "type": "object"
@@ -958,7 +958,7 @@
           "type": "integer"
         },
         "signup_properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
           "type": "integer"
@@ -976,7 +976,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -1008,7 +1008,7 @@
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "id": {
           "type": "string"
@@ -1044,7 +1044,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -1199,7 +1199,7 @@
           "type": "string"
         },
         "nested_settings": {
-          "type": "object"
+          "$ref": "#/definitions/account.NestedSettings"
         },
         "organization_name": {
           "type": "string"
@@ -1207,7 +1207,7 @@
         "tags": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/definitions/account.IconTagJoin"
           }
         },
         "updated_by_name": {
@@ -1219,12 +1219,12 @@
       "type": "object",
       "properties": {
         "nested_settings": {
-          "type": "object"
+          "$ref": "#/definitions/account.NestedSettings"
         },
         "tags": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/definitions/account.IconTagJoin"
           }
         }
       }
@@ -1548,7 +1548,7 @@
       "type": "object",
       "properties": {
         "billing_plan_feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "billing_plan_id": {
           "type": "string"
@@ -1563,10 +1563,10 @@
           "type": "number"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "feature_set_overrides": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.MergeableFeatureSet"
         }
       }
     },
@@ -1586,7 +1586,7 @@
           "type": "number"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         }
       }
     },
@@ -1651,7 +1651,7 @@
       "type": "object",
       "properties": {
         "billing_plan_feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "billing_plan_id": {
           "type": "string"
@@ -1693,16 +1693,16 @@
           "type": "string"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "feature_set_overrides": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.MergeableFeatureSet"
         },
         "first_name": {
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "hashed_password": {
           "type": "string"
@@ -1723,7 +1723,7 @@
           "type": "string"
         },
         "nested_settings": {
-          "type": "object"
+          "$ref": "#/definitions/account.NestedSettings"
         },
         "organization_id": {
           "type": "string"
@@ -1738,7 +1738,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.Properties"
         },
         "questions": {
           "type": "object"
@@ -1747,7 +1747,7 @@
           "type": "integer"
         },
         "signup_properties": {
-          "type": "object"
+          "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
           "type": "integer"
@@ -1755,7 +1755,7 @@
         "tags": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/definitions/account.IconTagJoin"
           }
         },
         "test_user_type": {
@@ -1774,7 +1774,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -1815,13 +1815,13 @@
           "type": "string"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "first_name": {
           "type": "string"
         },
         "flags": {
-          "type": "object"
+          "$ref": "#/definitions/account.Flags"
         },
         "id": {
           "type": "string"
@@ -1833,7 +1833,7 @@
           "type": "string"
         },
         "nested_settings": {
-          "type": "object"
+          "$ref": "#/definitions/account.NestedSettings"
         },
         "organization_id": {
           "type": "string"
@@ -1853,7 +1853,7 @@
         "tags": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/definitions/account.IconTagJoin"
           }
         },
         "test_user_type": {
@@ -1869,7 +1869,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -1910,7 +1910,7 @@
           "type": "integer"
         },
         "normalization": {
-          "type": "object"
+          "$ref": "#/definitions/address.Normalization"
         },
         "normalized_full_key": {
           "type": "string"
@@ -1928,7 +1928,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/address.Properties"
         },
         "raw_verification": {
           "type": "object"
@@ -1952,7 +1952,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -1993,7 +1993,7 @@
           "type": "integer"
         },
         "normalization": {
-          "type": "object"
+          "$ref": "#/definitions/address.Normalization"
         },
         "normalized_full_key": {
           "type": "string"
@@ -2011,7 +2011,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/address.Properties"
         },
         "raw_verification": {
           "type": "object"
@@ -2041,7 +2041,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -2109,7 +2109,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -2168,7 +2168,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -2203,7 +2203,7 @@
           "type": "integer"
         },
         "normalization": {
-          "type": "object"
+          "$ref": "#/definitions/address.Normalization"
         },
         "normalized_full_key": {
           "type": "string"
@@ -2221,7 +2221,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/address.Properties"
         },
         "raw_verification": {
           "type": "object"
@@ -2239,7 +2239,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -2292,7 +2292,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -2478,7 +2478,7 @@
           "type": "integer"
         },
         "normalization": {
-          "type": "object"
+          "$ref": "#/definitions/address.Normalization"
         },
         "normalized_full_key": {
           "type": "string"
@@ -2496,7 +2496,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/address.Properties"
         },
         "raw_verification": {
           "type": "object"
@@ -2526,7 +2526,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -2594,7 +2594,7 @@
           "type": "string"
         },
         "verification": {
-          "type": "object"
+          "$ref": "#/definitions/address.Verification"
         }
       }
     },
@@ -2833,10 +2833,10 @@
           "type": "integer"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "fees": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Fees"
         },
         "id": {
           "type": "string"
@@ -2854,7 +2854,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
           "type": "integer"
@@ -2895,10 +2895,10 @@
           "type": "integer"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "fees": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Fees"
         },
         "id": {
           "type": "string"
@@ -2916,7 +2916,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
           "type": "integer"
@@ -2957,7 +2957,7 @@
           "type": "integer"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "id": {
           "type": "string"
@@ -2972,7 +2972,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
           "type": "integer"
@@ -3010,7 +3010,7 @@
           "type": "integer"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "id": {
           "type": "string"
@@ -3025,7 +3025,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
           "type": "integer"
@@ -3063,10 +3063,10 @@
           "type": "integer"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "fees": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Fees"
         },
         "id": {
           "type": "string"
@@ -3084,7 +3084,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
           "type": "integer"
@@ -3122,7 +3122,7 @@
           "type": "integer"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "id": {
           "type": "string"
@@ -3137,7 +3137,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
           "type": "integer"
@@ -3253,10 +3253,10 @@
           "type": "integer"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "fees": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Fees"
         },
         "id": {
           "type": "string"
@@ -3274,7 +3274,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
           "type": "integer"
@@ -3315,7 +3315,7 @@
           "type": "integer"
         },
         "feature_set": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "id": {
           "type": "string"
@@ -3330,7 +3330,7 @@
           "type": "string"
         },
         "properties": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
           "type": "integer"

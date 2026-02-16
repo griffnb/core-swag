@@ -51,6 +51,16 @@ func (b *BuilderService) SetTypeResolver(resolver TypeResolver) {
 	b.typeResolver = resolver
 }
 
+// SetStructParser sets the struct parser for proper field resolution
+func (b *BuilderService) SetStructParser(parser *model.CoreStructParser) {
+	b.structParser = parser
+}
+
+// SetEnumLookup sets the enum lookup for enum type resolution
+func (b *BuilderService) SetEnumLookup(enumLookup model.TypeEnumLookup) {
+	b.enumLookup = enumLookup
+}
+
 // BuildSchema builds an OpenAPI schema from a TypeSpecDef.
 // Returns the schema name and any error encountered.
 func (b *BuilderService) BuildSchema(typeSpec *domain.TypeSpecDef) (string, error) {
@@ -82,7 +92,26 @@ func (b *BuilderService) BuildSchema(typeSpec *domain.TypeSpecDef) (string, erro
 	// Handle different type kinds
 	switch t := typeSpec.TypeSpec.Type.(type) {
 	case *ast.StructType:
-		// Direct struct type - parse fields
+		// Direct struct type - use CoreStructParser if available for proper field resolution
+		if b.structParser != nil {
+			// Extract package path and type name
+			packagePath := typeSpec.PkgPath
+			typeName := typeSpec.TypeSpec.Name.Name
+
+			// Use CoreStructParser to get properly parsed fields
+			builder := b.structParser.LookupStructFields("", packagePath, typeName)
+			if builder != nil {
+				// Use StructBuilder.BuildSpecSchema() to generate schema with proper type references
+				builtSchema, _, err := builder.BuildSpecSchema(typeName, false, false, b.enumLookup)
+				if err == nil && builtSchema != nil {
+					schema = *builtSchema
+					break
+				}
+				// If CoreStructParser failed, fall back to simple AST parsing below
+			}
+		}
+
+		// Fallback: Simple AST parsing (used when CoreStructParser not available or fails)
 		structType := t
 		schema.Properties = make(map[string]spec.Schema)
 		if structType.Fields != nil {

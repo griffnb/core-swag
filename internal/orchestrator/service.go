@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/loader"
+	"github.com/griffnb/core-swag/internal/model"
 	"github.com/griffnb/core-swag/internal/parser/base"
 	"github.com/griffnb/core-swag/internal/parser/route"
 	structparser "github.com/griffnb/core-swag/internal/parser/struct"
@@ -112,6 +113,16 @@ func New(config *Config) *Service {
 	schemaBuilder := schema.NewBuilder()
 	schemaBuilder.SetPropNamingStrategy(config.PropNamingStrategy)
 	schemaBuilder.SetTypeResolver(registryService) // Enable type alias resolution
+
+	// Create and configure CoreStructParser for proper field resolution
+	coreStructParser := &model.CoreStructParser{}
+	schemaBuilder.SetStructParser(coreStructParser)
+
+	// Create enum lookup using CoreStructParser
+	enumLookup := &model.ParserEnumLookup{
+		Parser: coreStructParser,
+	}
+	schemaBuilder.SetEnumLookup(enumLookup)
 
 	// Create swagger spec
 	swagger := &spec.Swagger{

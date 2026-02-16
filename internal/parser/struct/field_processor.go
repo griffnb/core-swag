@@ -52,8 +52,31 @@ func processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []s
 	// Check if custom model and extract inner type
 	if isCustomModel(fieldType) {
 		innerType, err := extractInnerType(fieldType)
-		if err == nil {
+		if err == nil && innerType != "" {
 			fieldType = innerType
+
+			// If the extracted type doesn't have a package qualifier (no ".")
+			// and is not a primitive type, add the package name
+			// But DON'T add package to slice/map prefixes - only to the base type
+			if file != nil && !strings.Contains(fieldType, ".") && !isPrimitiveTypeName(fieldType) {
+				// Handle slices: []Type -> []package.Type
+				if strings.HasPrefix(fieldType, "[]") {
+					elemType := strings.TrimPrefix(fieldType, "[]")
+					if !isPrimitiveTypeName(elemType) && !strings.Contains(elemType, ".") {
+						fieldType = "[]" + file.Name.Name + "." + elemType
+					}
+				} else if strings.HasPrefix(fieldType, "map[") {
+					// Handle maps: map[key]value -> map[key]package.value (if needed)
+					// For now, leave maps as-is - more complex to handle
+				} else {
+					// Simple type reference - add package qualifier
+					fieldType = file.Name.Name + "." + fieldType
+				}
+			}
+		} else {
+			// Extraction failed - this is a fields.StructField[...] we couldn't parse
+			// Treat as generic object instead of trying to create invalid reference
+			fieldType = "object"
 		}
 	}
 
@@ -61,6 +84,10 @@ func processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []s
 	if strings.HasPrefix(fieldType, "fields.") {
 		if resolvedType := resolveFieldsType(fieldType); resolvedType != "" {
 			fieldType = resolvedType
+		} else {
+			// Could not resolve fields.* type (likely fields.StructField[...] that wasn't extracted)
+			// Fall back to generic object
+			fieldType = "object"
 		}
 	}
 
@@ -274,10 +301,21 @@ func buildPropertySchema(fieldType string, tags fieldTags) spec.Schema {
 		elemType = stripPointer(elemType)
 
 		// Determine element schema
-		elemSchema := &spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{resolveBasicType(elemType)},
-			},
+		var elemSchema *spec.Schema
+
+		// Check if element type is a package-qualified struct type (contains ".")
+		// If so, create a reference instead of a generic object
+		if strings.Contains(elemType, ".") && !isPrimitiveTypeName(elemType) {
+			// This is a qualified type like "classification.JoinedClassification"
+			// Create a reference to it
+			elemSchema = spec.RefSchema("#/definitions/" + elemType)
+		} else {
+			// Primitive or local type
+			elemSchema = &spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Type: []string{resolveBasicType(elemType)},
+				},
+			}
 		}
 
 		schema.Items = &spec.SchemaOrArray{
@@ -291,7 +329,13 @@ func buildPropertySchema(fieldType string, tags fieldTags) spec.Schema {
 	if fieldType == "integer" || fieldType == "number" || fieldType == "string" || fieldType == "boolean" {
 		schema.Type = []string{fieldType}
 	} else {
-		// Complex type - reference or object
+		// Check if this is a struct type (contains package qualifier like "account.Properties")
+		// If so, create a reference instead of a generic object
+		if strings.Contains(fieldType, ".") {
+			// This is a package-qualified type - create a $ref
+			return *spec.RefSchema("#/definitions/" + fieldType)
+		}
+		// Other complex types - reference or object
 		schema.Type = []string{resolveBasicType(fieldType)}
 	}
 
@@ -321,6 +365,17 @@ func buildPropertySchema(fieldType string, tags fieldTags) spec.Schema {
 	}
 
 	return schema
+}
+
+// isPrimitiveTypeName checks if a type name is a Go primitive type
+func isPrimitiveTypeName(typeName string) bool {
+	primitives := map[string]bool{
+		"string": true, "int": true, "int8": true, "int16": true, "int32": true, "int64": true,
+		"uint": true, "uint8": true, "uint16": true, "uint32": true, "uint64": true,
+		"float32": true, "float64": true, "bool": true, "byte": true, "rune": true,
+		"any": true, "interface{}": true,
+	}
+	return primitives[typeName]
 }
 
 // toCamelCase converts PascalCase to camelCase (lowercase first letter)
