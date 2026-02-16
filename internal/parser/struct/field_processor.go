@@ -91,6 +91,16 @@ func processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []s
 		}
 	}
 
+	// For same-package struct types (no dot, not primitive), add package qualifier
+	if file != nil && !strings.Contains(fieldType, ".") &&
+		!isPrimitiveTypeName(fieldType) &&
+		fieldType != "object" && fieldType != "array" && fieldType != "map" && fieldType != "interface" &&
+		fieldType != "integer" && fieldType != "number" && fieldType != "string" && fieldType != "boolean" {
+		// This is a same-package struct type like "Properties"
+		// Add package qualifier
+		fieldType = file.Name.Name + "." + fieldType
+	}
+
 	// Build property schema
 	propSchema := buildPropertySchema(fieldType, tags)
 
@@ -210,7 +220,9 @@ func resolveBasicType(typeName string) string {
 	case "error", "any":
 		return "interface"
 	default:
-		return "object"
+		// Preserve the type name for struct types (don't convert to "object")
+		// This allows processField to properly add package qualifiers
+		return typeName
 	}
 }
 
@@ -221,23 +233,16 @@ func resolvePackageType(fullType string) string {
 		return fieldsType
 	}
 
-	// Special handling for known types
-	if fullType == "time.Time" {
-		return "string"
-	}
-	if fullType == "uuid.UUID" {
-		return "string"
-	}
-	if fullType == "decimal.Decimal" {
-		return "number"
+	// Check if it's an extended primitive (time.Time, UUID, decimal)
+	// Return the qualified name so buildPropertySchema can properly detect it
+	if isExtendedPrimitive(fullType) {
+		return fullType // Return full type name (e.g., "types.UUID")
 	}
 
-	// Check if it's a custom model type
-	if isCustomModel(fullType) {
-		return fullType
-	}
-
-	return "object"
+	// For any package-qualified type (constants.ClassificationType, account.Properties, etc.)
+	// Return the full type name so buildPropertySchema can create a $ref
+	// This handles both enum types and struct types from other packages
+	return fullType
 }
 
 // exprToString converts an AST expression to string representation
@@ -303,10 +308,21 @@ func buildPropertySchema(fieldType string, tags fieldTags) spec.Schema {
 		// Determine element schema
 		var elemSchema *spec.Schema
 
-		// Check if element type is a package-qualified struct type (contains ".")
-		// If so, create a reference instead of a generic object
-		if strings.Contains(elemType, ".") && !isPrimitiveTypeName(elemType) {
-			// This is a qualified type like "classification.JoinedClassification"
+		// Check if element type is a primitive (basic or extended)
+		if isPrimitiveTypeName(elemType) || isExtendedPrimitive(elemType) {
+			// It's a primitive - get the proper schema with format
+			baseType, format := getPrimitiveSchema(elemType)
+			elemSchema = &spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Type: []string{baseType},
+				},
+			}
+			if format != "" {
+				elemSchema.Format = format
+			}
+		} else if strings.Contains(elemType, ".") {
+			// Check if element type is a package-qualified struct type (contains ".")
+			// If so, create a reference instead of a generic object
 			// Create a reference to it
 			elemSchema = spec.RefSchema("#/definitions/" + elemType)
 		} else {
@@ -329,14 +345,24 @@ func buildPropertySchema(fieldType string, tags fieldTags) spec.Schema {
 	if fieldType == "integer" || fieldType == "number" || fieldType == "string" || fieldType == "boolean" {
 		schema.Type = []string{fieldType}
 	} else {
-		// Check if this is a struct type (contains package qualifier like "account.Properties")
-		// If so, create a reference instead of a generic object
-		if strings.Contains(fieldType, ".") {
+		// Check if this is an extended primitive (time.Time, types.UUID, etc.) BEFORE checking for refs
+		// Extended primitives have dots but should NOT be refs
+		if isPrimitiveTypeName(fieldType) || isExtendedPrimitive(fieldType) {
+			// It's a primitive - get the proper schema
+			baseType, format := getPrimitiveSchema(fieldType)
+			schema.Type = []string{baseType}
+			if format != "" {
+				schema.Format = format
+			}
+		} else if strings.Contains(fieldType, ".") {
+			// Check if this is a struct type (contains package qualifier like "account.Properties")
+			// If so, create a reference instead of a generic object
 			// This is a package-qualified type - create a $ref
 			return *spec.RefSchema("#/definitions/" + fieldType)
+		} else {
+			// Other complex types - reference or object
+			schema.Type = []string{resolveBasicType(fieldType)}
 		}
-		// Other complex types - reference or object
-		schema.Type = []string{resolveBasicType(fieldType)}
 	}
 
 	// Apply validation constraints
@@ -376,6 +402,42 @@ func isPrimitiveTypeName(typeName string) bool {
 		"any": true, "interface{}": true,
 	}
 	return primitives[typeName]
+}
+
+// isExtendedPrimitive checks if a type is an extended primitive (time.Time, UUID, decimal)
+// These types have package qualifiers but should be treated as primitives, not refs
+func isExtendedPrimitive(typeName string) bool {
+	// Strip pointer prefix
+	cleanType := strings.TrimPrefix(typeName, "*")
+
+	extendedPrimitives := map[string]bool{
+		"time.Time":                              true,
+		"decimal.Decimal":                        true,
+		"github.com/shopspring/decimal.Decimal":  true,
+		"types.UUID":                             true,
+		"uuid.UUID":                              true,
+		"github.com/griffnb/core/lib/types.UUID": true,
+		"github.com/google/uuid.UUID":            true,
+	}
+
+	return extendedPrimitives[cleanType]
+}
+
+// getPrimitiveSchema returns the OpenAPI type and format for a primitive type
+func getPrimitiveSchema(typeName string) (schemaType string, format string) {
+	// Strip pointer prefix
+	cleanType := strings.TrimPrefix(typeName, "*")
+
+	switch cleanType {
+	case "time.Time":
+		return "string", "date-time"
+	case "types.UUID", "uuid.UUID", "github.com/griffnb/core/lib/types.UUID", "github.com/google/uuid.UUID":
+		return "string", "uuid"
+	case "decimal.Decimal", "github.com/shopspring/decimal.Decimal":
+		return "number", ""
+	default:
+		return resolveBasicType(typeName), ""
+	}
 }
 
 // toCamelCase converts PascalCase to camelCase (lowercase first letter)

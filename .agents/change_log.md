@@ -1,5 +1,144 @@
 # Core-Swag Change Log
 
+## 2026-02-16: Struct Parser Field Processor - FIXED ✅
+
+**Status**: ✅ COMPLETE - Regular structs now generate correct schemas with UUIDs, refs, and enums!
+
+**Problem**: The ACTUAL issue was in `internal/parser/struct/field_processor.go`, NOT the schema builder fallback. Regular Go structs were generating:
+```json
+{
+  "id": {"type": "object"},  // Should be UUID
+  "type": {"type": "object"},  // Should be enum $ref
+  "properties": {"type": "object"}  // Should be struct $ref
+}
+```
+
+**Root Cause**: The struct parser service (`ParseFile` → `ParseStruct` → `processField`) builds schemas BEFORE `BuildSchema` is called, adding them directly to definitions. The field_processor had multiple issues:
+
+1. **Missing Extended Primitive Support**: `resolvePackageType` only checked `time.Time`, `uuid.UUID`, `decimal.Decimal` but NOT `types.UUID`
+2. **Losing Type Names**: `resolveBasicType` converted unknown types to `"object"`, losing the actual type name
+3. **No Package Qualifier for Same-Package Types**: Types like `*Properties` weren't getting `classification.` prefix added
+4. **Generic "object" for All Package Types**: `resolvePackageType` returned `"object"` for enums and cross-package structs
+
+**Solution - Files Modified**:
+
+### `/internal/parser/struct/field_processor.go`
+
+**1. Updated `resolvePackageType` (lines 218-232)**:
+- Added `isExtendedPrimitive()` check for all UUID/time/decimal variants
+- Changed to return the FULL type name for ALL package-qualified types
+- This allows `buildPropertySchema` to create proper `$ref` for enums and structs
+
+**2. Updated `buildPropertySchema` (lines 327-353)**:
+- Added `isExtendedPrimitive()` and `getPrimitiveSchema()` checks BEFORE creating refs
+- Now checks extended primitives first, then creates $refs for other package types
+- Also updated slice element handling to check extended primitives
+
+**3. Updated `processField` (lines 95-102)**:
+- Added logic to add package qualifier for same-package struct types
+- Checks if type has no dot, isn't primitive, and adds `packageName.TypeName`
+
+**4. Updated `resolveBasicType` (lines 199-216)**:
+- Changed default case to return the type name instead of `"object"`
+- This preserves struct type names for proper $ref creation
+
+**5. Added Helper Functions**:
+- `isExtendedPrimitive()`: Checks for time.Time, types.UUID, uuid.UUID, decimal, etc.
+- `getPrimitiveSchema()`: Returns proper OpenAPI type and format for extended primitives
+
+**Result - Complete Fix**:
+```json
+// BEFORE
+"classification.JoinedClassification": {
+  "properties": {
+    "id": {"type": "object"},
+    "type": {"type": "object"},
+    "properties": {"type": "object"}
+  }
+}
+
+// AFTER
+"classification.JoinedClassification": {
+  "properties": {
+    "id": {"type": "string", "format": "uuid"},
+    "type": {"$ref": "#/definitions/constants.ClassificationType"},
+    "properties": {"$ref": "#/definitions/classification.Properties"}
+  }
+}
+```
+
+**Verified Working**:
+- ✅ `types.UUID` → `{"type": "string", "format": "uuid"}`
+- ✅ `uuid.UUID`, `time.Time`, `decimal.Decimal` → Proper primitives with formats
+- ✅ `*Properties` (same-package) → `{"$ref": "#/definitions/classification.Properties"}`
+- ✅ `constants.ClassificationType` (enum) → `{"$ref": "#/definitions/constants.ClassificationType"}`
+- ✅ Nested definitions are created recursively
+- ✅ Arrays of primitives and structs work correctly
+
+---
+
+## 2026-02-16: Schema Builder Fallback Path - FIXED ✅
+
+**Status**: ✅ COMPLETE - Fallback AST parsing now creates proper schemas with refs, formats, and enums
+
+**Problem**: The schema builder's fallback AST parsing path (used when CoreStructParser is unavailable or fails) was creating generic `{"type": "object"}` for everything:
+- `types.UUID` → `{"type": "object"}` ❌
+- `constants.ClassificationType` → `{"type": "object"}` ❌
+- `*Properties` (nested struct) → `{"type": "object"}` ❌
+- No recursive nesting of definitions ❌
+
+**Root Cause**: `internal/schema/builder.go` had three schema building paths:
+1. ✅ CoreStructParser path (using `struct_field.go`) - Works correctly
+2. ❌ Fallback AST parsing path (lines 114-203) - Created generic objects
+3. ✅ Route parameter path - Works correctly
+
+The fallback path's `getFieldType()` function (lines 280-327) only handled a few special cases and returned `"object"` for everything else.
+
+**Solution**:
+1. **Rewrote `getFieldType()`** to return 3 values: (schemaType, format, qualifiedName)
+   - Uses `domain.IsExtendedPrimitiveType()` for extended primitive detection
+   - Returns qualified name (package.Type) for custom types
+   - Properly handles time.Time, UUID, decimal with formats
+
+2. **Added `buildFieldSchema()`** - Comprehensive field schema builder that:
+   - Handles primitives with proper formats (uuid, date-time)
+   - Checks enum lookup and creates inline enum schemas
+   - Creates `$ref` schemas for nested struct types
+   - Handles arrays recursively with proper element schemas
+   - Handles interface types correctly
+
+3. **Updated fallback AST parsing** to use `buildFieldSchema()` instead of simple type string
+
+**Result**:
+```json
+// BEFORE
+"classification.JoinedClassification": {
+  "properties": {
+    "id": {"type": "object"},  // ❌
+    "type": {"type": "object"},  // ❌
+    "properties": {"type": "object"}  // ❌
+  }
+}
+
+// AFTER
+"classification.JoinedClassification": {
+  "properties": {
+    "id": {"type": "string", "format": "uuid"},  // ✅
+    "type": {"$ref": "#/definitions/constants.ClassificationType"},  // ✅
+    "properties": {"$ref": "#/definitions/classification.Properties"}  // ✅
+  }
+}
+```
+
+**Verified**:
+- ✅ UUID types → `{"type": "string", "format": "uuid"}`
+- ✅ time.Time → `{"type": "string", "format": "date-time"}`
+- ✅ Nested structs → `$ref` to proper definitions
+- ✅ Recursive nesting creates all nested definitions
+- ✅ Enum detection works (creates refs or inline enums)
+
+---
+
 ## 2026-02-16: Extended Primitive Type Support - ADDED ✅
 
 **Status**: ✅ COMPLETE - Extended primitive types now handled consistently

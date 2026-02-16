@@ -33,7 +33,7 @@ func NewBuilder() *BuilderService {
 		definitions:        make(map[string]spec.Schema),
 		parsedSchemas:      make(map[*domain.TypeSpecDef]string),
 		propNamingStrategy: "camelcase", // default
-		structParser:       nil,          // Will be set if needed
+		structParser:       nil,         // Will be set if needed
 		requiredByDefault:  false,
 	}
 }
@@ -162,42 +162,9 @@ func (b *BuilderService) BuildSchema(typeSpec *domain.TypeSpecDef) (string, erro
 					}
 				}
 
-				// Check if this field is a custom interface type
-				isCustomInterface := false
-				if ident, ok := field.Type.(*ast.Ident); ok && b.typeResolver != nil {
-					// Try to resolve the type
-					resolvedType := b.typeResolver.FindTypeSpec(ident.Name, typeSpec.File)
-					if resolvedType != nil {
-						// Check if it's an interface type
-						if _, ok := resolvedType.TypeSpec.Type.(*ast.InterfaceType); ok {
-							isCustomInterface = true
-						}
-					}
-				}
-
 				// Create property schema
-				fieldType := getFieldType(field.Type)
+				propSchema := b.buildFieldSchema(field.Type, typeSpec.File, example)
 
-				// Special handling for interface types (error, interface{}, any, custom interfaces)
-				// These should be represented as empty schemas (no type specified)
-				var propSchema spec.Schema
-				if fieldType == "interface" || isCustomInterface {
-					propSchema = spec.Schema{
-						SchemaProps: spec.SchemaProps{
-							// Empty - allows any JSON value
-						},
-					}
-				} else {
-					propSchema = spec.Schema{
-						SchemaProps: spec.SchemaProps{
-							Type: []string{fieldType},
-						},
-					}
-				}
-
-				if example != nil {
-					propSchema.Example = example
-				}
 				schema.Properties[jsonName] = propSchema
 			}
 		}
@@ -277,53 +244,170 @@ func indexOf(s, substr string) int {
 	return -1
 }
 
-func getFieldType(expr ast.Expr) string {
+// getFieldType returns the OpenAPI type for an AST expression.
+// Returns the type string, format string, and qualified type name (for references).
+// For extended primitives, returns proper type with format.
+// For custom types, returns qualified name for reference creation.
+func getFieldType(expr ast.Expr) (string, string, string) {
+	return getFieldTypeImpl(expr, "")
+}
+
+func getFieldTypeImpl(expr ast.Expr, prefix string) (schemaType string, format string, qualifiedName string) {
 	switch t := expr.(type) {
 	case *ast.Ident:
-		// Basic type like string, int
+		// Basic type like string, int, or custom type
 		switch t.Name {
 		case "string":
-			return "string"
-		case "int", "int32", "int64", "uint", "uint32", "uint64":
-			return "integer"
+			return "string", "", ""
+		case "int", "int32", "int64", "uint", "uint32", "uint64", "int8", "int16", "uint8", "uint16", "byte", "rune":
+			return "integer", "", ""
 		case "float32", "float64":
-			return "number"
+			return "number", "", ""
 		case "bool":
-			return "boolean"
+			return "boolean", "", ""
 		case "error", "any":
 			// error and any are interface types - allow any JSON value
-			return "interface"
+			return "interface", "", ""
 		default:
-			return "object"
+			// Custom type (enum or struct) - return as qualified name for reference
+			return "object", "", t.Name
 		}
 	case *ast.SelectorExpr:
-		// Package-qualified type like time.Time, uuid.UUID
+		// Package-qualified type like time.Time, uuid.UUID, constants.Role
 		if ident, ok := t.X.(*ast.Ident); ok {
 			packageName := ident.Name
 			typeName := t.Sel.Name
-			// Handle special types
-			if packageName == "time" && typeName == "Time" {
-				return "string" // time.Time is represented as string in OpenAPI
+			fullType := packageName + "." + typeName
+
+			// Check for extended primitives using domain package
+			if domain.IsExtendedPrimitiveType(fullType) {
+				// Handle specific extended primitives with formats
+				switch {
+				case packageName == "time" && typeName == "Time":
+					return "string", "date-time", ""
+				case (packageName == "uuid" || packageName == "types") && typeName == "UUID":
+					return "string", "uuid", ""
+				case packageName == "decimal" && typeName == "Decimal":
+					return "number", "", ""
+				default:
+					// Other extended primitives - use TransToValidPrimitiveSchema logic
+					schema := domain.TransToValidPrimitiveSchema(fullType)
+					if schema != nil && len(schema.Type) > 0 {
+						return schema.Type[0], schema.Format, ""
+					}
+					return "string", "", ""
+				}
 			}
-			if packageName == "uuid" && typeName == "UUID" {
-				return "string" // UUID is represented as string
-			}
-			if packageName == "decimal" && typeName == "Decimal" {
-				return "number" // decimal.Decimal is number
-			}
+
+			// Not an extended primitive - must be a custom type (enum or struct)
+			// Return qualified name for reference creation
+			return "object", "", fullType
 		}
-		return "object"
+		return "object", "", ""
 	case *ast.ArrayType:
-		return "array"
+		return "array", "", ""
 	case *ast.StarExpr:
-		// Pointer type - recurse
-		return getFieldType(t.X)
+		// Pointer type - recurse but keep qualified name
+		return getFieldTypeImpl(t.X, prefix)
 	case *ast.InterfaceType:
 		// interface{} or any - allow any JSON value
-		return "interface"
+		return "interface", "", ""
+	case *ast.MapType:
+		return "object", "", "" // Maps are represented as objects in OpenAPI
 	default:
-		return "object"
+		return "object", "", ""
 	}
+}
+
+// buildFieldSchema builds a schema for a struct field, handling primitives, refs, enums, and arrays.
+func (b *BuilderService) buildFieldSchema(fieldType ast.Expr, file *ast.File, example interface{}) spec.Schema {
+	// Get field type information
+	schemaType, format, qualifiedName := getFieldType(fieldType)
+
+	// Handle array types
+	if schemaType == "array" {
+		if arrayType, ok := fieldType.(*ast.ArrayType); ok {
+			elemSchema := b.buildFieldSchema(arrayType.Elt, file, nil)
+			schema := spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Type:  []string{"array"},
+					Items: &spec.SchemaOrArray{Schema: &elemSchema},
+				},
+			}
+			if example != nil {
+				schema.Example = example
+			}
+			return schema
+		}
+	}
+
+	// Handle interface types
+	if schemaType == "interface" {
+		return spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				// Empty - allows any JSON value
+			},
+		}
+	}
+
+	// Handle custom types (enums or structs) - qualifiedName is set
+	if qualifiedName != "" {
+		// Check if it's an enum type first
+		if b.enumLookup != nil {
+			enums, err := b.enumLookup.GetEnumsForType(qualifiedName, file)
+			if err == nil && len(enums) > 0 {
+				// It's an enum - create inline enum schema
+				schema := spec.Schema{
+					SchemaProps: spec.SchemaProps{},
+				}
+				// Determine enum base type from first value
+				if len(enums) > 0 {
+					switch enums[0].Value.(type) {
+					case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+						schema.Type = []string{"integer"}
+					case string:
+						schema.Type = []string{"string"}
+					case float32, float64:
+						schema.Type = []string{"number"}
+					default:
+						schema.Type = []string{"integer"}
+					}
+				}
+				// Add enum values
+				var enumValues []interface{}
+				for _, e := range enums {
+					enumValues = append(enumValues, e.Value)
+				}
+				schema.Enum = enumValues
+				if example != nil {
+					schema.Example = example
+				}
+				return schema
+			}
+		}
+
+		// Not an enum - create reference to nested type
+		schema := spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Ref: spec.MustCreateRef("#/definitions/" + qualifiedName),
+			},
+		}
+		return schema
+	}
+
+	// Primitive type - create schema with type and format
+	schema := spec.Schema{
+		SchemaProps: spec.SchemaProps{
+			Type: []string{schemaType},
+		},
+	}
+	if format != "" {
+		schema.Format = format
+	}
+	if example != nil {
+		schema.Example = example
+	}
+	return schema
 }
 
 // AddDefinition adds a schema definition with the given name.
