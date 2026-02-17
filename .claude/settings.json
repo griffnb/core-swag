@@ -10,6 +10,7 @@
     "allow": [
       "mcp__code_tools",
       "mcp__ui_code_tools",
+      "mcp__ckb",
       "Read(./**)"
     ],
    "deny": ["Read(*.env)", "Read(*.env.*)", "Read(*/.configs/**)"]

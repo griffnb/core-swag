@@ -37,3 +37,64 @@ This ensures the checklist remains an accurate reflection of project progress an
 2. Update documentation if adding new patterns
 
 **IMPORTANT Before you begin, always launch the context-fetcher sub agent to gather the information required for the task.**
+
+## 📐 STRUCT PARSING ARCHITECTURE
+
+**Updated: 2026-02-16 (Ralph Loop Consolidation Complete)**
+
+This project uses **TWO struct parsers** that work together, each serving a specific purpose:
+
+### 1. StructParserService (Orchestrator-level)
+**Location:** `internal/parser/struct/service.go` (~3,882 lines)
+**Used by:** Orchestrator (`internal/orchestrator/service.go`)
+**Purpose:** File-level struct parsing during code generation
+**Features:**
+- Parses entire Go files via `ParseFile(astFile, filePath)`
+- Handles embedded fields and struct composition
+- Processes json tags, validation tags, swaggerignore
+- Integrates with Registry for type resolution
+- Adds definitions to SchemaBuilder
+
+**When to use:** When parsing Go files in the orchestrator
+
+### 2. CoreStructParser (Schema-level)
+**Location:** `internal/model/struct_field_lookup.go` (~775 lines)
+**Used by:** SchemaBuilder (`internal/schema/builder.go`)
+**Purpose:** Type-level struct field extraction with full type information
+**Features:**
+- Uses `go/packages` for complete type information
+- Recursive field extraction with cross-package support
+- Handles `fields.StructField[T]` generic expansion
+- Global caching for performance
+- Detects extended primitives (time.Time, UUID, decimal.Decimal)
+- Supports Public variant generation
+
+**When to use:** When building schemas via SchemaBuilder
+
+### Core Implementation (Shared)
+**Location:** `internal/model/struct_field.go` (~538 lines)
+**Type:** `StructField` with `ToSpecSchema()` method
+**Features:** ALL struct parsing features are implemented here:
+- Extended primitives (time.Time → string+date-time, UUID → string+uuid, decimal → number)
+- Enum detection and inlining (via TypeEnumLookup interface)
+- Generic extraction (StructField[T], IntConstantField[T], StringConstantField[T])
+- Embedded field merging
+- Validation constraints (min/max, required, minLength/maxLength, pattern)
+- Public mode filtering (public:"view|edit" tags)
+- SwaggerIgnore handling (swaggerignore:"true", json:"-")
+- Arrays and maps (recursive type resolution)
+- Nested struct references ($ref with #/definitions/)
+- Force required parameter
+
+### Consolidation History
+**Phase 1 (Iteration 1):** Verified all features implemented in struct_field.go
+**Phase 2 (Iteration 2):** Removed SchemaBuilder fallback code (228 lines deleted)
+**Result:** SchemaBuilder now exclusively uses CoreStructParser (no duplicate parsing)
+
+### Key Design Decision
+These two parsers are intentionally separate:
+- **StructParserService** handles orchestration-level concerns (files, registry, caching)
+- **CoreStructParser** handles schema-level concerns (types, go/packages, Public variants)
+- Both use the same underlying implementation (StructField.ToSpecSchema)
+
+**DO NOT** try to consolidate these further - they serve different architectural layers.
