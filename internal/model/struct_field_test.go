@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+	"go/ast"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -135,7 +137,7 @@ func TestToSpecSchema_StructField_Public(t *testing.T) {
 	assert.Equal(t, "user", propName)
 	assert.True(t, required)
 	assert.Equal(t, 1, len(nestedTypes))
-	assert.Equal(t, "User", nestedTypes[0])
+	assert.Equal(t, "UserPublic", nestedTypes[0]) // Should include Public suffix when public=true
 	assert.NotNil(t, schema)
 	assert.Equal(t, "#/definitions/UserPublic", schema.Ref.String())
 }
@@ -251,14 +253,14 @@ func TestBuildSchemaForType(t *testing.T) {
 			typeStr:    "User",
 			public:     true,
 			wantRef:    "#/definitions/UserPublic",
-			wantNested: []string{"User"},
+			wantNested: []string{"UserPublic"}, // Should include Public suffix when public=true
 		},
 		{
 			name:       "package qualified struct",
 			typeStr:    "billing_plan.FeatureSet",
 			public:     true,
 			wantRef:    "#/definitions/billing_plan.FeatureSetPublic",
-			wantNested: []string{"billing_plan.FeatureSet"},
+			wantNested: []string{"billing_plan.FeatureSetPublic"}, // Should include Public suffix when public=true
 		},
 		{
 			name:     "array of strings",
@@ -295,4 +297,285 @@ func TestBuildSchemaForType(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestToSpecSchema_ArrayElementTypes(t *testing.T) {
+	tests := []struct {
+		name              string
+		field             *StructField
+		wantType          []string
+		wantItemsType     []string
+		wantItemsRef      string
+		wantItemsFormat   string
+	}{
+		{
+			name: "array of strings",
+			field: &StructField{
+				Name:       "Tags",
+				TypeString: "[]string",
+				Tag:        `json:"tags"`,
+			},
+			wantType:      []string{"array"},
+			wantItemsType: []string{"string"},
+		},
+		{
+			name: "array of integers",
+			field: &StructField{
+				Name:       "IDs",
+				TypeString: "[]int",
+				Tag:        `json:"ids"`,
+			},
+			wantType:      []string{"array"},
+			wantItemsType: []string{"integer"},
+		},
+		{
+			name: "array of int64",
+			field: &StructField{
+				Name:       "Timestamps",
+				TypeString: "[]int64",
+				Tag:        `json:"timestamps"`,
+			},
+			wantType:        []string{"array"},
+			wantItemsType:   []string{"integer"},
+			wantItemsFormat: "int64",
+		},
+		{
+			name: "array of booleans",
+			field: &StructField{
+				Name:       "Flags",
+				TypeString: "[]bool",
+				Tag:        `json:"flags"`,
+			},
+			wantType:      []string{"array"},
+			wantItemsType: []string{"boolean"},
+		},
+		{
+			name: "array of floats",
+			field: &StructField{
+				Name:       "Prices",
+				TypeString: "[]float64",
+				Tag:        `json:"prices"`,
+			},
+			wantType:        []string{"array"},
+			wantItemsType:   []string{"number"},
+			wantItemsFormat: "double",
+		},
+		{
+			name: "array of struct pointers",
+			field: &StructField{
+				Name:       "Users",
+				TypeString: "[]*User",
+				Tag:        `json:"users"`,
+			},
+			wantType:     []string{"array"},
+			wantItemsRef: "#/definitions/User",
+		},
+		{
+			name: "array of package qualified structs",
+			field: &StructField{
+				Name:       "Accounts",
+				TypeString: "[]account.Account",
+				Tag:        `json:"accounts"`,
+			},
+			wantType:     []string{"array"},
+			wantItemsRef: "#/definitions/account.Account",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			propName, schema, required, nestedTypes, err := tt.field.ToSpecSchema(false, false, nil)
+			assert.NoError(t, err)
+			assert.NotNil(t, schema)
+			assert.True(t, required, "Array fields should be required by default")
+
+			// Check array type
+			assert.Equal(t, len(tt.wantType), len(schema.Type), "Schema type length should match")
+			if len(tt.wantType) > 0 && len(schema.Type) > 0 {
+				assert.Equal(t, tt.wantType[0], schema.Type[0], "Schema should have type 'array'")
+			}
+
+			// Check items schema exists
+			assert.NotNil(t, schema.Items, "Array schema should have items")
+			assert.NotNil(t, schema.Items.Schema, "Array schema items should have schema")
+
+			items := schema.Items.Schema
+
+			// Check item type or reference
+			if tt.wantItemsRef != "" {
+				assert.Equal(t, tt.wantItemsRef, items.Ref.String(), "Array items should reference correct type")
+				assert.Greater(t, len(nestedTypes), 0, "Should have nested types for struct arrays")
+			} else {
+				assert.Equal(t, len(tt.wantItemsType), len(items.Type), "Items type length should match")
+				if len(tt.wantItemsType) > 0 && len(items.Type) > 0 {
+					assert.Equal(t, tt.wantItemsType[0], items.Type[0], "Array items should have correct type")
+				}
+				if tt.wantItemsFormat != "" {
+					assert.Equal(t, tt.wantItemsFormat, items.Format, "Array items should have correct format")
+				}
+			}
+
+			// Verify property name
+			assert.NotEmpty(t, propName)
+		})
+	}
+}
+
+func TestToSpecSchema_AnyInterfaceTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		field    *StructField
+		wantType []string
+	}{
+		{
+			name: "any type",
+			field: &StructField{
+				Name:       "Data",
+				TypeString: "any",
+				Tag:        `json:"data"`,
+			},
+			wantType: []string{"object"},
+		},
+		{
+			name: "interface{} type",
+			field: &StructField{
+				Name:       "Metadata",
+				TypeString: "interface{}",
+				Tag:        `json:"metadata"`,
+			},
+			wantType: []string{"object"},
+		},
+		{
+			name: "interface{} with spaces",
+			field: &StructField{
+				Name:       "Options",
+				TypeString: "interface {}",
+				Tag:        `json:"options"`,
+			},
+			wantType: []string{"object"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			propName, schema, required, nestedTypes, err := tt.field.ToSpecSchema(false, false, nil)
+			assert.NoError(t, err)
+			assert.NotNil(t, schema)
+			assert.True(t, required, "Any/interface fields should be required by default")
+
+			// Check that schema has object type
+			assert.Equal(t, len(tt.wantType), len(schema.Type), "Schema type length should match")
+			if len(tt.wantType) > 0 && len(schema.Type) > 0 {
+				assert.Equal(t, tt.wantType[0], schema.Type[0], "Any/interface should generate object type")
+			}
+
+			// Should not generate nested types
+			assert.Equal(t, 0, len(nestedTypes), "Any/interface should not generate nested types")
+
+			// Verify property name
+			assert.NotEmpty(t, propName)
+		})
+	}
+}
+
+func TestToSpecSchema_EnumWithUnderlyingType(t *testing.T) {
+	// Mock enum lookup that returns enum values
+	mockEnumLookup := &mockEnumLookup{
+		enums: map[string][]EnumValue{
+			"constants.Role": {
+				{Key: "RoleAdmin", Value: 1, Comment: "Administrator"},
+				{Key: "RoleUser", Value: 2, Comment: "Regular user"},
+				{Key: "RoleGuest", Value: 3, Comment: "Guest user"},
+			},
+			"constants.Status": {
+				{Key: "StatusActive", Value: int64(1), Comment: "Active"},
+				{Key: "StatusInactive", Value: int64(0), Comment: "Inactive"},
+			},
+		},
+	}
+
+	tests := []struct {
+		name          string
+		field         *StructField
+		enumLookup    TypeEnumLookup
+		wantType      []string
+		wantEnumCount int
+		wantHasEnum   bool
+	}{
+		{
+			name: "enum with int underlying type",
+			field: &StructField{
+				Name:       "Role",
+				TypeString: "constants.Role",
+				Tag:        `json:"role"`,
+			},
+			enumLookup:    mockEnumLookup,
+			wantType:      []string{"integer"},
+			wantEnumCount: 3,
+			wantHasEnum:   true,
+		},
+		{
+			name: "enum with int64 underlying type",
+			field: &StructField{
+				Name:       "Status",
+				TypeString: "constants.Status",
+				Tag:        `json:"status"`,
+			},
+			enumLookup:    mockEnumLookup,
+			wantType:      []string{"integer"},
+			wantEnumCount: 2,
+			wantHasEnum:   true,
+		},
+		{
+			name: "non-enum type should not have enum values",
+			field: &StructField{
+				Name:       "Count",
+				TypeString: "int",
+				Tag:        `json:"count"`,
+			},
+			enumLookup:  mockEnumLookup,
+			wantType:    []string{"integer"},
+			wantHasEnum: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			propName, schema, required, nestedTypes, err := tt.field.ToSpecSchema(false, false, tt.enumLookup)
+			assert.NoError(t, err)
+			assert.NotNil(t, schema)
+			assert.True(t, required)
+
+			// Check type
+			assert.Equal(t, len(tt.wantType), len(schema.Type))
+			if len(tt.wantType) > 0 && len(schema.Type) > 0 {
+				assert.Equal(t, tt.wantType[0], schema.Type[0])
+			}
+
+			// Check enum values
+			if tt.wantHasEnum {
+				assert.NotNil(t, schema.Enum, "Schema should have enum values")
+				assert.Equal(t, tt.wantEnumCount, len(schema.Enum), "Enum count should match")
+
+				// Should not generate nested types for inline enums
+				assert.Equal(t, 0, len(nestedTypes), "Inline enums should not generate nested types")
+			} else {
+				assert.Nil(t, schema.Enum, "Non-enum should not have enum values")
+			}
+
+			assert.NotEmpty(t, propName)
+		})
+	}
+}
+
+// mockEnumLookup implements TypeEnumLookup for testing
+type mockEnumLookup struct {
+	enums map[string][]EnumValue
+}
+
+func (m *mockEnumLookup) GetEnumsForType(typeName string, file *ast.File) ([]EnumValue, error) {
+	if enums, ok := m.enums[typeName]; ok {
+		return enums, nil
+	}
+	return nil, fmt.Errorf("no enums for type: %s", typeName)
 }

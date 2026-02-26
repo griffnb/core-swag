@@ -2,6 +2,7 @@
 package schema
 
 import (
+	"fmt"
 	"go/ast"
 	"strings"
 	"unicode"
@@ -89,7 +90,6 @@ func (b *BuilderService) BuildSchema(typeSpec *domain.TypeSpecDef) (string, erro
 		},
 	}
 
-	// Handle different type kinds
 	switch t := typeSpec.TypeSpec.Type.(type) {
 	case *ast.StructType:
 		// Use CoreStructParser for proper field resolution
@@ -124,25 +124,67 @@ func (b *BuilderService) BuildSchema(typeSpec *domain.TypeSpecDef) (string, erro
 		schema = *builtSchema
 
 	case *ast.Ident:
-		// Type alias to another named type (e.g., type CrossErrors errors.Errors)
-		// Try to resolve the alias to the actual type
-		if b.typeResolver != nil {
-			resolvedType := b.typeResolver.FindTypeSpec(t.Name, typeSpec.File)
-			if resolvedType != nil && resolvedType != typeSpec {
-				// Recursively build schema for resolved type
-				_, err := b.BuildSchema(resolvedType)
-				if err != nil {
-					return "", err
+		// Type alias to basic type (e.g., type Role int, type Status string)
+		// First check if this is an enum type (int/string with const values)
+		if b.enumLookup != nil {
+			// Build fully qualified type name: packagePath.TypeName
+			fullTypeName := typeSpec.PkgPath + "." + typeSpec.TypeSpec.Name.Name
+
+			// Try to get enum values
+			enumValues, err := b.enumLookup.GetEnumsForType(fullTypeName, typeSpec.File)
+
+			if err == nil && len(enumValues) > 0 {
+
+				// This is an enum type - create enum schema
+				// Determine underlying type from the alias
+				underlyingType := "integer" // Default for int-based enums
+				if t.Name == "string" {
+					underlyingType = "string"
 				}
-				// Copy the resolved schema
-				if resolvedSchema, ok := b.definitions[resolvedType.TypeName()]; ok {
-					schema = resolvedSchema
+
+				// Build enum value list
+				enumList := make([]any, len(enumValues))
+				varNames := make([]string, len(enumValues))
+				for i, ev := range enumValues {
+					enumList[i] = ev.Value
+					varNames[i] = ev.Key
 				}
+
+				schema = spec.Schema{
+					SchemaProps: spec.SchemaProps{
+						Type: []string{underlyingType},
+						Enum: enumList,
+					},
+					VendorExtensible: spec.VendorExtensible{
+						Extensions: spec.Extensions{
+							"x-enum-varnames": varNames,
+						},
+					},
+				}
+				// Enum schema created, skip alias resolution
 			}
 		}
-		// If no resolver or resolution failed, create empty object
-		if schema.Properties == nil {
-			schema.Properties = make(map[string]spec.Schema)
+
+		// If not an enum, try to resolve the alias to the actual type
+		if schema.Properties == nil && schema.Type == nil {
+			if b.typeResolver != nil {
+				resolvedType := b.typeResolver.FindTypeSpec(t.Name, typeSpec.File)
+				if resolvedType != nil && resolvedType != typeSpec {
+					// Recursively build schema for resolved type
+					_, err := b.BuildSchema(resolvedType)
+					if err != nil {
+						return "", err
+					}
+					// Copy the resolved schema
+					if resolvedSchema, ok := b.definitions[resolvedType.TypeName()]; ok {
+						schema = resolvedSchema
+					}
+				}
+			}
+			// If no resolver or resolution failed, create empty object
+			if schema.Properties == nil && schema.Type == nil {
+				schema.Properties = make(map[string]spec.Schema)
+			}
 		}
 
 	case *ast.SelectorExpr:
@@ -184,6 +226,10 @@ func (b *BuilderService) BuildSchema(typeSpec *domain.TypeSpecDef) (string, erro
 
 // AddDefinition adds a schema definition with the given name.
 func (b *BuilderService) AddDefinition(name string, schema spec.Schema) error {
+	// Debug: Log all definitions being added
+	if strings.Contains(name, "NJDLClassification") {
+		fmt.Printf(">>> AddDefinition called for: %s, schema type: %v, enum count: %d\n", name, schema.Type, len(schema.Enum))
+	}
 	b.definitions[name] = schema
 	// Note: We don't have the TypeSpecDef here to add to parsedSchemas
 	// This is OK - BuildSchema will check definitions first

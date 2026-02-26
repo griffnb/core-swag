@@ -1,5 +1,363 @@
 # Core-Swag Change Log
 
+## 2026-02-21: Struct Parser Bug Fixes - Iteration 3 (IN PROGRESS) 🔄
+
+**Ralph Loop Iteration:** 3 of max 5
+**Task:** Complete Bug 4 (Enum Detection) and Bug 5 (Public References)
+**Status:** ✅ Bug 5 COMPLETE, 🔄 Bug 4 - ROOT CAUSE IDENTIFIED
+
+**Summary:**
+- ✅ **Bug 5 (Public Reference Propagation):** COMPLETE - All nested refs in Public schemas now have "Public" suffix
+- 🔄 **Bug 4 (Enum Detection):** PARTIAL - Infrastructure in place, but enum inlining not working yet
+- ✅ All unit tests passing
+- ✅ No regressions in existing functionality
+
+**Files Modified:**
+- `internal/model/struct_field.go` - Fixed nested type name to include Public suffix (Bug 5)
+- `internal/model/struct_field_test.go` - Updated test assertions for Public suffix (Bug 5)
+- `internal/model/struct_builder_test.go` - Updated test assertions for Public suffix (Bug 5)
+- `internal/parser/struct/service.go` - Added enumLookup field, added resolveFullTypeName() method (Bug 4)
+- `internal/parser/struct/field_processor.go` - Made processField/buildPropertySchema methods, added enum detection (Bug 4)
+- `internal/orchestrator/service.go` - Pass enumLookup to StructParserService (Bug 4)
+- `internal/parser/struct/service_test.go` - Updated NewService calls to pass nil enumLookup (Bug 4)
+
+### ✅ COMPLETED: Bug 5 - Public Reference Propagation
+
+**Problem:** Nested struct references in public schemas didn't get "Public" suffix
+**Example:** `{"$ref": "#/definitions/Company"}` should be `{"$ref": "#/definitions/CompanyPublic"}`
+
+**Solution Implemented:**
+1. Modified `buildSchemaForType()` in `internal/model/struct_field.go` line 380
+2. Changed `nestedTypes = append(nestedTypes, typeName)` to `nestedTypes = append(nestedTypes, refName)`
+3. This ensures nested type names include "Public" suffix when `public=true`
+
+**Tests:**
+- ✅ Unit test `TestToSpecSchema_StructField_Public` passes (verifies UserPublic in nested types)
+- ✅ Unit test `TestBuildSchemaForType/struct_with_public` passes
+- ✅ Production verification: All nested refs in Public schemas have "Public" suffix
+
+**Example Output:**
+```json
+"account.AccountJoinedFullPublic": {
+  "properties": {
+    "feature_set": {"$ref": "#/definitions/organization_subscription_plan.FeatureSetPublic"},
+    "flags": {"$ref": "#/definitions/account.FlagsPublic"},
+    "properties": {"$ref": "#/definitions/account.PropertiesPublic"}
+  }
+}
+```
+
+### 🔄 IN PROGRESS: Bug 4 - Enum Detection
+
+**Work Completed This Iteration:**
+
+1. ✅ Wired `TypeEnumLookup` through orchestrator to StructParserService:
+   - Added `enumLookup` field to `Service` struct
+   - Updated `NewService()` constructor to accept `enumLookup` parameter
+   - Orchestrator passes `enumLookup` when creating `structParserService`
+
+2. ✅ Threaded enumLookup through field processing:
+   - Made `processField()` a method on `Service` (was standalone function)
+   - Made `buildPropertySchema()` a method on `Service`
+   - Both methods now have access to `s.enumLookup` and `s.registry`
+
+3. ✅ Added `resolveFullTypeName()` method to resolve short package names:
+   - Converts "constants.NJDLClassification" to "github.com/.../constants.NJDLClassification"
+   - Uses registry to get file's package path
+   - Resolves imports to handle cross-package references
+
+4. ✅ Added enum detection logic to `buildPropertySchema()`:
+   - Checks if package-qualified type is an enum
+   - Calls `enumLookup.GetEnumsForType()` with resolved full path
+   - Inlines enum values in field schema (no $ref for enums)
+   - Determines base type (integer/string/number) from enum values
+
+**Current Status:**
+- ✅ Code compiles and runs
+- ✅ Architecture in place for enum detection in StructParserService path
+- ❌ Production test shows enums still not inlined in fields
+- ✅ SchemaBuilder path DOES detect enums correctly (logs confirm)
+
+### 🔍 BREAKTHROUGH: Bug 4 Root Cause Identified!
+
+**Iteration 3 Investigation:**
+
+Added extensive debug logging to trace the NJDLClassification schema through the entire pipeline:
+
+**Findings:**
+1. ✅ BuildSchema correctly creates enum schema: `type: [integer], enum count: 5`
+2. ✅ Orchestrator syncs to swagger correctly: `type: [integer], enum count: 5, title: ""`
+3. ✅ Final check before return: `type: [integer], enum count: 5, title: ""`
+4. ❌ JSON output shows: `{"type": "object", "title": "ConstantsNJDLClassification"}`
+
+**Root Cause:** Something AFTER orchestrator returns is modifying the schema!
+
+The enum schema is correct when orchestrator returns, but the final JSON has `{"type": "object"}` with a title. The title format "ConstantsNJDLClassification" (CamelCase, no dot) suggests post-processing.
+
+**Suspects:**
+1. `sanitizeSwaggerSpec(swagger)` - Only sanitizes numeric values, shouldn't modify schemas
+2. `schema.RemoveUnusedDefinitions(swagger)` - Only removes schemas, doesn't modify them
+3. JSON marshaling - Should be straightforward serialization
+4. **Legacy parser integration** - Found code in `internal/legacy_files/parser.go:1636` that calls `model.BuildAllSchemas()` and sets titles on schemas (line 1669)
+
+**Critical Discovery:**
+The legacy parser's `ParseDefinition()` method at line 1636 calls the SAME `model.BuildAllSchemas()` that generates schemas. It then adds titles to those schemas. If this runs AFTER the orchestrator, it would overwrite the correct enum schemas!
+
+**Next Steps for Bug 4 (Iteration 4):**
+1. Find where schemas get titles added (grep for "ConstantsNJDL" or title setting after orchestrator)
+2. Options to fix:
+   - **Option A**: Set title in BuildSchema when creating enum schemas (match expected format)
+   - **Option B**: Find and prevent the code that's overwriting enum schemas with object schemas
+   - **Option C**: Check if legacy parser is being invoked and disable it for enum types
+3. Implement the fix
+4. Verify with production test
+
+**Evidence from Iteration 3:**
+- ✅ Confirmed BuildSchema creates: `{type: ["integer"], enum: [1,2,3,4,5]}`
+- ✅ Confirmed orchestrator syncs correctly
+- ✅ Confirmed final state before return: Schema is CORRECT
+- ❌ JSON output has: `{type: "object", title: "ConstantsNJDLClassification"}`
+- **Conclusion**: Overwrites happen AFTER orchestrator returns, likely during JSON generation or legacy parser integration
+
+**Investigation History (Previous Iteration):**
+1. ✅ Test `TestToSpecSchema_EnumWithUnderlyingType` passes - enum inlining works in `StructField.ToSpecSchema()`
+2. ✅ Expected behavior: `constants.Role` → `{"type": "integer", "enum": [1, 2, 3]}` (inline enum, not ref)
+3. ❌ Problem: `StructParserService` doesn't use `StructField.ToSpecSchema()` at all
+4. ❌ Problem: `buildPropertySchema()` in `field_processor.go` creates refs for package-qualified types
+5. ❌ Problem: Plan says to "pass enumLookup when calling field.ToSpecSchema()" but no such call exists
+
+**Architecture Discovery:**
+- StructParserService uses direct AST parsing → buildPropertySchema() → creates refs
+- It does NOT convert ast.Field to StructField model
+- For enum types like `constants.Role`, it creates: `#/definitions/constants.Role` ref
+- But enum types should be INLINED in the field, not referenced
+
+**Options to Fix:**
+A. Refactor StructParserService to convert ast.Field → StructField → call ToSpecSchema()
+B. Add enum detection directly to buildPropertySchema() with enumLookup parameter
+C. Different approach?
+
+**Discovery in BuildSchema:**
+- ✅ Found BuildSchema() in schema/builder.go (lines 66-183)
+- ❌ BuildSchema() has NO enum detection logic
+- ❌ Enum types like `type NJDLClassification int` match `case *ast.Ident:`
+- ❌ This case tries to resolve alias, fails, returns `{"type": "object"}`
+- ✅ BUT: OccupationActiveStatus WORKS in production - shows as `{"type": "integer", "enum": [...]}`
+- ❓ Mystery: How does OccupationActiveStatus get its enum definition created?
+
+**CRITICAL DISCOVERY - Root Cause Found:**
+
+Checked actual usage in atlas-go project:
+- ✅ `ActiveStatus *fields.IntConstantField[constants.OccupationActiveStatus]` - wrapped in generic
+  - CoreStructParser extracts inner type, detects enum via enumLookup, creates INLINE enum in field
+  - NO DEFINITION CREATED - enum values embedded in property
+
+- ❌ `NJDLClassification constants.NJDLClassification` - used DIRECTLY
+  - StructParserService creates ref: `#/definitions/constants.NJDLClassification`
+  - BuildSchema tries to build definition for `type NJDLClassification int`
+  - Sees `*ast.Ident` (int alias), tries to resolve "int", fails
+  - Defaults to empty object: `{"type": "object"}`
+
+**The Real Problem:**
+BuildSchema (schema/builder.go:93-176) handles:
+- StructType → CoreStructParser (line 94-125)
+- Ident/SelectorExpr → type alias resolution (line 126-176)
+- NO enum detection for `type X int` + const values pattern!
+
+**Correct Fix:**
+Add enum detection to BuildSchema when handling `*ast.Ident` types:
+1. Check if type has const values (use enumLookup)
+2. If yes, create enum schema with underlying type + enum values
+3. If no, continue with current alias resolution logic
+
+**Implementation Attempt 1:**
+- ✅ Created test TestBuilderService_BuildSchema_EnumTypeDetection (TDD RED phase)
+- ✅ Added enum detection logic to BuildSchema case *ast.Ident (lines 126-184)
+- ❌ Test still fails - enum not being detected
+- 🔍 Issue: TypeName mismatch? Mock expects "constants.Role" but code passes "github.com/test/constants.Role"
+
+**Implementation Result:**
+- ✅ Fixed mock enum lookup to handle full paths
+- ✅ Test TestBuilderService_BuildSchema_EnumTypeDetection PASSES
+- ✅ All schema tests pass
+- ❌ Production test STILL FAILS - NJDLClassification shows as object
+- 🔍 Need to investigate why production path doesn't use the new enum logic
+
+**Hypothesis:** Maybe schema is created by StructParserService before BuildSchema runs?
+
+**Debug Attempt:**
+- Added console.Logger.Debug statements to BuildSchema enum detection
+- ❌ NO debug output appears in production run
+- ❌ NJDLClassification STILL shows as object
+- ✅ OccupationActiveStatus STILL works (wrapped in IntConstantField)
+
+**Key Insight:** Debug output not appearing means BuildSchema's *ast.Ident case is NOT being executed for NJDLClassification!
+
+**Investigation Needed:**
+1. Is constants.NJDLClassification even in the uniqueDefinitions list passed to BuildSchema?
+2. Or is the definition being created some other way?
+3. Need to check registry.UniqueDefinitions() - does it include enum types?
+
+**BREAKTHROUGH - Found the Real Issue!**
+
+Added fmt.Printf debug (console.Logger.Debug doesn't work - not configured):
+```
+>>> BuildSchema ENTRY for NJDLClassification <<<
+>>> BuildSchema: type switch for NJDLClassification, type is: *ast.Ident
+>>> BuildSchema *ast.Ident case for NJDLClassification, enumLookup is nil? false
+>>> BuildSchema: Checking enum for type github.com/CrowdShield/atlas-go/internal/constants.NJDLClassification (alias to int)
+>>> BuildSchema: GetEnumsForType returned 5 values, err=<nil>
+>>> BuildSchema: Creating enum schema for github.com/CrowdShield/atlas-go/internal/constants.NJDLClassification with 5 values
+>>> BuildSchema STORING definition for: constants.NJDLClassification, type: [integer], enum count: 5
+```
+
+✅ **My Fix WORKS!** Enum schema is created correctly with type=integer and 5 enum values!
+❌ **BUT** Final swagger output still shows `{"type": "object"}`
+🔍 **New Problem:** Something is OVERWRITING the enum schema AFTER BuildSchema stores it!
+
+**Next Step:** Find what overwrites the definition after BuildSchema.
+
+---
+
+## 2026-02-21: Struct Parser Bug Fixes - Iteration 1 (PARTIAL COMPLETE - 3/5 bugs fixed) ✅✅✅
+
+**Ralph Loop Iteration:** 1 of max 5
+**Task:** Execute bug fix plan from `.agents/2026-02-16-struct-parser-bug-fixes.md`
+**Result:** ✅ 60% COMPLETE (3/5 bugs fully fixed, 2 remain)
+
+### What We Fixed
+
+**Bug 1 - Embedded Field Filtering** ✅ COMPLETE
+- **Problem:** BaseModel private fields (ChangeLogs, Client, ManualCache, etc.) appearing in swagger schemas
+- **Root Cause:** Fields without json or column tags were being included
+- **Solution:** Added filtering in both parsers:
+  - CoreStructParser (`struct_field_lookup.go` lines ~358-378)
+  - StructParserService (`field_processor.go` lines ~42-49)
+- **Code Added:**
+  ```go
+  jsonTag := tagMap["json"]
+  columnTag := tagMap["column"]
+  if jsonTag == "-" { continue }
+  if columnTag == "-" { continue }
+  if jsonTag == "" && columnTag == "" { continue }
+  ```
+- **Verification:** ✅ `make test-project-1` confirms BaseModel fields excluded
+
+**Bug 2 - Array Element Type Resolution** ✅ COMPLETE
+- **Problem:** `[]string` showing as `{"type": "array", "items": {"type": "object"}}`
+- **Root Cause:** `resolveFieldType()` returned "array" without element type
+- **Solution:** Modified `field_processor.go` line ~186-189:
+  ```go
+  case *ast.ArrayType:
+      elemType := resolveFieldType(t.Elt)
+      return "[]" + elemType
+  ```
+- **Verification:** ✅ division_ids now shows `{"type": "array", "items": {"type": "string"}}`
+
+**Bug 3 - Any Type Handling** ✅ COMPLETE
+- **Problem:** `any` and `interface{}` types generating empty schema `{}`
+- **Root Cause:** No handling for any/interface{} types
+- **Solution:**
+  - Added `isAnyType()` helper in `struct_field.go`
+  - Added check in `buildSchemaForType()` to return `{"type": "object"}`
+  - Fixed `buildPropertySchema()` in `field_processor.go` line ~272
+- **Verification:** ✅ external_user_info now shows `{"type": "object"}`
+
+### What Still Needs Work
+
+**Bug 4 - Enum Detection with Underlying Type** ⚠️ PARTIALLY COMPLETE
+- **Status:** Works in CoreStructParser unit tests, FAILS in production
+- **Problem:** NJDLClassification shows as `{"type": "object"}` instead of inline enum
+- **Root Cause:** Orchestrator doesn't pass TypeEnumLookup to StructParserService
+- **What Works:**
+  - ✅ Unit tests pass (using CoreStructParser with mock enum lookup)
+  - ✅ `ToSpecSchema()` method correctly inlines enums when enumLookup provided
+- **What Doesn't Work:**
+  - ❌ Production uses StructParserService via orchestrator
+  - ❌ Orchestrator doesn't initialize or pass enum lookup
+  - ❌ Need to wire enum lookup through: orchestrator → StructParserService → field processing
+- **Files Modified:**
+  - Added test cases in `struct_field_test.go` with mockEnumLookup
+- **Next Steps:**
+  1. Create ParserEnumLookup in orchestrator (similar to SchemaBuilder)
+  2. Pass to StructParserService via NewService()
+  3. Pass through to field processing logic
+  4. Test with `make test-project-1` to verify NJDLClassification
+
+**Bug 5 - Public Reference Propagation** ❌ NOT STARTED
+- **Problem:** Public schemas reference non-Public variants (e.g., `AccountPublic` refs `Classification` instead of `ClassificationPublic`)
+- **Expected Fix:** Modify `struct_field.go` reference generation (lines ~296-376)
+  - When `public=true`, append "Public" suffix to nested type refs
+  - Both direct refs and array item refs need update
+- **Next Steps:**
+  1. Write test with public schema containing nested struct
+  2. Verify refs end with "Public" suffix
+  3. Implement fix in `ToSpecSchema()` method
+
+### Test Results
+
+**Unit Tests:**
+- ✅ `TestToSpecSchema_ArrayElementTypes` - 7/7 passing
+- ✅ `TestToSpecSchema_AnyInterfaceTypes` - 3/3 passing
+- ✅ `TestToSpecSchema_EnumWithUnderlyingType` - 3/3 passing (CoreStructParser path only)
+- ⚠️ `TestBuildAllSchemas_BillingPlan` - Failing (pre-existing, package loading issue)
+- ⚠️ `TestBuildAllSchemas_Account` - Failing (pre-existing, package loading issue)
+
+**Integration Tests:**
+- ✅ `make test-project-1` runs successfully
+- ✅ 63,444 schema definitions generated
+- ✅ Bugs 1-3 verified fixed in swagger output
+- ❌ Bug 4 (enums) still shows as object
+- ⏸️  Bug 5 (public refs) not yet verified
+
+### Files Modified
+
+1. **internal/model/struct_field_lookup.go** (+30 lines)
+   - Added tag filtering for fields without json/column tags
+   - Filters at lines ~358-378
+
+2. **internal/model/struct_field.go** (+38 lines)
+   - Added `isAnyType()` helper function
+   - Added any/interface{} check in `buildSchemaForType()`
+
+3. **internal/parser/struct/field_processor.go** (+35 lines)
+   - Added tag filtering (lines ~42-49)
+   - Fixed array type resolution (lines ~186-189)
+   - Fixed any/interface{} handling (line ~272)
+   - Added array/map exclusion to package qualifier logic (line ~97)
+
+4. **internal/model/struct_field_test.go** (+122 lines)
+   - Added `TestToSpecSchema_ArrayElementTypes` (7 test cases)
+   - Added `TestToSpecSchema_AnyInterfaceTypes` (3 test cases)
+   - Added `TestToSpecSchema_EnumWithUnderlyingType` (3 test cases)
+   - Added `mockEnumLookup` helper for testing
+
+5. **internal/model/struct_field_lookup_test.go** (+39 lines)
+   - Added `TestEmbeddedFieldTagFiltering` test
+
+6. **testing/testdata/core_models/embedded_tag_test/model.go** (NEW file, 20 lines)
+   - Test model for embedded field filtering
+
+### Production Verification
+
+Verified fixes using `make test-project-1`:
+```bash
+✅ Bug 1: No BaseModel private fields in account.AccountJoinedFull
+✅ Bug 2: division_ids is {"type": "array", "items": {"type": "string"}}
+✅ Bug 3: external_user_info is {"type": "object"}
+❌ Bug 4: constants.NJDLClassification is {"type": "object"} (should have enum values)
+⏸️  Bug 5: Not yet tested
+```
+
+### Completion Status: 60% (3/5 bugs fixed)
+
+**To reach 100%:**
+1. Wire enum lookup through orchestrator for Bug 4
+2. Implement public reference propagation for Bug 5
+3. Run full validation (Phase 7 of plan)
+
+---
+
 ## 2026-02-16: Ralph Loop FINAL VERIFICATION - ALL PHASES COMPLETE ✅
 
 **Ralph Loop Iteration:** Final (Iteration 1 of max 5)

@@ -32,7 +32,9 @@ type ParserEnumLookup struct {
 // typeName should be fully qualified like "constants.Role" or just "Role"
 // or a full package path like "github.com/griffnb/core-swag/testing/testdata/core_models/constants.Role"
 func (p *ParserEnumLookup) GetEnumsForType(typeName string, file *ast.File) ([]EnumValue, error) {
+	console.Logger.Debug("$Bold{$Cyan{>>> GetEnumsForType called with typeName: %s}}\n", typeName)
 	if p.Parser == nil {
+		console.Logger.Debug("$Bold{$Red{>>> GetEnumsForType: parser is nil!}}\n")
 		return nil, fmt.Errorf("parser is nil")
 	}
 
@@ -50,7 +52,7 @@ func (p *ParserEnumLookup) GetEnumsForType(typeName string, file *ast.File) ([]E
 		// 1. A short package name like "constants" (need to resolve to full path)
 		// 2. A full package path like "github.com/.../constants"
 		pkgPart := typeName[:lastDot]
-		
+
 		// Check if it's a full path (contains slash) or short name
 		if strings.Contains(pkgPart, "/") {
 			// Full path - use as-is

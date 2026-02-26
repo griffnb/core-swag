@@ -236,6 +236,14 @@ func buildSchemaForType(
 		typeStr = strings.TrimPrefix(typeStr, "*")
 	}
 
+	// Handle any/interface{} types as object
+	if isAnyType(typeStr) {
+		if debug {
+			console.Logger.Debug("Detected any/interface{} type: $Bold{%s}\n", typeStr)
+		}
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
+	}
+
 	// Check if this is a fields wrapper type (StringField, IntField, etc.)
 	// These should be treated as primitives, not struct types
 	if isFieldsWrapperType(typeStr) {
@@ -369,7 +377,7 @@ func buildSchemaForType(
 
 	// Create reference schema using the full type name
 	schema := spec.RefSchema("#/definitions/" + refName)
-	nestedTypes = append(nestedTypes, typeName)
+	nestedTypes = append(nestedTypes, refName) // Use refName to include Public suffix when public=true
 	if debug {
 		console.Logger.Debug("Created Ref Schema for type: $Bold{$Red{%s}} Ref: $Bold{#/definitions/%s}\n", typeStr, refName)
 	}
@@ -394,6 +402,26 @@ func isPrimitiveType(typeStr string) bool {
 		"github.com/google/uuid.UUID": true, "*github.com/google/uuid.UUID": true,
 	}
 	return primitives[typeStr]
+}
+
+// isAnyType checks if a type is any or interface{}
+func isAnyType(typeStr string) bool {
+	if typeStr == "" {
+		return false
+	}
+
+	// Check for "any" keyword (Go 1.18+)
+	if typeStr == "any" {
+		return true
+	}
+
+	// Check for "interface{}" or "interface {}"
+	normalized := strings.ReplaceAll(typeStr, " ", "")
+	if normalized == "interface{}" {
+		return true
+	}
+
+	return false
 }
 
 // isFieldsWrapperType checks if a type is a fields package wrapper type

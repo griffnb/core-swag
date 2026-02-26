@@ -161,8 +161,8 @@ func New(config *Config) *Service {
 	// Inject registry for @NoPublic annotation support
 	routeParser.SetRegistry(registryService)
 
-	// Create struct parser service
-	structParserService := structparser.NewService(registryService, schemaBuilder)
+	// Create struct parser service with enum lookup support
+	structParserService := structparser.NewService(registryService, schemaBuilder, enumLookup)
 
 	return &Service{
 		loader:        loaderService,
@@ -383,6 +383,7 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 		if typeDef == nil {
 			continue // Skip nil definitions
 		}
+
 		_, err = s.schemaBuilder.BuildSchema(typeDef)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build schema for %s: %w", typeDef.TypeName(), err)

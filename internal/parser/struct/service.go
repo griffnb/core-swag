@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-openapi/spec"
+	"github.com/griffnb/core-swag/internal/model"
 	"github.com/griffnb/core-swag/internal/registry"
 	"github.com/griffnb/core-swag/internal/schema"
 )
@@ -17,13 +18,88 @@ import (
 type Service struct {
 	registry      *registry.Service
 	schemaBuilder *schema.BuilderService
+	enumLookup    model.TypeEnumLookup
+}
+
+// resolveFullTypeName converts a short type name like "constants.Role" to full package path
+// like "github.com/user/project/internal/constants.Role" using the registry
+func (s *Service) resolveFullTypeName(typeName string, file *ast.File) string {
+	// If type already has full path (contains /), return as-is
+	if strings.Contains(typeName, "/") {
+		return typeName
+	}
+
+	// Get package info for this file from registry
+	files := s.registry.Files()
+	fileInfo, ok := files[file]
+	if !ok || fileInfo == nil {
+		// Can't resolve - return as-is
+		return typeName
+	}
+
+	// Extract package name from type (everything before last dot)
+	lastDot := strings.LastIndex(typeName, ".")
+	if lastDot == -1 {
+		// No package qualifier - return as-is
+		return typeName
+	}
+
+	pkgName := typeName[:lastDot]
+	baseTypeName := typeName[lastDot+1:]
+
+	// Get the package path for this file
+	filePkgPath := fileInfo.PackagePath
+	if filePkgPath == "" {
+		return typeName
+	}
+
+	// Resolve the full package path
+	// If it's the same package, use the file's package path
+	if file.Name != nil && file.Name.Name == pkgName {
+		return filePkgPath + "." + baseTypeName
+	}
+
+	// Otherwise, look for import of this package
+	for _, imp := range file.Imports {
+		if imp.Path == nil {
+			continue
+		}
+		// Remove quotes from import path
+		importPath := strings.Trim(imp.Path.Value, `"`)
+
+		// Check if this import matches the package name
+		// Get the last segment of the import path
+		lastSlash := strings.LastIndex(importPath, "/")
+		importPkgName := importPath
+		if lastSlash >= 0 {
+			importPkgName = importPath[lastSlash+1:]
+		}
+
+		// Handle import aliases
+		if imp.Name != nil && imp.Name.Name == pkgName {
+			return importPath + "." + baseTypeName
+		} else if imp.Name == nil && importPkgName == pkgName {
+			return importPath + "." + baseTypeName
+		}
+	}
+
+	// Couldn't resolve - try relative to current package
+	if strings.Contains(filePkgPath, "/") {
+		lastSlash := strings.LastIndex(filePkgPath, "/")
+		parentPath := filePkgPath[:lastSlash]
+		return parentPath + "/" + pkgName + "." + baseTypeName
+	}
+
+	// Final fallback - return as-is
+	return typeName
 }
 
 // NewService creates a new struct parser service
-func NewService(registry *registry.Service, schemaBuilder *schema.BuilderService) *Service {
+func NewService(registry *registry.Service, schemaBuilder *schema.BuilderService, enumLookup model.TypeEnumLookup) *Service {
 	return &Service{
 		registry:      registry,
 		schemaBuilder: schemaBuilder,
+		enumLookup:    enumLookup,
 	}
 }
 
@@ -95,7 +171,7 @@ func (s *Service) ParseStruct(file *ast.File, fields *ast.FieldList) (*spec.Sche
 		}
 
 		// Process regular field
-		properties, required, err := processField(file, field)
+		properties, required, err := s.processField(file, field)
 		if err != nil {
 			continue // Skip on error
 		}
@@ -115,7 +191,7 @@ func (s *Service) ParseStruct(file *ast.File, fields *ast.FieldList) (*spec.Sche
 // ParseField parses an individual struct field and returns its properties and required status.
 // This is the public entry point that delegates to processField.
 func (s *Service) ParseField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []string, error) {
-	return processField(file, field)
+	return s.processField(file, field)
 }
 
 // ParseFile parses all struct types in a file and registers them with the schema builder.
@@ -350,7 +426,7 @@ func (s *Service) BuildPublicSchema(file *ast.File, fields *ast.FieldList) (*spe
 		hasPublicFields = true
 
 		// Process field
-		properties, required, err := processField(file, field)
+		properties, required, err := s.processField(file, field)
 		if err != nil {
 			continue
 		}

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-openapi/spec"
+	"github.com/griffnb/core-swag/internal/console"
 )
 
 // processField processes a single struct field and returns its schema properties and required status.
@@ -16,7 +17,7 @@ import (
 // - Tag parsing (using Phase 1.2 functions)
 // - Custom models (fields.StructField[T])
 // - Validation constraints
-func processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []string, error) {
+func (s *Service) processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []string, error) {
 	if field == nil {
 		return nil, nil, nil
 	}
@@ -37,6 +38,14 @@ func processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []s
 
 	// Check if field should be ignored
 	if tags.Ignore || isSwaggerIgnore(tags.rawTag) {
+		return nil, nil, nil
+	}
+
+	// Skip fields that have NEITHER json NOR column tags
+	// This filters out BaseModel private fields like ChangeLogs, Client, etc.
+	jsonTag := string(tags.rawTag.Get("json"))
+	columnTag := string(tags.rawTag.Get("column"))
+	if jsonTag == "" && columnTag == "" {
 		return nil, nil, nil
 	}
 
@@ -94,6 +103,7 @@ func processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []s
 	// For same-package struct types (no dot, not primitive), add package qualifier
 	if file != nil && !strings.Contains(fieldType, ".") &&
 		!isPrimitiveTypeName(fieldType) &&
+		!strings.HasPrefix(fieldType, "[]") && !strings.HasPrefix(fieldType, "map[") && // Don't qualify arrays/maps
 		fieldType != "object" && fieldType != "array" && fieldType != "map" && fieldType != "interface" &&
 		fieldType != "integer" && fieldType != "number" && fieldType != "string" && fieldType != "boolean" {
 		// This is a same-package struct type like "Properties"
@@ -102,7 +112,7 @@ func processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []s
 	}
 
 	// Build property schema
-	propSchema := buildPropertySchema(fieldType, tags)
+	propSchema := s.buildPropertySchema(fieldType, tags, file)
 
 	// Build properties map
 	properties := map[string]spec.Schema{
@@ -184,8 +194,9 @@ func resolveFieldType(expr ast.Expr) string {
 		return resolveFieldType(t.X)
 
 	case *ast.ArrayType:
-		// Slice or array type
-		return "array"
+		// Slice or array type - preserve element type
+		elemType := resolveFieldType(t.Elt)
+		return "[]" + elemType
 
 	case *ast.MapType:
 		// Map type
@@ -265,12 +276,13 @@ func exprToString(expr ast.Expr) string {
 }
 
 // buildPropertySchema creates an OpenAPI property schema from type and tags
-func buildPropertySchema(fieldType string, tags fieldTags) spec.Schema {
+func (s *Service) buildPropertySchema(fieldType string, tags fieldTags, file *ast.File) spec.Schema {
 	var schema spec.Schema
 
-	// Handle interface types (no type constraint)
+	// Handle interface types (no type constraint) - treat as object
 	if fieldType == "interface" {
-		return schema // Empty schema allows any JSON value
+		schema.Type = []string{"object"}
+		return schema
 	}
 
 	// Handle array types
@@ -356,8 +368,38 @@ func buildPropertySchema(fieldType string, tags fieldTags) spec.Schema {
 			}
 		} else if strings.Contains(fieldType, ".") {
 			// Check if this is a struct type (contains package qualifier like "account.Properties")
-			// If so, create a reference instead of a generic object
-			// This is a package-qualified type - create a $ref
+			// First check if it's an enum type
+			console.Logger.Debug(">>> buildPropertySchema: checking enum for fieldType: %s, enumLookup nil? %v, file nil? %v\n", fieldType, s.enumLookup == nil, file == nil)
+			if s.enumLookup != nil && file != nil {
+				// Resolve the full package path for the type
+				fullTypeName := s.resolveFullTypeName(fieldType, file)
+				console.Logger.Debug(">>> buildPropertySchema: resolved %s to %s\n", fieldType, fullTypeName)
+
+				enumValues, err := s.enumLookup.GetEnumsForType(fullTypeName, file)
+				console.Logger.Debug(">>> buildPropertySchema: GetEnumsForType returned %d values, err=%v\n", len(enumValues), err)
+				if err == nil && len(enumValues) > 0 {
+					// This is an enum type - inline the values
+					// Determine the base type from the first enum value
+					switch enumValues[0].Value.(type) {
+					case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+						schema.Type = []string{"integer"}
+					case string:
+						schema.Type = []string{"string"}
+					case float32, float64:
+						schema.Type = []string{"number"}
+					default:
+						schema.Type = []string{"integer"} // default fallback
+					}
+					// Collect enum values
+					var enumVals []any
+					for _, ev := range enumValues {
+						enumVals = append(enumVals, ev.Value)
+					}
+					schema.Enum = enumVals
+					return schema
+				}
+			}
+			// Not an enum or no enum lookup - create a $ref
 			return *spec.RefSchema("#/definitions/" + fieldType)
 		} else {
 			// Other complex types - reference or object

@@ -82,7 +82,7 @@ func TestService_Parse(t *testing.T) {
 func main() {}
 `
 
-		err := os.WriteFile(mainFile, []byte(mainContent), 0644)
+		err := os.WriteFile(mainFile, []byte(mainContent), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -95,7 +95,6 @@ func main() {}
 
 		// Act
 		swagger, err := service.Parse([]string{testDir}, mainFile, 0)
-
 		// Assert
 		if err != nil {
 			t.Fatalf("expected no error, got: %v", err)
@@ -133,7 +132,7 @@ func main() {}
 func main() {}
 `
 
-		err := os.WriteFile(mainFile, []byte(mainContent), 0644)
+		err := os.WriteFile(mainFile, []byte(mainContent), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -146,7 +145,6 @@ func main() {}
 
 		// Act
 		swagger, err := service.Parse([]string{testDir}, mainFile, 0)
-
 		// Assert - should not error even with empty directory
 		if err != nil {
 			t.Fatalf("expected no error, got: %v", err)

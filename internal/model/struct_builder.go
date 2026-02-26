@@ -13,7 +13,12 @@ type StructBuilder struct {
 // BuildSpecSchema builds an OpenAPI spec.Schema for the struct
 // Returns the schema, a list of nested struct type names, and any error
 // forceRequired: if true, all fields are marked as required regardless of omitempty tags
-func (this *StructBuilder) BuildSpecSchema(typeName string, public bool, forceRequired bool, enumLookup TypeEnumLookup) (*spec.Schema, []string, error) {
+func (this *StructBuilder) BuildSpecSchema(
+	typeName string,
+	public bool,
+	forceRequired bool,
+	enumLookup TypeEnumLookup,
+) (*spec.Schema, []string, error) {
 	schema := &spec.Schema{
 		SchemaProps: spec.SchemaProps{
 			Type:       []string{"object"},

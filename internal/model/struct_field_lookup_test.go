@@ -134,3 +134,44 @@ func TestBuildAllSchemas_InvalidType(t *testing.T) {
 		assert.NotNil(t, schemas)
 	}
 }
+
+func TestEmbeddedFieldTagFiltering(t *testing.T) {
+	// Test that fields without json or column tags are excluded from schemas
+	baseModule := "github.com/griffnb/core-swag"
+	pkgPath := "github.com/griffnb/core-swag/testing/testdata/core_models/embedded_tag_test"
+	typeName := "TestModel"
+
+	schemas, err := BuildAllSchemas(baseModule, pkgPath, typeName)
+	require.NoError(t, err)
+	require.NotNil(t, schemas)
+
+	// Should have TestModel schema
+	assert.Contains(t, schemas, "embedded_tag_test.TestModel")
+
+	// Get the schema
+	testModel := schemas["embedded_tag_test.TestModel"]
+	assert.NotNil(t, testModel)
+
+	// Debug: print what properties we actually have
+	t.Logf("Properties found: %v", testModel.Properties)
+	for propName := range testModel.Properties {
+		t.Logf("  - %s", propName)
+	}
+
+	// Fields WITH json or column tags should be INCLUDED
+	assert.Contains(t, testModel.Properties, "valid_json", "Field with json tag should be included")
+	assert.Contains(t, testModel.Properties, "valid_column", "Field with column tag should be included")
+	assert.Contains(t, testModel.Properties, "both", "Field with both tags should be included")
+	assert.Contains(t, testModel.Properties, "public_field", "Field with json and public tags should be included")
+
+	// Fields WITHOUT json or column tags should be EXCLUDED
+	assert.NotContains(t, testModel.Properties, "ChangeLogs", "Embedded field without tags should be excluded")
+	assert.NotContains(t, testModel.Properties, "Client", "Embedded field without tags should be excluded")
+	assert.NotContains(t, testModel.Properties, "ManualCache", "Embedded field without tags should be excluded")
+	assert.NotContains(t, testModel.Properties, "NoTags", "Field without tags should be excluded")
+	assert.NotContains(t, testModel.Properties, "PublicNoJSON", "Field with only public tag (no json/column) should be excluded")
+
+	// Fields with explicit exclusion should be EXCLUDED
+	assert.NotContains(t, testModel.Properties, "ExcludedJSON", "Field with json:\"-\" should be excluded")
+	assert.NotContains(t, testModel.Properties, "ExcludedColumn", "Field with column:\"-\" should be excluded")
+}

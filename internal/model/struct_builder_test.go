@@ -250,9 +250,9 @@ func TestBuildSpecSchema_PublicModeWithNestedStruct(t *testing.T) {
 	assert.Contains(t, schema.Properties, "profile")
 	assert.NotContains(t, schema.Properties, "internal_data")
 
-	// Only public nested type should be included
+	// Only public nested type should be included with Public suffix
 	assert.Equal(t, 1, len(nestedTypes))
-	assert.Contains(t, nestedTypes, "Profile")
+	assert.Contains(t, nestedTypes, "ProfilePublic") // Should have Public suffix when public=true
 	assert.NotContains(t, nestedTypes, "InternalData")
 
 	// Check profile property has Public suffix

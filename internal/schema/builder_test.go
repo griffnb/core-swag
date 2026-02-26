@@ -4,10 +4,12 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"strings"
 	"testing"
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/domain"
+	"github.com/griffnb/core-swag/internal/model"
 )
 
 func TestNewBuilder(t *testing.T) {
@@ -47,7 +49,6 @@ func TestBuilderService_AddDefinition(t *testing.T) {
 
 		// Act
 		err := builder.AddDefinition("User", schema)
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
@@ -79,7 +80,6 @@ func TestBuilderService_AddDefinition(t *testing.T) {
 		// Act
 		_ = builder.AddDefinition("User", schema1)
 		err := builder.AddDefinition("User", schema2)
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
@@ -170,7 +170,6 @@ type User struct {
 
 		// Act
 		schemaName, err := builder.BuildSchema(typeDef)
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
@@ -306,7 +305,6 @@ type Account struct {
 
 		// Act
 		schemaName, err := builder.BuildSchema(typeDef)
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
@@ -367,7 +365,6 @@ type Empty struct {
 
 		// Act
 		schemaName, err := builder.BuildSchema(typeDef)
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
@@ -469,4 +466,183 @@ type Empty struct {
 
 		t.Log("Schema quality check passed - schemas maintain expected structure")
 	})
+}
+
+func TestBuilderService_BuildSchema_EnumTypeDetection(t *testing.T) {
+	t.Run("detects enum type and creates enum schema", func(t *testing.T) {
+		// Arrange
+		builder := NewBuilder()
+
+		// Create a mock enum lookup
+		mockEnumLookup := &mockEnumLookup{
+			enums: map[string][]model.EnumValue{
+				"constants.Role": {
+					{Key: "RoleAdmin", Value: 1, Comment: "Administrator"},
+					{Key: "RoleUser", Value: 2, Comment: "Regular user"},
+					{Key: "RoleGuest", Value: 3, Comment: "Guest user"},
+				},
+			},
+		}
+		builder.SetEnumLookup(mockEnumLookup)
+
+		// Create type: type Role int
+		src := `package constants
+type Role int
+
+const (
+	RoleAdmin Role = 1
+	RoleUser  Role = 2
+	RoleGuest Role = 3
+)`
+		fset := token.NewFileSet()
+		astFile, err := parser.ParseFile(fset, "role.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Find the Role type spec
+		var typeSpec *ast.TypeSpec
+		for _, decl := range astFile.Decls {
+			if genDecl, ok := decl.(*ast.GenDecl); ok {
+				for _, spec := range genDecl.Specs {
+					if ts, ok := spec.(*ast.TypeSpec); ok && ts.Name.Name == "Role" {
+						typeSpec = ts
+						break
+					}
+				}
+			}
+		}
+
+		typeDef := &domain.TypeSpecDef{
+			File:       astFile,
+			TypeSpec:   typeSpec,
+			PkgPath:    "github.com/test/constants",
+			ParentSpec: nil,
+		}
+		typeDef.SetSchemaName()
+
+		// Act
+		schemaName, err := builder.BuildSchema(typeDef)
+		// Assert
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		schema, ok := builder.GetDefinition(schemaName)
+		if !ok {
+			t.Fatal("expected schema to be defined")
+		}
+
+		// Should be integer type with enum values
+		if len(schema.Type) == 0 || schema.Type[0] != "integer" {
+			t.Errorf("expected type integer, got %v", schema.Type)
+		}
+
+		if len(schema.Enum) != 3 {
+			t.Errorf("expected 3 enum values, got %d", len(schema.Enum))
+		}
+
+		// Verify enum values
+		expectedValues := map[int]bool{1: true, 2: true, 3: true}
+		for _, val := range schema.Enum {
+			if intVal, ok := val.(int); ok {
+				if !expectedValues[intVal] {
+					t.Errorf("unexpected enum value: %d", intVal)
+				}
+			} else {
+				t.Errorf("expected int enum value, got %T", val)
+			}
+		}
+
+		// Should have x-enum-varnames extension
+		if schema.Extensions == nil || schema.Extensions["x-enum-varnames"] == nil {
+			t.Error("expected x-enum-varnames extension")
+		}
+	})
+
+	t.Run("falls back to object for non-enum type alias", func(t *testing.T) {
+		// Arrange
+		builder := NewBuilder()
+
+		// Create empty enum lookup (no enums)
+		mockEnumLookup := &mockEnumLookup{
+			enums: map[string][]model.EnumValue{},
+		}
+		builder.SetEnumLookup(mockEnumLookup)
+
+		// Create type: type Alias int (no const values)
+		src := `package test
+type Alias int`
+		fset := token.NewFileSet()
+		astFile, err := parser.ParseFile(fset, "alias.go", src, parser.ParseComments)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Find the Alias type spec
+		var typeSpec *ast.TypeSpec
+		for _, decl := range astFile.Decls {
+			if genDecl, ok := decl.(*ast.GenDecl); ok {
+				for _, spec := range genDecl.Specs {
+					if ts, ok := spec.(*ast.TypeSpec); ok && ts.Name.Name == "Alias" {
+						typeSpec = ts
+						break
+					}
+				}
+			}
+		}
+
+		typeDef := &domain.TypeSpecDef{
+			File:       astFile,
+			TypeSpec:   typeSpec,
+			PkgPath:    "github.com/test",
+			ParentSpec: nil,
+		}
+		typeDef.SetSchemaName()
+
+		// Act
+		schemaName, err := builder.BuildSchema(typeDef)
+		// Assert
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		schema, ok := builder.GetDefinition(schemaName)
+		if !ok {
+			t.Fatal("expected schema to be defined")
+		}
+
+		// Should fall back to object type (current behavior)
+		if len(schema.Type) == 0 || schema.Type[0] != "object" {
+			t.Errorf("expected type object for non-enum alias, got %v", schema.Type)
+		}
+
+		// Should NOT have enum values
+		if len(schema.Enum) > 0 {
+			t.Error("non-enum type should not have enum values")
+		}
+	})
+}
+
+// mockEnumLookup for testing
+type mockEnumLookup struct {
+	enums map[string][]model.EnumValue
+}
+
+func (m *mockEnumLookup) GetEnumsForType(typeName string, file *ast.File) ([]model.EnumValue, error) {
+	// Try direct lookup first
+	if enums, ok := m.enums[typeName]; ok {
+		return enums, nil
+	}
+
+	// Try extracting short name from full path
+	// e.g., "github.com/test/constants.Role" -> "constants.Role"
+	if lastSlash := strings.LastIndex(typeName, "/"); lastSlash != -1 {
+		shortName := typeName[lastSlash+1:]
+		if enums, ok := m.enums[shortName]; ok {
+			return enums, nil
+		}
+	}
+
+	return nil, nil // No enums found (not an error)
 }

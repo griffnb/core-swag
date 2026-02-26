@@ -188,7 +188,6 @@ func TestBuildCustomSchema(t *testing.T) {
 	t.Run("builds primitive schema", func(t *testing.T) {
 		// Act
 		schema, err := BuildCustomSchema([]string{"string"})
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
@@ -204,7 +203,6 @@ func TestBuildCustomSchema(t *testing.T) {
 	t.Run("builds array schema", func(t *testing.T) {
 		// Act
 		schema, err := BuildCustomSchema([]string{"array", "string"})
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
@@ -226,7 +224,6 @@ func TestBuildCustomSchema(t *testing.T) {
 	t.Run("builds object schema", func(t *testing.T) {
 		// Act
 		schema, err := BuildCustomSchema([]string{"object", "string"})
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
@@ -245,7 +242,6 @@ func TestBuildCustomSchema(t *testing.T) {
 	t.Run("handles primitive keyword", func(t *testing.T) {
 		// Act
 		schema, err := BuildCustomSchema([]string{"primitive", "integer"})
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
@@ -261,7 +257,6 @@ func TestBuildCustomSchema(t *testing.T) {
 	t.Run("returns error for empty types", func(t *testing.T) {
 		// Act
 		schema, err := BuildCustomSchema([]string{})
-
 		// Assert
 		if err != nil {
 			t.Errorf("expected no error for empty types, got %v", err)

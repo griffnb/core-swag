@@ -22,6 +22,7 @@ import (
 	"github.com/griffnb/core-swag/internal/loader"
 	"github.com/griffnb/core-swag/internal/orchestrator"
 	"github.com/griffnb/core-swag/internal/schema"
+	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"sigs.k8s.io/yaml"
@@ -195,7 +196,7 @@ func (g *Gen) Build(config *Config) error {
 		if err != nil {
 			// Don't bother reporting if the default file is missing; assume there are no overrides
 			if !(config.OverridesFile == DefaultOverridesFile && os.IsNotExist(err)) {
-				return fmt.Errorf("could not open overrides file: %w", err)
+				return errors.WithMessagef(err, "could not open overrides file: %s", config.OverridesFile)
 			}
 		} else {
 			console.Logger.Debug("Using overrides from %s", config.OverridesFile)
@@ -247,8 +248,9 @@ func (g *Gen) Build(config *Config) error {
 	// Remove unused schema definitions to keep the output clean
 	schema.RemoveUnusedDefinitions(swagger)
 
+	// nolint:gosec // This is not executing user-provided code, just writing files
 	if err := os.MkdirAll(config.OutputDir, os.ModePerm); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	for _, outputType := range config.OutputTypes {
@@ -321,9 +323,29 @@ func (g *Gen) writeJSONSwagger(config *Config, swagger *spec.Swagger) error {
 
 	jsonFileName := path.Join(config.OutputDir, filename)
 
+	// Debug: Check NJDLClassification RIGHT before JSON marshaling
+	for name, schema := range swagger.Definitions {
+		if strings.Contains(name, "NJDLClassification") {
+			g.debug.Printf(
+				">>> GEN writeJSONSwagger: Before jsonIndent, definition %s has type: %v, enum count: %d, title: %q",
+				name,
+				schema.Type,
+				len(schema.Enum),
+				schema.Title,
+			)
+		}
+	}
+
 	b, err := g.jsonIndent(swagger)
 	if err != nil {
 		return err
+	}
+
+	// Debug: Check what was actually marshaled
+	for name := range swagger.Definitions {
+		if strings.Contains(name, "NJDLClassification") {
+			g.debug.Printf(">>> GEN writeJSONSwagger: After jsonIndent, about to write JSON for definition %s", name)
+		}
 	}
 
 	err = g.writeFile(b, jsonFileName)
