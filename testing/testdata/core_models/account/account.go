@@ -38,7 +38,7 @@ type DBColumns struct {
 	TestUserType        *fields.IntField                                       `public:"view" column:"test_user_type"         type:"smallint" default:"0"`
 	OrganizationID      *fields.UUIDField                                      `public:"view" column:"organization_id"        type:"uuid"     default:"null"               index:"true" null:"true"`
 	Role                *fields.IntConstantField[constants.Role]               `public:"view" column:"role"                   type:"smallint" default:"1"                  index:"true"`
-	Properties          *fields.StructField[*Properties]                       `              column:"properties"             type:"jsonb"    default:"{}"`
+	Properties          *fields.StructField[*Properties]                       `public:"view" column:"properties"             type:"jsonb"    default:"{}"`
 	SignupProperties    *fields.StructField[*SignupProperties]                 `              column:"signup_properties"      type:"jsonb"    default:"{}"`
 	HashedPassword      *fields.StringField                                    `              column:"hashed_password"        type:"text"     default:""`
 	PasswordUpdatedAtTS *fields.IntField                                       `              column:"password_updated_at_ts" type:"bigint"   default:"0"`
