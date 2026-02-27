@@ -341,7 +341,11 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -401,13 +405,26 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "test_user_type": {
           "type": "integer"
@@ -430,7 +447,11 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -502,13 +523,26 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "tags": {
           "type": "array",
@@ -540,7 +574,11 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -588,10 +626,23 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "tags": {
           "type": "array",
@@ -620,7 +671,11 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -665,10 +720,23 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "test_user_type": {
           "type": "integer"
@@ -706,7 +774,11 @@
           "type": "number"
         },
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -772,13 +844,26 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "test_user_type": {
           "type": "integer"
@@ -813,7 +898,11 @@
           "type": "number"
         },
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -861,10 +950,23 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "test_user_type": {
           "type": "integer"
@@ -898,7 +1000,11 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -955,13 +1061,26 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "test_user_type": {
           "type": "integer"
@@ -984,7 +1103,11 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -1026,10 +1149,23 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "test_user_type": {
           "type": "integer"
@@ -1073,7 +1209,8 @@
           "type": "integer"
         },
         "new_classification_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "new_data_brokers": {
           "type": "integer"
@@ -1129,7 +1266,8 @@
           "type": "integer"
         },
         "new_classification_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "new_data_brokers": {
           "type": "integer"
@@ -1167,7 +1305,8 @@
       "type": "object",
       "properties": {
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "id": {
           "type": "integer"
@@ -1176,13 +1315,22 @@
           "type": "string"
         },
         "role": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "status": {
           "type": "integer"
         },
         "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "urn": {
           "type": "string"
@@ -1233,22 +1381,30 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "local_member_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "meta_data": {
-          "type": "object"
+          "$ref": "#/definitions/org_member.MetaData"
         },
         "status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "union_id": {
           "type": "string"
         },
         "union_local_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "union_local_name": {
           "type": "string"
@@ -1257,7 +1413,17 @@
           "type": "string"
         },
         "union_status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
         }
       }
     },
@@ -1265,22 +1431,30 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "local_member_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "meta_data": {
-          "type": "object"
+          "$ref": "#/definitions/org_member.MetaData"
         },
         "status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "union_id": {
           "type": "string"
         },
         "union_local_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "union_local_name": {
           "type": "string"
@@ -1289,7 +1463,17 @@
           "type": "string"
         },
         "union_status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
         }
       }
     },
@@ -1313,7 +1497,25 @@
       "type": "object",
       "properties": {
         "role": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ]
         }
       }
     },
@@ -1333,7 +1535,7 @@
           "type": "integer"
         },
         "ext_id": {
-          "type": "object"
+          "$ref": "#/definitions/constants.ExternalID"
         },
         "locationId": {
           "type": "string"
@@ -1362,16 +1564,19 @@
       "type": "object",
       "properties": {
         "account_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "first_name": {
           "type": "string"
         },
         "id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "last_name": {
           "type": "string"
@@ -1386,31 +1591,49 @@
           "type": "integer"
         },
         "org_member": {
-          "type": "object"
+          "$ref": "#/definitions/account.JoinedOrgMember"
         },
         "org_member_email": {
           "type": "string"
         },
         "org_member_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "org_member_local_member_id": {
           "type": "string"
         },
         "org_member_status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "org_member_union_status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
         },
         "organization_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "organization_name": {
           "type": "string"
         },
         "organization_subscription_plan_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "organization_subscription_plan_name": {
           "type": "string"
@@ -1425,13 +1648,20 @@
           "type": "integer"
         },
         "status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "union_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "union_local_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "union_local_name": {
           "type": "string"
@@ -1445,16 +1675,19 @@
       "type": "object",
       "properties": {
         "account_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "first_name": {
           "type": "string"
         },
         "id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "last_name": {
           "type": "string"
@@ -1469,31 +1702,49 @@
           "type": "integer"
         },
         "org_member": {
-          "type": "object"
+          "$ref": "#/definitions/account.JoinedOrgMember"
         },
         "org_member_email": {
           "type": "string"
         },
         "org_member_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "org_member_local_member_id": {
           "type": "string"
         },
         "org_member_status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "org_member_union_status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
         },
         "organization_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "organization_name": {
           "type": "string"
         },
         "organization_subscription_plan_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "organization_subscription_plan_name": {
           "type": "string"
@@ -1508,13 +1759,20 @@
           "type": "integer"
         },
         "status": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "union_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "union_local_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "union_local_name": {
           "type": "string"
@@ -1537,10 +1795,25 @@
           "type": "string"
         },
         "org_member_status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "org_member_union_status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
         }
       }
     },
@@ -1593,7 +1866,9 @@
     "account.Properties": {
       "type": "object",
       "properties": {
-        "external_user_info": {},
+        "external_user_info": {
+          "type": "object"
+        },
         "invite_key": {
           "type": "string"
         },
@@ -1602,6 +1877,16 @@
         },
         "last_seen": {
           "type": "integer"
+        },
+        "nj_dl_classification": {
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
         },
         "verify_email_key": {
           "type": "string"
@@ -1612,13 +1897,20 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "previous_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "update_type": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3
+          ]
         }
       }
     },
@@ -1626,18 +1918,35 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "previous_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "update_type": {
-          "type": "object"
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3
+          ]
         }
       }
     },
     "account.SharedAddressUpdateType": {
-      "type": "object"
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3
+      ],
+      "x-enum-varnames": [
+        "UPDATE_TYPE_NEW",
+        "UPDATE_TYPE_UPDATE",
+        "UPDATE_TYPE_DELETE"
+      ]
     },
     "account.SignupProperties": {
       "type": "object",
@@ -1666,7 +1975,11 @@
           "type": "number"
         },
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -1744,13 +2057,26 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "tags": {
           "type": "array",
@@ -1794,7 +2120,11 @@
           "type": "number"
         },
         "config_key": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "allow_self_signed_certs",
+            "api_rate_limit_enabled"
+          ]
         },
         "created_at": {
           "type": "string"
@@ -1845,10 +2175,23 @@
           "type": "object"
         },
         "role": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1,
+            40,
+            50,
+            100
+          ]
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "tags": {
           "type": "array",
@@ -2429,7 +2772,7 @@
           "type": "string"
         },
         "secondary": {
-          "type": "object"
+          "$ref": "#/definitions/address.Normalization"
         }
       }
     },
@@ -2602,46 +2945,46 @@
       "type": "object",
       "properties": {
         "city": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "external_id": {
           "type": "string"
         },
         "google_administrative_area_level_1": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_administrative_area_level_2": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_country": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_formatted_address": {
           "type": "string"
         },
         "google_locality": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_neighborhood": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_postal_code": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_postal_code_suffix": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_route": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_street_number": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_sublocality": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_subpremise": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "is_match": {
           "type": "integer"
@@ -2650,16 +2993,16 @@
           "type": "integer"
         },
         "postal_code": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "state": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "street": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "street_2": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         }
       }
     },
@@ -2667,46 +3010,46 @@
       "type": "object",
       "properties": {
         "city": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "external_id": {
           "type": "string"
         },
         "google_administrative_area_level_1": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_administrative_area_level_2": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_country": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_formatted_address": {
           "type": "string"
         },
         "google_locality": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_neighborhood": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_postal_code": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_postal_code_suffix": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_route": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_street_number": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_sublocality": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "google_subpremise": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "is_match": {
           "type": "integer"
@@ -2715,16 +3058,16 @@
           "type": "integer"
         },
         "postal_code": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "state": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "street": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         },
         "street_2": {
-          "type": "object"
+          "$ref": "#/definitions/address.FieldVerification"
         }
       }
     },
@@ -2735,10 +3078,10 @@
       "type": "object",
       "properties": {
         "account": {
-          "type": "object"
+          "$ref": "#/definitions/account.Account"
         },
         "billing_plan": {
-          "type": "object"
+          "$ref": "#/definitions/billing_plan.BillingPlanJoined"
         }
       }
     },
@@ -2746,7 +3089,8 @@
       "type": "object",
       "properties": {
         "organization_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         }
       }
     },
@@ -2769,7 +3113,12 @@
           "type": "string"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "updated_at": {
           "type": "string"
@@ -2801,7 +3150,12 @@
           "type": "string"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "updated_at": {
           "type": "string"
@@ -2857,7 +3211,12 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "stripe_product_id": {
           "type": "string"
@@ -2919,7 +3278,12 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "stripe_product_id": {
           "type": "string"
@@ -2975,7 +3339,12 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "stripe_product_id": {
           "type": "string"
@@ -3028,7 +3397,12 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "stripe_product_id": {
           "type": "string"
@@ -3087,7 +3461,12 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "stripe_product_id": {
           "type": "string"
@@ -3140,7 +3519,12 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "stripe_product_id": {
           "type": "string"
@@ -3277,7 +3661,12 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "stripe_product_id": {
           "type": "string"
@@ -3333,7 +3722,12 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "enum": [
+            100,
+            200,
+            300
+          ]
         },
         "stripe_product_id": {
           "type": "string"
@@ -3356,45 +3750,177 @@
       "type": "object"
     },
     "caller.callerRegistry": {
-      "type": "object",
-      "properties": {
-        "callers": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
+      "type": "object"
     },
     "constants.ExternalID": {
       "type": "object"
     },
     "constants.GlobalConfigKey": {
-      "type": "object"
+      "type": "string",
+      "enum": [
+        "allow_self_signed_certs",
+        "api_rate_limit_enabled"
+      ],
+      "x-enum-varnames": [
+        "GCK_ALLOW_SELF_SIGNED_CERTS",
+        "GCK_API_RATE_LIMIT_ENABLED"
+      ]
+    },
+    "constants.NJDLClassification": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "x-enum-varnames": [
+        "NJ_DL_LAW_ENFORCEMENT_OFFICER",
+        "NJ_DL_CHILD_PROTECTIVE_INVESTIGATOR",
+        "NJ_DL_JUDICIAL_OFFICER",
+        "NJ_DL_PROSECUTOR",
+        "NJ_DL_FAMILY_MEMBER"
+      ]
     },
     "constants.Role": {
-      "type": "object"
+      "type": "integer",
+      "enum": [
+        -1,
+        0,
+        1,
+        40,
+        50,
+        100
+      ],
+      "x-enum-varnames": [
+        "ROLE_UNAUTHORIZED",
+        "ROLE_ANY_AUTHORIZED",
+        "ROLE_USER",
+        "ROLE_ORG_ADMIN",
+        "ROLE_ORG_OWNER",
+        "ROLE_ADMIN"
+      ]
     },
     "constants.Status": {
-      "type": "object"
+      "type": "integer",
+      "enum": [
+        100,
+        200,
+        300
+      ],
+      "x-enum-varnames": [
+        "STATUS_ACTIVE",
+        "STATUS_DISABLED",
+        "STATUS_DELETED"
+      ]
     },
     "constants.StyleType": {
-      "type": "object"
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "x-enum-varnames": [
+        "STYLE_TYPE_MIX_IT_UP",
+        "STYLE_TYPE_IMAGINATIVE",
+        "STYLE_TYPE_FUTURISTIC",
+        "STYLE_TYPE_RETRO",
+        "STYLE_TYPE_PHOTOREALISTIC",
+        "STYLE_TYPE_ABSTRACT",
+        "STYLE_TYPE_MINIMALIST",
+        "STYLE_TYPE_POP_ART",
+        "STYLE_TYPE_3D_ANIMATED",
+        "STYLE_TYPE_ANIME",
+        "STYLE_TYPE_SYNTHWAVE",
+        "STYLE_TYPE_WATERCOLOR",
+        "STYLE_TYPE_IMPRESSIONISM",
+        "STYLE_TYPE_VECTOR_ART",
+        "STYLE_TYPE_STEAMPUNK",
+        "STYLE_TYPE_CUSTOM"
+      ]
     },
     "constants.TagType": {
       "type": "object"
     },
     "constants.UnionStatus": {
+      "type": "integer",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "x-enum-varnames": [
+        "UNION_STATUS_UNKNOWN",
+        "UNION_STATUS_ACTIVE",
+        "UNION_STATUS_INACTIVE",
+        "UNION_STATUS_RETIRED",
+        "UNION_STATUS_RESIGNED",
+        "UNION_STATUS_ASSOCIATE",
+        "UNION_STATUS_FOP",
+        "UNION_STATUS_TERM"
+      ]
+    },
+    "embedded_tag_test.BaseModelLike": {
       "type": "object"
+    },
+    "embedded_tag_test.TestModel": {
+      "type": "object",
+      "properties": {
+        "-": {
+          "type": "string"
+        },
+        "both": {
+          "type": "string"
+        },
+        "public_field": {
+          "type": "string"
+        },
+        "valid_column": {
+          "type": "string"
+        },
+        "valid_json": {
+          "type": "string"
+        }
+      }
+    },
+    "embedded_tag_test.TestModelPublic": {
+      "type": "object",
+      "properties": {
+        "public_field": {
+          "type": "string"
+        }
+      }
     },
     "org_member.MetaData": {
       "type": "object",
       "properties": {
         "pending_local_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "pending_plan_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "pending_removal": {
           "type": "integer"
@@ -3408,10 +3934,12 @@
       "type": "object",
       "properties": {
         "pending_local_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "pending_plan_id": {
-          "type": "object"
+          "type": "string",
+          "format": "uuid"
         },
         "pending_removal": {
           "type": "integer"
@@ -3422,29 +3950,10 @@
       }
     },
     "relationship.Relationship": {
-      "type": "object",
-      "properties": {
-        "field": {
-          "type": "string"
-        },
-        "package": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        }
-      }
+      "type": "object"
     },
     "relationship.relationshipRegistry": {
-      "type": "object",
-      "properties": {
-        "relationships": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
+      "type": "object"
     },
     "response.ErrorResponse": {
       "type": "object",
@@ -3457,7 +3966,9 @@
     "response.SuccessResponse": {
       "type": "object",
       "properties": {
-        "data": {}
+        "data": {
+          "type": "object"
+        }
       }
     }
   }

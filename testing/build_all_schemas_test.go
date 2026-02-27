@@ -1,8 +1,9 @@
-package model
+package testing_test
 
 import (
 	"testing"
 
+	"github.com/griffnb/core-swag/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +14,7 @@ func TestBuildAllSchemas_BillingPlan(t *testing.T) {
 	pkgPath := "github.com/griffnb/core-swag/testing/testdata/core_models/billing_plan"
 	typeName := "BillingPlan"
 
-	schemas, err := BuildAllSchemas(baseModule, pkgPath, typeName)
+	schemas, err := model.BuildAllSchemas(baseModule, pkgPath, typeName)
 	require.NoError(t, err)
 	require.NotNil(t, schemas)
 
@@ -60,7 +61,7 @@ func TestBuildAllSchemas_Account(t *testing.T) {
 	pkgPath := "github.com/griffnb/core-swag/testing/testdata/core_models/account"
 	typeName := "Account"
 
-	schemas, err := BuildAllSchemas(baseModule, pkgPath, typeName)
+	schemas, err := model.BuildAllSchemas(baseModule, pkgPath, typeName)
 	require.NoError(t, err)
 	require.NotNil(t, schemas)
 
@@ -105,7 +106,7 @@ func TestBuildAllSchemas_WithPackageQualifiedNested(t *testing.T) {
 	pkgPath := "github.com/griffnb/core-swag/testing/testdata/core_models/account"
 	typeName := "AccountWithFeatures"
 
-	schemas, err := BuildAllSchemas(baseModule, pkgPath, typeName)
+	schemas, err := model.BuildAllSchemas(baseModule, pkgPath, typeName)
 	require.NoError(t, err)
 	require.NotNil(t, schemas)
 
@@ -124,7 +125,7 @@ func TestBuildAllSchemas_InvalidType(t *testing.T) {
 	pkgPath := "github.com/griffnb/core-swag/testing/testdata/core_models/account"
 	typeName := "NonExistentType"
 
-	schemas, err := BuildAllSchemas(baseModule, pkgPath, typeName)
+	schemas, err := model.BuildAllSchemas(baseModule, pkgPath, typeName)
 
 	// Should handle gracefully - might return empty or error
 	// The important thing is it doesn't panic
@@ -141,7 +142,7 @@ func TestEmbeddedFieldTagFiltering(t *testing.T) {
 	pkgPath := "github.com/griffnb/core-swag/testing/testdata/core_models/embedded_tag_test"
 	typeName := "TestModel"
 
-	schemas, err := BuildAllSchemas(baseModule, pkgPath, typeName)
+	schemas, err := model.BuildAllSchemas(baseModule, pkgPath, typeName)
 	require.NoError(t, err)
 	require.NotNil(t, schemas)
 

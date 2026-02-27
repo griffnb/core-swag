@@ -1,5 +1,45 @@
 # Core-Swag Change Log
 
+## 2026-02-26: Fix BuildAllSchemas - Embedded Fields & Tag Parsing
+
+**Problem:** `BuildAllSchemas` produced schemas with empty properties. Tests `TestBuildAllSchemas_BillingPlan`, `TestBuildAllSchemas_Account`, and `TestBuildAllSchemas_WithPackageQualifiedNested` all failed.
+
+**Root Cause (Two Bugs):**
+1. **Embedded field skipping:** In `ExtractFieldsRecursive`, embedded struct fields (e.g., `DBColumns`, `model.BaseModel`) have no explicit names and no tags. The json/column tag check at line 375 skipped them before reaching the embedded field expansion logic at line 381.
+2. **Broken tag parsing:** The tag parser used `strings.Split(tag, ":")` which splits on ALL colons, breaking Go struct tags that use `key:"value" key2:"value2"` format. Fields with `column` tags (but no `json` tags) had both `jsonTag` and `columnTag` evaluate to empty, causing all fields to be incorrectly skipped.
+
+**Fix:**
+1. Moved embedded field handling (`checkNamed`) BEFORE the json/column tag check. Embedded fields now get recursively expanded regardless of their tags.
+2. Fixed tag parsing to split by whitespace first (`strings.Fields(tag)`), then split each part by colon (`strings.SplitN(part, ":", 2)`) — matching the correct approach used by `StructField.GetTags()`.
+
+**Files Modified:**
+- `internal/model/struct_field_lookup.go` - Both fixes in `ExtractFieldsRecursive`
+
+**Tests Fixed:** 3 tests that were previously failing now pass:
+- `TestBuildAllSchemas_BillingPlan`
+- `TestBuildAllSchemas_Account`
+- `TestBuildAllSchemas_WithPackageQualifiedNested`
+
+**Pre-existing (unrelated):** `internal/parser/route/service_test.go:858` has a panic comparing `string` to `spec.StringOrArray`.
+
+---
+
+## 2026-02-26: Fix Enum Detection in IntConstantField/StringConstantField
+
+**Problem:** `fields.IntConstantField[constants.Role]` and `fields.StringConstantField[constants.GlobalConfigKey]` were resolved to plain `"integer"`/`"string"` in the StructParserService, losing all enum type information. Bare enum types like `constants.NJDLClassification` worked correctly because they went through a different code path.
+
+**Root Cause:** In `field_processor.go`, `isCustomModel()` only checked for `fields.StructField` (not `IntConstantField`/`StringConstantField`). When these types hit `resolveFieldsType()`, they were mapped to primitives (`"integer"`/`"string"`) without extracting the generic type parameter. Since StructParserService adds definitions BEFORE the schema builder runs, these incomplete definitions were used.
+
+**Fix:** Added a new code path in `processField` that detects `ConstantField[T]` patterns, extracts the type parameter `T`, resolves it to a full package path, and performs enum lookup to inline enum values.
+
+**Files Modified:**
+- `internal/parser/struct/field_processor.go` - Added ConstantField enum extraction before fields.* primitive resolution
+- `testing/core_models_integration_test.go` - Added 4 enum assertion subtests (role, config_key, nj_dl_classification, status)
+
+**Also Discovered:** `internal/model/struct_field_lookup_test.go` has 4 pre-existing failing tests (`TestBuildAllSchemas_Account`, `TestBuildAllSchemas_BillingPlan`, `TestBuildAllSchemas_WithPackageQualifiedNested`, `TestEmbeddedFieldTagFiltering`). These fail because `testing/` is a separate Go module, so `packages.Load` from `internal/model/` tests cannot resolve packages in `testing/testdata/`. This is not related to our change.
+
+---
+
 ## 2026-02-21: Struct Parser Bug Fixes - Iteration 3 (IN PROGRESS) 🔄
 
 **Ralph Loop Iteration:** 3 of max 5

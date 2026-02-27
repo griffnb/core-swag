@@ -89,8 +89,59 @@ func (s *Service) processField(file *ast.File, field *ast.Field) (map[string]spe
 		}
 	}
 
-	// If it's still a fields.* named type, resolve it
-	if strings.HasPrefix(fieldType, "fields.") {
+	// Check for ConstantField types with enum type parameters before resolving
+	// fields.IntConstantField[constants.Role] -> extract "constants.Role" as enum type
+	// fields.StringConstantField[constants.GlobalConfigKey] -> extract "constants.GlobalConfigKey" as enum type
+	if strings.HasPrefix(fieldType, "fields.") && strings.Contains(fieldType, "ConstantField[") {
+		innerType, err := extractInnerType(fieldType)
+		if err == nil && innerType != "" {
+			// Determine the base OpenAPI type from the field type name
+			baseType := "integer"
+			if strings.Contains(fieldType, "StringConstantField") {
+				baseType = "string"
+			}
+
+			// Try to resolve enum values for the inner type
+			enumType := innerType
+			if file != nil && !strings.Contains(enumType, ".") {
+				enumType = file.Name.Name + "." + enumType
+			}
+
+			if s.enumLookup != nil && file != nil {
+				fullTypeName := s.resolveFullTypeName(enumType, file)
+				enumValues, enumErr := s.enumLookup.GetEnumsForType(fullTypeName, file)
+				if enumErr == nil && len(enumValues) > 0 {
+					schema := spec.Schema{
+						SchemaProps: spec.SchemaProps{
+							Type: []string{baseType},
+						},
+					}
+					var enumVals []any
+					for _, ev := range enumValues {
+						enumVals = append(enumVals, ev.Value)
+					}
+					schema.Enum = enumVals
+					properties := map[string]spec.Schema{jsonName: schema}
+					var required []string
+					if tags.Required && !tags.OmitEmpty {
+						required = append(required, jsonName)
+					}
+					return properties, required, nil
+				}
+			}
+
+			// Enum lookup failed or unavailable - fall back to base type
+			fieldType = baseType
+		} else {
+			// Extraction failed - fall back to resolving as primitive
+			if resolvedType := resolveFieldsType(fieldType); resolvedType != "" {
+				fieldType = resolvedType
+			} else {
+				fieldType = "object"
+			}
+		}
+	} else if strings.HasPrefix(fieldType, "fields.") {
+		// Non-ConstantField fields.* types - resolve to primitives
 		if resolvedType := resolveFieldsType(fieldType); resolvedType != "" {
 			fieldType = resolvedType
 		} else {

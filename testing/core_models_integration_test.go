@@ -3,6 +3,7 @@ package testing_test
 import (
 	"encoding/json"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/griffnb/core-swag/internal/loader"
@@ -99,6 +100,109 @@ func TestCoreModelsIntegration(t *testing.T) {
 		for propName := range props {
 			t.Logf("  - %s", propName)
 		}
+	})
+
+	// Test enum values on Account fields
+	t.Run("Account role field should have enum values from IntConstantField[constants.Role]", func(t *testing.T) {
+		accountSchema := swagger.Definitions["account.Account"]
+		require.NotNil(t, accountSchema, "account.Account schema should exist")
+
+		roleSchema, hasRole := accountSchema.Properties["role"]
+		require.True(t, hasRole, "Account should have role field")
+
+		// role is *fields.IntConstantField[constants.Role] which should resolve to integer with enum values
+		assert.Contains(t, roleSchema.Type, "integer", "role should be integer type")
+		require.NotEmpty(t, roleSchema.Enum, "role should have enum values from constants.Role")
+
+		// Expected enum values: ROLE_UNAUTHORIZED=-1, ROLE_ANY_AUTHORIZED=0, ROLE_USER=1,
+		// ROLE_ORG_ADMIN=40, ROLE_ORG_OWNER=50, ROLE_ADMIN=100
+		// Note: ROLE_READ_ADMIN=90 has no explicit Role type, so it should be excluded
+		expectedEnums := []int{-1, 0, 1, 40, 50, 100}
+		actualEnums := make([]int, 0, len(roleSchema.Enum))
+		for _, v := range roleSchema.Enum {
+			switch val := v.(type) {
+			case int:
+				actualEnums = append(actualEnums, val)
+			case float64:
+				actualEnums = append(actualEnums, int(val))
+			}
+		}
+		sort.Ints(expectedEnums)
+		sort.Ints(actualEnums)
+		assert.Equal(t, expectedEnums, actualEnums, "role enum values should match constants.Role values")
+	})
+
+	t.Run("Account config_key field should have enum values from StringConstantField[constants.GlobalConfigKey]", func(t *testing.T) {
+		accountSchema := swagger.Definitions["account.Account"]
+		require.NotNil(t, accountSchema, "account.Account schema should exist")
+
+		configKeySchema, hasConfigKey := accountSchema.Properties["config_key"]
+		require.True(t, hasConfigKey, "Account should have config_key field")
+
+		// config_key is *fields.StringConstantField[constants.GlobalConfigKey]
+		assert.Contains(t, configKeySchema.Type, "string", "config_key should be string type")
+		require.NotEmpty(t, configKeySchema.Enum, "config_key should have enum values from constants.GlobalConfigKey")
+
+		expectedEnums := []string{"allow_self_signed_certs", "api_rate_limit_enabled"}
+		actualEnums := make([]string, 0, len(configKeySchema.Enum))
+		for _, v := range configKeySchema.Enum {
+			if s, ok := v.(string); ok {
+				actualEnums = append(actualEnums, s)
+			}
+		}
+		sort.Strings(expectedEnums)
+		sort.Strings(actualEnums)
+		assert.Equal(t, expectedEnums, actualEnums, "config_key enum values should match constants.GlobalConfigKey values")
+	})
+
+	t.Run("Properties nj_dl_classification should have enum values", func(t *testing.T) {
+		propsSchema := swagger.Definitions["account.Properties"]
+		require.NotNil(t, propsSchema, "account.Properties schema should exist")
+
+		njdlSchema, hasNJDL := propsSchema.Properties["nj_dl_classification"]
+		require.True(t, hasNJDL, "Properties should have nj_dl_classification field")
+
+		assert.Contains(t, njdlSchema.Type, "integer", "nj_dl_classification should be integer type")
+		require.NotEmpty(t, njdlSchema.Enum, "nj_dl_classification should have enum values from constants.NJDLClassification")
+
+		// Expected: NJ_DL_LAW_ENFORCEMENT_OFFICER=1 through NJ_DL_FAMILY_MEMBER=5
+		expectedEnums := []int{1, 2, 3, 4, 5}
+		actualEnums := make([]int, 0, len(njdlSchema.Enum))
+		for _, v := range njdlSchema.Enum {
+			switch val := v.(type) {
+			case int:
+				actualEnums = append(actualEnums, val)
+			case float64:
+				actualEnums = append(actualEnums, int(val))
+			}
+		}
+		sort.Ints(actualEnums)
+		assert.Equal(t, expectedEnums, actualEnums, "nj_dl_classification enum values should be 1-5")
+	})
+
+	t.Run("Account status field should have enum values from IntConstantField[constants.Status]", func(t *testing.T) {
+		accountSchema := swagger.Definitions["account.Account"]
+		require.NotNil(t, accountSchema, "account.Account schema should exist")
+
+		statusSchema, hasStatus := accountSchema.Properties["status"]
+		require.True(t, hasStatus, "Account should have status field")
+
+		assert.Contains(t, statusSchema.Type, "integer", "status should be integer type")
+		require.NotEmpty(t, statusSchema.Enum, "status should have enum values from constants.Status")
+
+		// Expected: STATUS_ACTIVE=100, STATUS_DISABLED=200, STATUS_DELETED=300
+		expectedEnums := []int{100, 200, 300}
+		actualEnums := make([]int, 0, len(statusSchema.Enum))
+		for _, v := range statusSchema.Enum {
+			switch val := v.(type) {
+			case int:
+				actualEnums = append(actualEnums, val)
+			case float64:
+				actualEnums = append(actualEnums, int(val))
+			}
+		}
+		sort.Ints(actualEnums)
+		assert.Equal(t, expectedEnums, actualEnums, "status enum values should match constants.Status values")
 	})
 
 	// Test field properties in Public Account schema

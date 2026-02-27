@@ -348,12 +348,13 @@ func (c *CoreStructParser) ExtractFieldsRecursive(
 						tag,
 					)
 
-					tagPairs := strings.Split(tag, ":")
+					// Parse struct tags correctly: split by space first, then by colon
 					tagMap := make(map[string]string)
-					for j := 0; j < len(tagPairs)-1; j += 2 {
-						key := tagPairs[j]
-						value := strings.Trim(tagPairs[j+1], "\"")
-						tagMap[key] = value
+					for _, part := range strings.Fields(tag) {
+						kv := strings.SplitN(part, ":", 2)
+						if len(kv) == 2 {
+							tagMap[strings.Trim(kv[0], "`")] = strings.Trim(kv[1], `"`)
+						}
 					}
 
 					jsonTag := tagMap["json"]
@@ -371,17 +372,34 @@ func (c *CoreStructParser) ExtractFieldsRecursive(
 						continue
 					}
 
+					// Handle embedded fields BEFORE tag checks
+					// Embedded fields (no explicit name) need recursive expansion
+					// regardless of their tags
+					isEmbedded := len(field.Names) == 0
+					if isEmbedded {
+						if subFields, _, ok := c.checkNamed(fieldType); ok {
+							if len(subFields) == 0 {
+								console.Logger.Debug("Skipping empty embedded field: %s\n", fieldName)
+								continue
+							}
+							fields = append(fields, subFields...)
+							continue
+						}
+						// Embedded field that isn't a struct - skip
+						console.Logger.Debug("Skipping non-struct embedded field: %s\n", fieldName)
+						continue
+					}
+
 					// Skip if NEITHER json nor column tag exists (both are empty)
 					if jsonTag == "" && columnTag == "" {
 						console.Logger.Debug("Skipping field %s because it has no json or column tag\n", fieldName)
 						continue
 					}
 
-					// Embedded Fields
+					// Named struct fields (non-embedded)
 					if subFields, _, ok := c.checkNamed(fieldType); ok {
-
 						if len(subFields) == 0 {
-							console.Logger.Debug("Skipping empty embedded field: %s\n", fieldName)
+							console.Logger.Debug("Skipping empty named field: %s\n", fieldName)
 							continue
 						}
 						fields = append(fields, subFields...)
