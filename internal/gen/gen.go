@@ -323,19 +323,6 @@ func (g *Gen) writeJSONSwagger(config *Config, swagger *spec.Swagger) error {
 
 	jsonFileName := path.Join(config.OutputDir, filename)
 
-	// Debug: Check NJDLClassification RIGHT before JSON marshaling
-	for name, schema := range swagger.Definitions {
-		if strings.Contains(name, "NJDLClassification") {
-			g.debug.Printf(
-				">>> GEN writeJSONSwagger: Before jsonIndent, definition %s has type: %v, enum count: %d, title: %q",
-				name,
-				schema.Type,
-				len(schema.Enum),
-				schema.Title,
-			)
-		}
-	}
-
 	b, err := g.jsonIndent(swagger)
 	if err != nil {
 		return err

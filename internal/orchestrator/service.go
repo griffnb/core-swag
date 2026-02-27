@@ -312,7 +312,7 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 	// Parse routes from each file
 	routeCount := 0
 	for astFile, fileInfo := range loadResult.Files {
-		routes, err := s.routeParser.ParseRoutes(astFile)
+		routes, err := s.routeParser.ParseRoutes(astFile, fileInfo.Path, fileInfo.FileSet)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse routes from %s: %w", fileInfo.Path, err)
 		}

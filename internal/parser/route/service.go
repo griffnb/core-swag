@@ -5,6 +5,7 @@ package route
 
 import (
 	"go/ast"
+	"go/token"
 
 	"github.com/griffnb/core-swag/internal/domain"
 	routedomain "github.com/griffnb/core-swag/internal/parser/route/domain"
@@ -47,8 +48,10 @@ func (s *Service) SetRegistry(registry TypeRegistry) {
 	s.registry = registry
 }
 
-// ParseRoutes extracts all routes from an AST file
-func (s *Service) ParseRoutes(astFile *ast.File) ([]*routedomain.Route, error) {
+// ParseRoutes extracts all routes from an AST file.
+// filePath is the source file path and fset is used to resolve line numbers.
+// Both are optional — if provided, routes will include x-path and x-line metadata.
+func (s *Service) ParseRoutes(astFile *ast.File, filePath string, fset *token.FileSet) ([]*routedomain.Route, error) {
 	var routes []*routedomain.Route
 
 	// Get package name from the file
@@ -66,7 +69,7 @@ func (s *Service) ParseRoutes(astFile *ast.File) ([]*routedomain.Route, error) {
 		}
 
 		// Parse the function's documentation comments with package context
-		operation := s.parseOperation(funcDecl, packageName)
+		operation := s.parseOperation(funcDecl, packageName, filePath, fset)
 		if operation == nil {
 			continue
 		}
@@ -80,10 +83,11 @@ func (s *Service) ParseRoutes(astFile *ast.File) ([]*routedomain.Route, error) {
 }
 
 // parseOperation parses a function declaration into an operation
-func (s *Service) parseOperation(funcDecl *ast.FuncDecl, packageName string) *operation {
+func (s *Service) parseOperation(funcDecl *ast.FuncDecl, packageName string, filePath string, fset *token.FileSet) *operation {
 	op := &operation{
 		functionName: funcDecl.Name.Name,
 		packageName:  packageName,
+		filePath:     filePath,
 		routerPaths:  []routerPath{},
 		parameters:   []routedomain.Parameter{},
 		responses:    make(map[int]routedomain.Response),
@@ -91,6 +95,12 @@ func (s *Service) parseOperation(funcDecl *ast.FuncDecl, packageName string) *op
 		tags:         []string{},
 		consumes:     []string{},
 		produces:     []string{},
+	}
+
+	// Resolve line number from FileSet if available
+	if fset != nil {
+		position := fset.Position(funcDecl.Pos())
+		op.lineNumber = position.Line
 	}
 
 	// Parse each comment line
@@ -130,6 +140,8 @@ func (s *Service) operationToRoutes(op *operation) []*routedomain.Route {
 			Deprecated:   routerPath.deprecated,
 			OperationID:  op.operationID,
 			FunctionName: op.functionName,
+			FilePath:     op.filePath,
+			LineNumber:   op.lineNumber,
 		}
 
 		routes = append(routes, route)

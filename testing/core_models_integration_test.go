@@ -502,3 +502,95 @@ func TestBillingPlanSchema(t *testing.T) {
 		assert.Contains(t, props, "feature_set", "Should have feature_set (public:view)")
 	})
 }
+
+func TestPublicRouteNestedStructRefs(t *testing.T) {
+	searchDir := "testdata/core_models"
+	mainAPIFile := "main.go"
+
+	config := &orchestrator.Config{
+		ParseDependency: loader.ParseFlag(1),
+	}
+	service := orchestrator.New(config)
+
+	swagger, err := service.Parse([]string{searchDir}, mainAPIFile, 100)
+	require.NoError(t, err)
+
+	t.Run("AccountWithFeaturesPublic nested struct refs should use Public suffix", func(t *testing.T) {
+		schema := swagger.Definitions["account.AccountWithFeaturesPublic"]
+		require.NotNil(t, schema, "account.AccountWithFeaturesPublic should exist")
+
+		props := schema.Properties
+		t.Logf("AccountWithFeaturesPublic properties:")
+		for propName, propSchema := range props {
+			if propSchema.Ref.String() != "" {
+				t.Logf("  - %s -> %s", propName, propSchema.Ref.String())
+			} else {
+				t.Logf("  - %s -> type: %v", propName, propSchema.Type)
+			}
+		}
+
+		// Properties field has public:"view" and references account.Properties struct
+		// In the Public variant, nested struct refs should also use Public suffix
+		propertiesSchema, hasProp := props["properties"]
+		require.True(t, hasProp, "AccountWithFeaturesPublic should have properties field")
+		assert.Equal(t, "#/definitions/account.PropertiesPublic", propertiesSchema.Ref.String(),
+			"properties field in Public schema should reference account.PropertiesPublic")
+
+		// FeatureSet field has public:"view" and references billing_plan.FeatureSet
+		featureSetSchema, hasFS := props["feature_set"]
+		require.True(t, hasFS, "AccountWithFeaturesPublic should have feature_set field")
+		assert.Equal(t, "#/definitions/billing_plan.FeatureSetPublic", featureSetSchema.Ref.String(),
+			"feature_set field in Public schema should reference billing_plan.FeatureSetPublic")
+
+		// Verification field has public:"view" and references address.Verification
+		verificationSchema, hasVerify := props["verification"]
+		require.True(t, hasVerify, "AccountWithFeaturesPublic should have verification field")
+		assert.Equal(t, "#/definitions/address.VerificationPublic", verificationSchema.Ref.String(),
+			"verification field in Public schema should reference address.VerificationPublic")
+
+		// Flags field has public:"view" and references account.Flags
+		flagsSchema, hasFlags := props["flags"]
+		require.True(t, hasFlags, "AccountWithFeaturesPublic should have flags field")
+		assert.Equal(t, "#/definitions/account.FlagsPublic", flagsSchema.Ref.String(),
+			"flags field in Public schema should reference account.FlagsPublic")
+	})
+
+	t.Run("Public definitions should exist for nested types", func(t *testing.T) {
+		assert.Contains(t, swagger.Definitions, "account.PropertiesPublic",
+			"account.PropertiesPublic definition should exist")
+		assert.Contains(t, swagger.Definitions, "billing_plan.FeatureSetPublic",
+			"billing_plan.FeatureSetPublic definition should exist")
+		assert.Contains(t, swagger.Definitions, "address.VerificationPublic",
+			"address.VerificationPublic definition should exist")
+		assert.Contains(t, swagger.Definitions, "account.FlagsPublic",
+			"account.FlagsPublic definition should exist")
+	})
+
+	t.Run("Public variant of struct with no public tags should be empty object", func(t *testing.T) {
+		// Properties has no public tags on any of its fields,
+		// so PropertiesPublic should be an empty object
+		propsPublic := swagger.Definitions["account.PropertiesPublic"]
+		assert.Contains(t, propsPublic.Type, "object",
+			"PropertiesPublic should be an object type")
+		assert.Empty(t, propsPublic.Properties,
+			"PropertiesPublic should have no properties (no fields have public tags)")
+	})
+
+	t.Run("Non-public AccountWithFeatures should reference base types without Public suffix", func(t *testing.T) {
+		schema := swagger.Definitions["account.AccountWithFeatures"]
+		require.NotNil(t, schema, "account.AccountWithFeatures should exist")
+
+		props := schema.Properties
+
+		// Base (non-public) schema should NOT have Public suffix on refs
+		propertiesSchema, hasProp := props["properties"]
+		require.True(t, hasProp, "AccountWithFeatures should have properties field")
+		assert.Equal(t, "#/definitions/account.Properties", propertiesSchema.Ref.String(),
+			"properties field in base schema should reference account.Properties (no Public suffix)")
+
+		featureSetSchema, hasFS := props["feature_set"]
+		require.True(t, hasFS, "AccountWithFeatures should have feature_set field")
+		assert.Equal(t, "#/definitions/billing_plan.FeatureSet", featureSetSchema.Ref.String(),
+			"feature_set field in base schema should reference billing_plan.FeatureSet (no Public suffix)")
+	})
+}

@@ -25,6 +25,8 @@ type operation struct {
 	consumes     []string
 	produces     []string
 	isPublic     bool
+	filePath     string // Source file path for x-path extension
+	lineNumber   int    // Function line number for x-line extension
 }
 
 // routerPath represents a single @router annotation

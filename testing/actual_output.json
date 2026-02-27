@@ -111,7 +111,9 @@
             }
           }
         },
-        "x-function": "authOrganization"
+        "x-function": "authOrganization",
+        "x-line": 116,
+        "x-path": "/Users/griffnb/projects/core-swag/testing/testdata/core_models/api/api.go"
       }
     },
     "/admin/accounts": {
@@ -187,7 +189,9 @@
             }
           }
         },
-        "x-function": "publicIndex"
+        "x-function": "publicIndex",
+        "x-line": 94,
+        "x-path": "/Users/griffnb/projects/core-swag/testing/testdata/core_models/api/api.go"
       }
     },
     "/admin/testUser": {
@@ -258,7 +262,9 @@
             }
           }
         },
-        "x-function": "CreateTestAccount"
+        "x-function": "CreateTestAccount",
+        "x-line": 28,
+        "x-path": "/Users/griffnb/projects/core-swag/testing/testdata/core_models/api/api.go"
       }
     },
     "/api/account/{id}": {
@@ -315,7 +321,9 @@
             }
           }
         },
-        "x-function": "InternalAPIAccount"
+        "x-function": "InternalAPIAccount",
+        "x-line": 47,
+        "x-path": "/Users/griffnb/projects/core-swag/testing/testdata/core_models/api/api.go"
       }
     },
     "/auth/me": {
@@ -363,7 +371,9 @@
             }
           }
         },
-        "x-function": "Me"
+        "x-function": "Me",
+        "x-line": 61,
+        "x-path": "/Users/griffnb/projects/core-swag/testing/testdata/core_models/api/api.go"
       }
     }
   },
@@ -598,7 +608,7 @@
           "type": "string"
         },
         "flags": {
-          "$ref": "#/definitions/account.Flags"
+          "$ref": "#/definitions/account.FlagsPublic"
         },
         "id": {
           "type": "string"
@@ -610,7 +620,7 @@
           "type": "string"
         },
         "nested_settings": {
-          "$ref": "#/definitions/account.NestedSettings"
+          "$ref": "#/definitions/account.NestedSettingsPublic"
         },
         "organization_id": {
           "type": "string"
@@ -622,7 +632,7 @@
           "type": "string"
         },
         "properties": {
-          "$ref": "#/definitions/account.Properties"
+          "$ref": "#/definitions/account.PropertiesPublic"
         },
         "questions": {
           "type": "object"
@@ -636,7 +646,7 @@
         "tags": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/account.IconTagJoin"
+            "$ref": "#/definitions/account.IconTagJoinPublic"
           }
         },
         "test_user_type": {
@@ -652,7 +662,7 @@
           "type": "string"
         },
         "verification": {
-          "$ref": "#/definitions/address.Verification"
+          "$ref": "#/definitions/address.VerificationPublic"
         }
       }
     },
@@ -684,7 +694,7 @@
           "type": "string"
         },
         "flags": {
-          "$ref": "#/definitions/account.Flags"
+          "$ref": "#/definitions/account.FlagsPublic"
         },
         "id": {
           "type": "string"
@@ -702,7 +712,7 @@
           "type": "string"
         },
         "properties": {
-          "$ref": "#/definitions/account.Properties"
+          "$ref": "#/definitions/account.PropertiesPublic"
         },
         "questions": {
           "type": "object"
@@ -726,7 +736,7 @@
           "type": "string"
         },
         "verification": {
-          "$ref": "#/definitions/address.Verification"
+          "$ref": "#/definitions/address.VerificationPublic"
         }
       }
     },
@@ -877,13 +887,13 @@
           "type": "string"
         },
         "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
+          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
         },
         "first_name": {
           "type": "string"
         },
         "flags": {
-          "$ref": "#/definitions/account.Flags"
+          "$ref": "#/definitions/account.FlagsPublic"
         },
         "id": {
           "type": "string"
@@ -901,7 +911,7 @@
           "type": "string"
         },
         "properties": {
-          "$ref": "#/definitions/account.Properties"
+          "$ref": "#/definitions/account.PropertiesPublic"
         },
         "questions": {
           "type": "object"
@@ -925,7 +935,7 @@
           "type": "string"
         },
         "verification": {
-          "$ref": "#/definitions/address.Verification"
+          "$ref": "#/definitions/address.VerificationPublic"
         }
       }
     },
@@ -939,6 +949,9 @@
           }
         }
       }
+    },
+    "account.AuthenticationPublic": {
+      "type": "object"
     },
     "account.DBColumns": {
       "type": "object",
@@ -1054,7 +1067,7 @@
           "type": "string"
         },
         "flags": {
-          "$ref": "#/definitions/account.Flags"
+          "$ref": "#/definitions/account.FlagsPublic"
         },
         "id": {
           "type": "string"
@@ -1069,7 +1082,7 @@
           "type": "string"
         },
         "properties": {
-          "$ref": "#/definitions/account.Properties"
+          "$ref": "#/definitions/account.PropertiesPublic"
         },
         "questions": {
           "type": "object"
@@ -1093,7 +1106,7 @@
           "type": "string"
         },
         "verification": {
-          "$ref": "#/definitions/address.Verification"
+          "$ref": "#/definitions/address.VerificationPublic"
         }
       }
     },
@@ -1242,6 +1255,9 @@
         }
       }
     },
+    "account.IconTagJoinPublic": {
+      "type": "object"
+    },
     "account.JoinData": {
       "type": "object",
       "properties": {
@@ -1275,7 +1291,7 @@
       "type": "object",
       "properties": {
         "nested_settings": {
-          "$ref": "#/definitions/account.NestedSettings"
+          "$ref": "#/definitions/account.NestedSettingsPublic"
         },
         "organization_type": {
           "$ref": "#/definitions/constants.OrganizationType"
@@ -1283,7 +1299,7 @@
         "tags": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/account.IconTagJoin"
+            "$ref": "#/definitions/account.IconTagJoinPublic"
           }
         }
       }
@@ -1335,7 +1351,7 @@
           "format": "uuid"
         },
         "meta_data": {
-          "$ref": "#/definitions/org_member.MetaData"
+          "$ref": "#/definitions/org_member.MetaDataPublic"
         },
         "status": {
           "$ref": "#/definitions/constants.Status"
@@ -1382,6 +1398,9 @@
         }
       }
     },
+    "account.NestedSettingsPublic": {
+      "type": "object"
+    },
     "account.OAuthData": {
       "type": "object",
       "properties": {
@@ -1422,6 +1441,9 @@
           "type": "string"
         }
       }
+    },
+    "account.OAuthDataPublic": {
+      "type": "object"
     },
     "account.OrgAccount": {
       "type": "object",
@@ -1545,7 +1567,7 @@
           "type": "integer"
         },
         "org_member": {
-          "$ref": "#/definitions/account.JoinedOrgMember"
+          "$ref": "#/definitions/account.JoinedOrgMemberPublic"
         },
         "org_member_email": {
           "type": "string"
@@ -1625,6 +1647,9 @@
         }
       }
     },
+    "account.OrgManagementJoinsPublic": {
+      "type": "object"
+    },
     "account.PlanJoins": {
       "type": "object",
       "properties": {
@@ -1667,7 +1692,7 @@
           "type": "number"
         },
         "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
+          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
         }
       }
     },
@@ -1693,6 +1718,9 @@
           "type": "string"
         }
       }
+    },
+    "account.PropertiesPublic": {
+      "type": "object"
     },
     "account.SharedAddressUpdate": {
       "type": "object",
@@ -1746,6 +1774,9 @@
           "type": "integer"
         }
       }
+    },
+    "account.SignupPropertiesPublic": {
+      "type": "object"
     },
     "account.Structure": {
       "type": "object",
@@ -1918,13 +1949,13 @@
           "type": "string"
         },
         "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
+          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
         },
         "first_name": {
           "type": "string"
         },
         "flags": {
-          "$ref": "#/definitions/account.Flags"
+          "$ref": "#/definitions/account.FlagsPublic"
         },
         "id": {
           "type": "string"
@@ -1936,7 +1967,7 @@
           "type": "string"
         },
         "nested_settings": {
-          "$ref": "#/definitions/account.NestedSettings"
+          "$ref": "#/definitions/account.NestedSettingsPublic"
         },
         "organization_id": {
           "type": "string"
@@ -1948,7 +1979,7 @@
           "type": "string"
         },
         "properties": {
-          "$ref": "#/definitions/account.Properties"
+          "$ref": "#/definitions/account.PropertiesPublic"
         },
         "questions": {
           "type": "object"
@@ -1962,7 +1993,7 @@
         "tags": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/account.IconTagJoin"
+            "$ref": "#/definitions/account.IconTagJoinPublic"
           }
         },
         "test_user_type": {
@@ -1978,7 +2009,7 @@
           "type": "string"
         },
         "verification": {
-          "$ref": "#/definitions/address.Verification"
+          "$ref": "#/definitions/address.VerificationPublic"
         }
       }
     },
@@ -2218,7 +2249,7 @@
           "type": "string"
         },
         "verification": {
-          "$ref": "#/definitions/address.Verification"
+          "$ref": "#/definitions/address.VerificationPublic"
         }
       }
     },
@@ -2277,7 +2308,7 @@
           "type": "string"
         },
         "verification": {
-          "$ref": "#/definitions/address.Verification"
+          "$ref": "#/definitions/address.VerificationPublic"
         }
       }
     },
@@ -2401,7 +2432,7 @@
           "type": "string"
         },
         "verification": {
-          "$ref": "#/definitions/address.Verification"
+          "$ref": "#/definitions/address.VerificationPublic"
         }
       }
     },
@@ -2542,6 +2573,9 @@
         }
       }
     },
+    "address.NormalizationPublic": {
+      "type": "object"
+    },
     "address.Properties": {
       "type": "object",
       "properties": {
@@ -2549,6 +2583,9 @@
           "type": "integer"
         }
       }
+    },
+    "address.PropertiesPublic": {
+      "type": "object"
     },
     "address.Structure": {
       "type": "object",
@@ -2703,7 +2740,7 @@
           "type": "string"
         },
         "verification": {
-          "$ref": "#/definitions/address.Verification"
+          "$ref": "#/definitions/address.VerificationPublic"
         }
       }
     },
@@ -2776,46 +2813,46 @@
       "type": "object",
       "properties": {
         "city": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "external_id": {
           "type": "string"
         },
         "google_administrative_area_level_1": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_administrative_area_level_2": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_country": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_formatted_address": {
           "type": "string"
         },
         "google_locality": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_neighborhood": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_postal_code": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_postal_code_suffix": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_route": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_street_number": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_sublocality": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "google_subpremise": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "is_match": {
           "type": "integer"
@@ -2824,16 +2861,16 @@
           "type": "integer"
         },
         "postal_code": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "state": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "street": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "street_2": {
-          "$ref": "#/definitions/address.FieldVerification"
+          "$ref": "#/definitions/address.FieldVerificationPublic"
         }
       }
     },
@@ -2851,6 +2888,9 @@
         }
       }
     },
+    "api.APIResponsePublic": {
+      "type": "object"
+    },
     "api.TestUserInput": {
       "type": "object",
       "properties": {
@@ -2859,6 +2899,9 @@
           "format": "uuid"
         }
       }
+    },
+    "api.TestUserInputPublic": {
+      "type": "object"
     },
     "base.Structure": {
       "type": "object",
@@ -3067,7 +3110,7 @@
           "type": "integer"
         },
         "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
+          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
         },
         "id": {
           "type": "string"
@@ -3082,7 +3125,7 @@
           "type": "string"
         },
         "properties": {
-          "$ref": "#/definitions/billing_plan.Properties"
+          "$ref": "#/definitions/billing_plan.PropertiesPublic"
         },
         "status": {
           "$ref": "#/definitions/constants.Status"
@@ -3120,7 +3163,7 @@
           "type": "integer"
         },
         "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
+          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
         },
         "id": {
           "type": "string"
@@ -3135,7 +3178,7 @@
           "type": "string"
         },
         "properties": {
-          "$ref": "#/definitions/billing_plan.Properties"
+          "$ref": "#/definitions/billing_plan.PropertiesPublic"
         },
         "status": {
           "$ref": "#/definitions/constants.Status"
@@ -3232,7 +3275,7 @@
           "type": "integer"
         },
         "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
+          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
         },
         "id": {
           "type": "string"
@@ -3247,7 +3290,7 @@
           "type": "string"
         },
         "properties": {
-          "$ref": "#/definitions/billing_plan.Properties"
+          "$ref": "#/definitions/billing_plan.PropertiesPublic"
         },
         "status": {
           "$ref": "#/definitions/constants.Status"
@@ -3308,6 +3351,9 @@
         }
       }
     },
+    "billing_plan.FeesPublic": {
+      "type": "object"
+    },
     "billing_plan.JoinData": {
       "type": "object",
       "properties": {
@@ -3319,7 +3365,13 @@
         }
       }
     },
+    "billing_plan.JoinDataPublic": {
+      "type": "object"
+    },
     "billing_plan.MergeableFeatureSet": {
+      "type": "object"
+    },
+    "billing_plan.MergeableFeatureSetPublic": {
       "type": "object"
     },
     "billing_plan.Properties": {
@@ -3425,7 +3477,7 @@
           "type": "integer"
         },
         "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
+          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
         },
         "id": {
           "type": "string"
@@ -3440,7 +3492,7 @@
           "type": "string"
         },
         "properties": {
-          "$ref": "#/definitions/billing_plan.Properties"
+          "$ref": "#/definitions/billing_plan.PropertiesPublic"
         },
         "status": {
           "$ref": "#/definitions/constants.Status"
@@ -3466,6 +3518,9 @@
       "type": "object"
     },
     "caller.callerRegistry": {
+      "type": "object"
+    },
+    "caller.callerRegistryPublic": {
       "type": "object"
     },
     "constants.ExternalID": {
@@ -3618,6 +3673,9 @@
     "embedded_tag_test.BaseModelLike": {
       "type": "object"
     },
+    "embedded_tag_test.BaseModelLikePublic": {
+      "type": "object"
+    },
     "embedded_tag_test.TestModel": {
       "type": "object",
       "properties": {
@@ -3687,7 +3745,13 @@
     "relationship.Relationship": {
       "type": "object"
     },
+    "relationship.RelationshipPublic": {
+      "type": "object"
+    },
     "relationship.relationshipRegistry": {
+      "type": "object"
+    },
+    "relationship.relationshipRegistryPublic": {
       "type": "object"
     },
     "response.ErrorResponse": {
@@ -3698,6 +3762,9 @@
         }
       }
     },
+    "response.ErrorResponsePublic": {
+      "type": "object"
+    },
     "response.SuccessResponse": {
       "type": "object",
       "properties": {
@@ -3705,6 +3772,9 @@
           "type": "object"
         }
       }
+    },
+    "response.SuccessResponsePublic": {
+      "type": "object"
     }
   }
 }

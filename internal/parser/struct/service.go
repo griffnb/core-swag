@@ -171,7 +171,7 @@ func (s *Service) ParseStruct(file *ast.File, fields *ast.FieldList) (*spec.Sche
 		}
 
 		// Process regular field
-		properties, required, err := s.processField(file, field)
+		properties, required, err := s.processField(file, field, false)
 		if err != nil {
 			continue // Skip on error
 		}
@@ -191,7 +191,7 @@ func (s *Service) ParseStruct(file *ast.File, fields *ast.FieldList) (*spec.Sche
 // ParseField parses an individual struct field and returns its properties and required status.
 // This is the public entry point that delegates to processField.
 func (s *Service) ParseField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []string, error) {
-	return s.processField(file, field)
+	return s.processField(file, field, false)
 }
 
 // ParseFile parses all struct types in a file and registers them with the schema builder.
@@ -236,28 +236,41 @@ func (s *Service) ParseFile(astFile *ast.File, filePath string) error {
 				s.schemaBuilder.AddDefinition(schemaName, *baseSchema)
 			}
 
-			// Check if we should generate a Public variant
-			if s.shouldGeneratePublicInternal(astFile, genDecl, typeSpec, structType.Fields) {
+			// Always generate a Public variant for every struct type.
+			// For types with public tags, fields are filtered to only include
+			// fields with public:"view" or public:"edit" tags.
+			// For types without any public tags, the Public variant is an empty
+			// object — public filtering is always strict.
+			// This ensures nested $ref chains work correctly when a Public schema
+			// references another type's Public variant.
+			publicSchemaName := schemaName + "Public"
+			if s.schemaBuilder != nil {
 				publicSchema, err := s.BuildPublicSchema(astFile, structType.Fields)
 				if err != nil {
-					// Log error but continue
 					continue
 				}
-
 				if publicSchema != nil {
-					// Generate Public variant schema name
-					publicSchemaName := schemaName + "Public"
-
-					// Register Public variant with schema builder
-					if s.schemaBuilder != nil {
-						s.schemaBuilder.AddDefinition(publicSchemaName, *publicSchema)
-					}
+					s.schemaBuilder.AddDefinition(publicSchemaName, *publicSchema)
+				} else {
+					// No public fields — register empty object so $ref chains resolve
+					s.schemaBuilder.AddDefinition(publicSchemaName, emptyObjectSchema())
 				}
 			}
 		}
 	}
 
 	return nil
+}
+
+// emptyObjectSchema returns a minimal empty object schema.
+// Used for Public variants of structs that have no public-tagged fields.
+func emptyObjectSchema() spec.Schema {
+	return spec.Schema{
+		SchemaProps: spec.SchemaProps{
+			Type:       []string{"object"},
+			Properties: make(map[string]spec.Schema),
+		},
+	}
 }
 
 // ParseDefinition parses a type definition and generates schema(s).
@@ -425,8 +438,8 @@ func (s *Service) BuildPublicSchema(file *ast.File, fields *ast.FieldList) (*spe
 
 		hasPublicFields = true
 
-		// Process field
-		properties, required, err := s.processField(file, field)
+		// Process field with public=true to add Public suffix to nested struct refs
+		properties, required, err := s.processField(file, field, true)
 		if err != nil {
 			continue
 		}

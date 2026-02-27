@@ -84,7 +84,7 @@ func CreateUser() {}
 		service := NewService(nil, "")
 		service.typeResolver = resolver
 
-		routes, err := service.ParseRoutes(astFile)
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
 
@@ -132,7 +132,7 @@ func GetUsers() {}
 		service := NewService(nil, "")
 		service.typeResolver = resolver
 
-		routes, err := service.ParseRoutes(astFile)
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
 
@@ -168,7 +168,7 @@ func CreateUsers() {}
 		service := NewService(nil, "")
 		service.typeResolver = resolver
 
-		routes, err := service.ParseRoutes(astFile)
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
 
@@ -219,7 +219,7 @@ func GetUser() {}
 		service := NewService(nil, "")
 		service.typeResolver = resolver
 
-		routes, err := service.ParseRoutes(astFile)
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
 
@@ -258,7 +258,7 @@ func GetUsers() {}
 		service := NewService(nil, "")
 		service.typeResolver = resolver
 
-		routes, err := service.ParseRoutes(astFile)
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
 
@@ -307,7 +307,7 @@ func CreateUser() {}
 		service := NewService(nil, "")
 		service.typeResolver = resolver
 
-		routes, err := service.ParseRoutes(astFile)
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
 		require.NoError(t, err)
 		require.Len(t, routes, 1)
 

@@ -856,15 +856,13 @@ func TestNestedStructs_DeepNesting(t *testing.T) {
 }
 
 // TestPublicPropagation_ChildStructWithoutPublicTags verifies that when building
-// a Public variant for a struct whose fields have NO public tags, ALL fields are included.
-// This is the key behavior for nested structs like Properties that are referenced
-// from a parent with public:"view" - the child should not have all fields stripped out.
+// a Public variant for a struct whose fields have NO public tags, zero fields are included.
+// Public filtering is always strict: no public tag = not included in Public variant.
 func TestPublicPropagation_ChildStructWithoutPublicTags(t *testing.T) {
-	t.Run("struct with no public tags includes all fields in public mode", func(t *testing.T) {
+	t.Run("struct with no public tags is empty object in public mode", func(t *testing.T) {
 		// Simulates Properties struct: none of its fields have public tags.
-		// When parent Account marks Properties as public:"view", BuildAllSchemas
-		// generates PropertiesPublic by calling BuildSpecSchema with public=true.
-		// All fields should be included since there's nothing to filter.
+		// Public filtering is strict — no public tag means the field is excluded.
+		// The resulting Public schema should be an empty object.
 		builder := &StructBuilder{
 			Fields: []*StructField{
 				{Name: "InviteKey", TypeString: "string", Tag: `json:"invite_key,omitempty"`},
@@ -879,11 +877,7 @@ func TestPublicPropagation_ChildStructWithoutPublicTags(t *testing.T) {
 		require.NotNil(t, schema)
 
 		assertSchema(t, schema).
-			hasProperty("invite_key").
-			hasProperty("invite_ts").
-			hasProperty("last_seen").
-			hasProperty("external_user_info").
-			propertyCount(4)
+			propertyCount(0)
 	})
 
 	t.Run("struct with some public tags still filters in public mode", func(t *testing.T) {

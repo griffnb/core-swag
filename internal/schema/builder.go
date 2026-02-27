@@ -2,7 +2,6 @@
 package schema
 
 import (
-	"fmt"
 	"go/ast"
 	"strings"
 	"unicode"
@@ -226,10 +225,6 @@ func (b *BuilderService) BuildSchema(typeSpec *domain.TypeSpecDef) (string, erro
 
 // AddDefinition adds a schema definition with the given name.
 func (b *BuilderService) AddDefinition(name string, schema spec.Schema) error {
-	// Debug: Log all definitions being added
-	if strings.Contains(name, "NJDLClassification") {
-		fmt.Printf(">>> AddDefinition called for: %s, schema type: %v, enum count: %d\n", name, schema.Type, len(schema.Enum))
-	}
 	b.definitions[name] = schema
 	// Note: We don't have the TypeSpecDef here to add to parsedSchemas
 	// This is OK - BuildSchema will check definitions first

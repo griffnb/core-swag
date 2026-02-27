@@ -29,25 +29,12 @@ func (this *StructBuilder) BuildSpecSchema(
 	var required []string
 	nestedStructs := make(map[string]bool) // Use map to deduplicate
 
-	// When public mode is requested, check if any field actually has a public tag.
-	// If no fields have public tags, this struct doesn't participate in public filtering
-	// (e.g., a nested Properties struct). Include all fields in that case.
-	effectivePublic := public
-	if public {
-		hasAnyPublicTag := false
-		for _, field := range this.Fields {
-			if field.IsPublic() {
-				hasAnyPublicTag = true
-				break
-			}
-		}
-		if !hasAnyPublicTag {
-			effectivePublic = false
-		}
-	}
+	// Public filtering is always strict: when public=true, only fields with
+	// public:"view" or public:"edit" tags are included. If no fields have
+	// public tags, the result is an empty object schema.
 
 	for _, field := range this.Fields {
-		propName, propSchema, isRequired, nestedTypes, err := field.ToSpecSchema(effectivePublic, forceRequired, enumLookup)
+		propName, propSchema, isRequired, nestedTypes, err := field.ToSpecSchema(public, forceRequired, enumLookup)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to build schema for field %s: %w", field.Name, err)
 		}

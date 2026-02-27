@@ -1,5 +1,34 @@
 # Core-Swag Change Log
 
+## 2026-02-27: Fix Public Route Nested Struct $ref Propagation (3 rounds)
+
+**Problem 1 — Public flag not propagated to child $refs:**
+When a route has `@Public` annotation, the response schema (e.g., `AccountWithFeaturesPublic`) referenced nested structs without the `Public` suffix. For example, `properties` field pointed to `#/definitions/account.Properties` instead of `#/definitions/account.PropertiesPublic`.
+
+**Root Cause:** `StructParserService.BuildPublicSchema()` called `processField()` → `buildPropertySchema()`, but neither function knew it was building a Public variant. The `public` flag was never propagated.
+
+**Problem 2 — Structs without public tags should be empty objects:**
+When `public=true`, structs with NO `public` tags on any fields were including all fields. Correct behavior: no public tags = empty object in the Public variant.
+
+**Root Cause:** `effectivePublic` fallback in `struct_builder.go` included all fields when no public tags existed.
+
+**Problem 3 — Enums/constants incorrectly getting Public suffix:**
+`$ref` values for non-struct types (enums like `constants.ClassificationType`, primitive aliases like `account.WebColor`) were getting "Public" suffix, causing resolver errors since those definitions don't exist.
+
+**Root Cause:** `buildPropertySchema()` added "Public" suffix to ALL package-qualified types, not just structs.
+
+**Fix (3 files):**
+1. `internal/parser/struct/field_processor.go` — Added `public bool` parameter to `processField()` and `buildPropertySchema()`. When `public=true`, struct type `$ref` names get `Public` suffix. Added `isStructType()` method that uses registry's `FindTypeSpec` to confirm a type is `*ast.StructType` before adding suffix — enums and primitive type aliases are excluded.
+2. `internal/parser/struct/service.go` — `BuildPublicSchema()` now passes `public=true` to `processField()`. `ParseFile()` always generates a Public variant for every struct type (empty object if no public tags).
+3. `internal/model/struct_builder.go` — Removed `effectivePublic` fallback. Public filtering is now always strict.
+
+**Test:**
+Added `TestPublicRouteNestedStructRefs` integration test verifying:
+- `AccountWithFeaturesPublic` references `PropertiesPublic`, `FeatureSetPublic`, `VerificationPublic`, `FlagsPublic`
+- Public definitions exist for nested types
+- Structs without public tags produce empty objects in Public variant
+- Non-public base schemas still reference base types (no `Public` suffix)
+
 ## 2026-02-27: Fix All Failing Tests (excluding legacy_files)
 
 **Fixed:**

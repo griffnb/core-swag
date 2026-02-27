@@ -17,7 +17,8 @@ import (
 // - Tag parsing (using Phase 1.2 functions)
 // - Custom models (fields.StructField[T])
 // - Validation constraints
-func (s *Service) processField(file *ast.File, field *ast.Field) (map[string]spec.Schema, []string, error) {
+// When public is true, nested struct $ref names get a "Public" suffix appended.
+func (s *Service) processField(file *ast.File, field *ast.Field, public bool) (map[string]spec.Schema, []string, error) {
 	if field == nil {
 		return nil, nil, nil
 	}
@@ -155,7 +156,7 @@ func (s *Service) processField(file *ast.File, field *ast.Field) (map[string]spe
 	}
 
 	// Build property schema
-	propSchema := s.buildPropertySchema(fieldType, tags, file)
+	propSchema := s.buildPropertySchema(fieldType, tags, file, public)
 
 	// Build properties map
 	properties := map[string]spec.Schema{
@@ -318,8 +319,9 @@ func exprToString(expr ast.Expr) string {
 	}
 }
 
-// buildPropertySchema creates an OpenAPI property schema from type and tags
-func (s *Service) buildPropertySchema(fieldType string, tags fieldTags, file *ast.File) spec.Schema {
+// buildPropertySchema creates an OpenAPI property schema from type and tags.
+// When public is true, nested struct $ref names get a "Public" suffix appended.
+func (s *Service) buildPropertySchema(fieldType string, tags fieldTags, file *ast.File, public bool) spec.Schema {
 	var schema spec.Schema
 
 	// Handle interface types (no type constraint) - treat as object
@@ -377,9 +379,12 @@ func (s *Service) buildPropertySchema(fieldType string, tags fieldTags, file *as
 			}
 		} else if strings.Contains(elemType, ".") {
 			// Check if element type is a package-qualified struct type (contains ".")
-			// If so, create a reference instead of a generic object
-			// Create a reference to it
-			elemSchema = spec.RefSchema("#/definitions/" + elemType)
+			// Only add Public suffix for actual struct types, not enums or type aliases
+			refName := elemType
+			if public && s.isStructType(elemType, file) {
+				refName = elemType + "Public"
+			}
+			elemSchema = spec.RefSchema("#/definitions/" + refName)
 		} else {
 			// Primitive or local type
 			elemSchema = &spec.Schema{
@@ -422,11 +427,17 @@ func (s *Service) buildPropertySchema(fieldType string, tags fieldTags, file *as
 				console.Logger.Debug(">>> buildPropertySchema: GetEnumsForType returned %d values, err=%v\n", len(enumValues), err)
 				if err == nil && len(enumValues) > 0 {
 					// This is an enum type - create a $ref to the enum definition
+					// Enums don't get Public suffix since enum values are identical regardless of public context
 					return *spec.RefSchema("#/definitions/" + fieldType)
 				}
 			}
-			// Not an enum or no enum lookup - create a $ref
-			return *spec.RefSchema("#/definitions/" + fieldType)
+			// Not an enum - only add Public suffix if the type is a struct.
+			// Constants, type aliases to primitives, etc. don't have Public variants.
+			refName := fieldType
+			if public && s.isStructType(fieldType, file) {
+				refName = fieldType + "Public"
+			}
+			return *spec.RefSchema("#/definitions/" + refName)
 		} else {
 			// Other complex types - reference or object
 			schema.Type = []string{resolveBasicType(fieldType)}
@@ -527,4 +538,21 @@ func toLower(r rune) rune {
 		return r + ('a' - 'A')
 	}
 	return r
+}
+
+// isStructType checks if a package-qualified type name (e.g., "account.Properties")
+// resolves to a struct type via the registry. Returns false for enums, type aliases
+// to primitives, and any type that cannot be confirmed as a struct.
+func (s *Service) isStructType(typeName string, file *ast.File) bool {
+	if s.registry == nil || file == nil {
+		return false
+	}
+
+	typeDef := s.registry.FindTypeSpec(typeName, file)
+	if typeDef == nil || typeDef.TypeSpec == nil {
+		return false
+	}
+
+	_, isStruct := typeDef.TypeSpec.Type.(*ast.StructType)
+	return isStruct
 }
