@@ -308,7 +308,9 @@ func buildSchemaForType(
 		return &spec.Schema{}, nil, nil
 	}
 
-	// Check if this is an enum type - if so, inline the enum values instead of creating a reference
+	// Check if this is an enum type - create a $ref to the enum definition
+	// Enum definitions are created by buildSchemasRecursive() in struct_field_lookup.go
+	// Don't add Public suffix for enums since enum values are identical regardless of public context
 	if enumLookup != nil {
 		if debug {
 			console.Logger.Debug("Checking enum for type: $Bold{%s}\n", typeStr)
@@ -316,25 +318,13 @@ func buildSchemaForType(
 		enums, err := enumLookup.GetEnumsForType(typeStr, nil)
 		if err == nil && len(enums) > 0 {
 			if debug {
-				console.Logger.Debug("Detected Enum type: $Bold{%s} with %d values\n", typeStr, len(enums))
+				console.Logger.Debug("Detected Enum type: $Bold{%s} with %d values, creating $ref\n", typeStr, len(enums))
 			}
-			// This is an enum type - create an inline schema with enum values
-			// Determine the base type from the first enum value
-			schema := &spec.Schema{}
-			if len(enums) > 0 {
-				switch enums[0].Value.(type) {
-				case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-					schema.Type = []string{"integer"}
-				case string:
-					schema.Type = []string{"string"}
-				case float32, float64:
-					schema.Type = []string{"number"}
-				default:
-					schema.Type = []string{"integer"} // default fallback
-				}
-			}
-			applyEnumsToSchema(schema, enums)
-			return schema, nil, nil
+			// Create a $ref to the enum definition instead of inlining
+			refName := typeStr
+			schema := spec.RefSchema("#/definitions/" + refName)
+			nestedTypes = append(nestedTypes, refName)
+			return schema, nestedTypes, nil
 		}
 		if debug {
 			if err != nil {
@@ -434,28 +424,31 @@ func isFieldsWrapperType(typeStr string) bool {
 // getPrimitiveSchemaForFieldType returns the appropriate schema for a fields wrapper type
 func getPrimitiveSchemaForFieldType(typeStr string, originalTypeStr string, enumLookup TypeEnumLookup) (*spec.Schema, []string, error) {
 	// Check for IntConstantField and StringConstantField with enum type parameters
+	// Create $ref to enum definition instead of inlining enum values
 	if strings.Contains(typeStr, "fields.IntConstantField[") {
-		// Extract enum type: fields.IntConstantField[constants.Role] -> constants.Role
 		enumType := extractConstantFieldEnumType(originalTypeStr)
-		if enumType != "" && enumLookup != nil {
-			enums, err := enumLookup.GetEnumsForType(enumType, nil)
-			if err == nil && len(enums) > 0 {
-				schema := &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"integer"}}}
-				applyEnumsToSchema(schema, enums)
-				return schema, nil, nil
+		if enumType != "" {
+			normalizedEnum := normalizeTypeName(enumType)
+			if enumLookup != nil {
+				enums, err := enumLookup.GetEnumsForType(normalizedEnum, nil)
+				if err == nil && len(enums) > 0 {
+					schema := spec.RefSchema("#/definitions/" + normalizedEnum)
+					return schema, []string{normalizedEnum}, nil
+				}
 			}
 		}
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"integer"}}}, nil, nil
 	}
 	if strings.Contains(typeStr, "fields.StringConstantField[") {
-		// Extract enum type: fields.StringConstantField[constants.GlobalConfigKey] -> constants.GlobalConfigKey
 		enumType := extractConstantFieldEnumType(originalTypeStr)
-		if enumType != "" && enumLookup != nil {
-			enums, err := enumLookup.GetEnumsForType(enumType, nil)
-			if err == nil && len(enums) > 0 {
-				schema := &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}}}
-				applyEnumsToSchema(schema, enums)
-				return schema, nil, nil
+		if enumType != "" {
+			normalizedEnum := normalizeTypeName(enumType)
+			if enumLookup != nil {
+				enums, err := enumLookup.GetEnumsForType(normalizedEnum, nil)
+				if err == nil && len(enums) > 0 {
+					schema := spec.RefSchema("#/definitions/" + normalizedEnum)
+					return schema, []string{normalizedEnum}, nil
+				}
 			}
 		}
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}}}, nil, nil

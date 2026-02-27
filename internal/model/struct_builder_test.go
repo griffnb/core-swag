@@ -456,7 +456,7 @@ func TestExtendedPrimitives_RawMessage(t *testing.T) {
 		propertyType("metadata", "object")
 }
 
-// TestEnumDetection_StringEnum tests string-based enum detection and inlining
+// TestEnumDetection_StringEnum tests string-based enum detection creates $ref
 func TestEnumDetection_StringEnum(t *testing.T) {
 	enumLookup := newTestEnumLookup()
 	enumLookup.addEnum("Status", []EnumValue{
@@ -475,22 +475,16 @@ func TestEnumDetection_StringEnum(t *testing.T) {
 		},
 	}
 
-	schema, _, err := builder.BuildSpecSchema("StatusModel", false, false, enumLookup)
+	schema, nestedTypes, err := builder.BuildSpecSchema("StatusModel", false, false, enumLookup)
 	require.NoError(t, err)
 
-	assertSchema(t, schema).
-		hasProperty("status").
-		propertyType("status", "string")
-
-	// Check enum values are inlined
+	// Enum field should create a $ref to the definition
 	statusProp := schema.Properties["status"]
-	assert.NotNil(t, statusProp.Enum, "Status property should have enum values")
-	if statusProp.Enum != nil {
-		assert.Equal(t, 3, len(statusProp.Enum), "Should have 3 enum values")
-	}
+	assert.Equal(t, "#/definitions/Status", statusProp.Ref.String(), "Status should be a $ref to the enum definition")
+	assert.Contains(t, nestedTypes, "Status", "Should include Status in nestedTypes")
 }
 
-// TestEnumDetection_IntEnum tests integer-based enum detection
+// TestEnumDetection_IntEnum tests integer-based enum detection creates $ref
 func TestEnumDetection_IntEnum(t *testing.T) {
 	enumLookup := newTestEnumLookup()
 	enumLookup.addEnum("Priority", []EnumValue{
@@ -509,16 +503,13 @@ func TestEnumDetection_IntEnum(t *testing.T) {
 		},
 	}
 
-	schema, _, err := builder.BuildSpecSchema("PriorityModel", false, false, enumLookup)
+	schema, nestedTypes, err := builder.BuildSpecSchema("PriorityModel", false, false, enumLookup)
 	require.NoError(t, err)
 
-	assertSchema(t, schema).
-		hasProperty("priority").
-		propertyType("priority", "integer")
-
-	// Check enum values are inlined
+	// Enum field should create a $ref to the definition
 	priorityProp := schema.Properties["priority"]
-	assert.NotNil(t, priorityProp.Enum, "Priority property should have enum values")
+	assert.Equal(t, "#/definitions/Priority", priorityProp.Ref.String(), "Priority should be a $ref to the enum definition")
+	assert.Contains(t, nestedTypes, "Priority", "Should include Priority in nestedTypes")
 }
 
 // TestGenericExtraction_StructFieldPrimitives tests StructField[T] with primitives

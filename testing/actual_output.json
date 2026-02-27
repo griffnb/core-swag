@@ -341,11 +341,7 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -405,26 +401,13 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "test_user_type": {
           "type": "integer"
@@ -447,11 +430,7 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -510,6 +489,9 @@
         "organization_name": {
           "type": "string"
         },
+        "organization_type": {
+          "$ref": "#/definitions/constants.OrganizationType"
+        },
         "password_updated_at_ts": {
           "type": "integer"
         },
@@ -523,26 +505,13 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "tags": {
           "type": "array",
@@ -574,11 +543,7 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -619,6 +584,9 @@
         "organization_id": {
           "type": "string"
         },
+        "organization_type": {
+          "$ref": "#/definitions/constants.OrganizationType"
+        },
         "phone": {
           "type": "string"
         },
@@ -626,23 +594,10 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "tags": {
           "type": "array",
@@ -671,11 +626,7 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -720,23 +671,10 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "test_user_type": {
           "type": "integer"
@@ -774,11 +712,7 @@
           "type": "number"
         },
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -844,26 +778,13 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "test_user_type": {
           "type": "integer"
@@ -898,11 +819,7 @@
           "type": "number"
         },
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -950,23 +867,10 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "test_user_type": {
           "type": "integer"
@@ -1000,11 +904,7 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -1061,26 +961,13 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "test_user_type": {
           "type": "integer"
@@ -1103,11 +990,7 @@
       "type": "object",
       "properties": {
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -1149,23 +1032,10 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "test_user_type": {
           "type": "integer"
@@ -1315,15 +1185,7 @@
           "type": "string"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "status": {
           "type": "integer"
@@ -1352,6 +1214,9 @@
         "organization_name": {
           "type": "string"
         },
+        "organization_type": {
+          "$ref": "#/definitions/constants.OrganizationType"
+        },
         "tags": {
           "type": "array",
           "items": {
@@ -1368,6 +1233,9 @@
       "properties": {
         "nested_settings": {
           "$ref": "#/definitions/account.NestedSettings"
+        },
+        "organization_type": {
+          "$ref": "#/definitions/constants.OrganizationType"
         },
         "tags": {
           "type": "array",
@@ -1392,12 +1260,7 @@
           "$ref": "#/definitions/org_member.MetaData"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "union_id": {
           "type": "string"
@@ -1413,17 +1276,7 @@
           "type": "string"
         },
         "union_status": {
-          "type": "integer",
-          "enum": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-          ]
+          "$ref": "#/definitions/constants.UnionStatus"
         }
       }
     },
@@ -1442,12 +1295,7 @@
           "$ref": "#/definitions/org_member.MetaData"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "union_id": {
           "type": "string"
@@ -1463,17 +1311,7 @@
           "type": "string"
         },
         "union_status": {
-          "type": "integer",
-          "enum": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-          ]
+          "$ref": "#/definitions/constants.UnionStatus"
         }
       }
     },
@@ -1497,25 +1335,7 @@
       "type": "object",
       "properties": {
         "role": {
-          "type": "integer",
-          "enum": [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16
-          ]
+          "$ref": "#/definitions/constants.StyleType"
         }
       }
     },
@@ -1604,25 +1424,10 @@
           "type": "string"
         },
         "org_member_status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "org_member_union_status": {
-          "type": "integer",
-          "enum": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-          ]
+          "$ref": "#/definitions/constants.UnionStatus"
         },
         "organization_id": {
           "type": "string",
@@ -1648,12 +1453,7 @@
           "type": "integer"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "union_id": {
           "type": "string",
@@ -1715,25 +1515,10 @@
           "type": "string"
         },
         "org_member_status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "org_member_union_status": {
-          "type": "integer",
-          "enum": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-          ]
+          "$ref": "#/definitions/constants.UnionStatus"
         },
         "organization_id": {
           "type": "string",
@@ -1759,12 +1544,7 @@
           "type": "integer"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "union_id": {
           "type": "string",
@@ -1795,25 +1575,10 @@
           "type": "string"
         },
         "org_member_status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "org_member_union_status": {
-          "type": "integer",
-          "enum": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-          ]
+          "$ref": "#/definitions/constants.UnionStatus"
         }
       }
     },
@@ -1879,14 +1644,7 @@
           "type": "integer"
         },
         "nj_dl_classification": {
-          "type": "integer",
-          "enum": [
-            1,
-            2,
-            3,
-            4,
-            5
-          ]
+          "$ref": "#/definitions/constants.NJDLClassification"
         },
         "verify_email_key": {
           "type": "string"
@@ -1905,12 +1663,7 @@
           "format": "uuid"
         },
         "update_type": {
-          "type": "integer",
-          "enum": [
-            1,
-            2,
-            3
-          ]
+          "$ref": "#/definitions/account.SharedAddressUpdateType"
         }
       }
     },
@@ -1926,12 +1679,7 @@
           "format": "uuid"
         },
         "update_type": {
-          "type": "integer",
-          "enum": [
-            1,
-            2,
-            3
-          ]
+          "$ref": "#/definitions/account.SharedAddressUpdateType"
         }
       }
     },
@@ -1975,11 +1723,7 @@
           "type": "number"
         },
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -2044,6 +1788,9 @@
         "organization_name": {
           "type": "string"
         },
+        "organization_type": {
+          "$ref": "#/definitions/constants.OrganizationType"
+        },
         "password_updated_at_ts": {
           "type": "integer"
         },
@@ -2057,26 +1804,13 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "signup_properties": {
           "$ref": "#/definitions/account.SignupProperties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "tags": {
           "type": "array",
@@ -2120,11 +1854,7 @@
           "type": "number"
         },
         "config_key": {
-          "type": "string",
-          "enum": [
-            "allow_self_signed_certs",
-            "api_rate_limit_enabled"
-          ]
+          "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
           "type": "string"
@@ -2168,6 +1898,9 @@
         "organization_id": {
           "type": "string"
         },
+        "organization_type": {
+          "$ref": "#/definitions/constants.OrganizationType"
+        },
         "phone": {
           "type": "string"
         },
@@ -2175,23 +1908,10 @@
           "type": "object"
         },
         "role": {
-          "type": "integer",
-          "enum": [
-            -1,
-            0,
-            1,
-            40,
-            50,
-            100
-          ]
+          "$ref": "#/definitions/constants.Role"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "tags": {
           "type": "array",
@@ -3113,12 +2833,7 @@
           "type": "string"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "updated_at": {
           "type": "string"
@@ -3150,12 +2865,7 @@
           "type": "string"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "updated_at": {
           "type": "string"
@@ -3211,12 +2921,7 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "stripe_product_id": {
           "type": "string"
@@ -3278,12 +2983,7 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "stripe_product_id": {
           "type": "string"
@@ -3339,12 +3039,7 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "stripe_product_id": {
           "type": "string"
@@ -3397,12 +3092,7 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "stripe_product_id": {
           "type": "string"
@@ -3461,12 +3151,7 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "stripe_product_id": {
           "type": "string"
@@ -3519,12 +3204,7 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "stripe_product_id": {
           "type": "string"
@@ -3661,12 +3341,7 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "stripe_product_id": {
           "type": "string"
@@ -3722,12 +3397,7 @@
           "$ref": "#/definitions/billing_plan.Properties"
         },
         "status": {
-          "type": "integer",
-          "enum": [
-            100,
-            200,
-            300
-          ]
+          "$ref": "#/definitions/constants.Status"
         },
         "stripe_product_id": {
           "type": "string"
@@ -3781,6 +3451,25 @@
         "NJ_DL_JUDICIAL_OFFICER",
         "NJ_DL_PROSECUTOR",
         "NJ_DL_FAMILY_MEMBER"
+      ]
+    },
+    "constants.OrganizationType": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "x-enum-varnames": [
+        "ORGANIZATION_TYPE_INTERNAL_TESTING",
+        "ORGANIZATION_TYPE_ENTERPRISE",
+        "ORGANIZATION_TYPE_UNION",
+        "ORGANIZATION_TYPE_ASSOCIATION",
+        "ORGANIZATION_TYPE_AGENCY",
+        "ORGANIZATION_TYPE_B2C"
       ]
     },
     "constants.Role": {

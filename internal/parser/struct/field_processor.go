@@ -111,16 +111,8 @@ func (s *Service) processField(file *ast.File, field *ast.Field) (map[string]spe
 				fullTypeName := s.resolveFullTypeName(enumType, file)
 				enumValues, enumErr := s.enumLookup.GetEnumsForType(fullTypeName, file)
 				if enumErr == nil && len(enumValues) > 0 {
-					schema := spec.Schema{
-						SchemaProps: spec.SchemaProps{
-							Type: []string{baseType},
-						},
-					}
-					var enumVals []any
-					for _, ev := range enumValues {
-						enumVals = append(enumVals, ev.Value)
-					}
-					schema.Enum = enumVals
+					// Create a $ref to the enum definition instead of inlining
+					schema := *spec.RefSchema("#/definitions/" + enumType)
 					properties := map[string]spec.Schema{jsonName: schema}
 					var required []string
 					if tags.Required && !tags.OmitEmpty {
@@ -429,25 +421,8 @@ func (s *Service) buildPropertySchema(fieldType string, tags fieldTags, file *as
 				enumValues, err := s.enumLookup.GetEnumsForType(fullTypeName, file)
 				console.Logger.Debug(">>> buildPropertySchema: GetEnumsForType returned %d values, err=%v\n", len(enumValues), err)
 				if err == nil && len(enumValues) > 0 {
-					// This is an enum type - inline the values
-					// Determine the base type from the first enum value
-					switch enumValues[0].Value.(type) {
-					case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-						schema.Type = []string{"integer"}
-					case string:
-						schema.Type = []string{"string"}
-					case float32, float64:
-						schema.Type = []string{"number"}
-					default:
-						schema.Type = []string{"integer"} // default fallback
-					}
-					// Collect enum values
-					var enumVals []any
-					for _, ev := range enumValues {
-						enumVals = append(enumVals, ev.Value)
-					}
-					schema.Enum = enumVals
-					return schema
+					// This is an enum type - create a $ref to the enum definition
+					return *spec.RefSchema("#/definitions/" + fieldType)
 				}
 			}
 			// Not an enum or no enum lookup - create a $ref

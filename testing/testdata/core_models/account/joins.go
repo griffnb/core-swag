@@ -10,8 +10,9 @@ import (
 )
 
 type JoinData struct {
-	Name             *fields.StringField `json:"name"              type:"text"`
-	OrganizationName *fields.StringField `json:"organization_name" type:"text"`
+	Name             *fields.StringField                                  `json:"name"              type:"text"`
+	OrganizationName *fields.StringField                                  `json:"organization_name" type:"text"`
+	OrganizationType *fields.IntConstantField[constants.OrganizationType] `json:"organization_type" type:"smallint" public:"view"`
 
 	CreatedByName  *fields.StringField                  `json:"created_by_name" type:"text"`
 	UpdatedByName  *fields.StringField                  `json:"updated_by_name" type:"text"`

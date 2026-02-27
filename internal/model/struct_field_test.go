@@ -498,33 +498,35 @@ func TestToSpecSchema_EnumWithUnderlyingType(t *testing.T) {
 		name          string
 		field         *StructField
 		enumLookup    TypeEnumLookup
-		wantType      []string
-		wantEnumCount int
+		wantRef       string
+		wantNested    string
 		wantHasEnum   bool
+		wantPrimitive bool
+		wantType      []string
 	}{
 		{
-			name: "enum with int underlying type",
+			name: "enum with int underlying type creates $ref",
 			field: &StructField{
 				Name:       "Role",
 				TypeString: "constants.Role",
 				Tag:        `json:"role"`,
 			},
-			enumLookup:    mockEnumLookup,
-			wantType:      []string{"integer"},
-			wantEnumCount: 3,
-			wantHasEnum:   true,
+			enumLookup:  mockEnumLookup,
+			wantRef:     "#/definitions/constants.Role",
+			wantNested:  "constants.Role",
+			wantHasEnum: true,
 		},
 		{
-			name: "enum with int64 underlying type",
+			name: "enum with int64 underlying type creates $ref",
 			field: &StructField{
 				Name:       "Status",
 				TypeString: "constants.Status",
 				Tag:        `json:"status"`,
 			},
-			enumLookup:    mockEnumLookup,
-			wantType:      []string{"integer"},
-			wantEnumCount: 2,
-			wantHasEnum:   true,
+			enumLookup:  mockEnumLookup,
+			wantRef:     "#/definitions/constants.Status",
+			wantNested:  "constants.Status",
+			wantHasEnum: true,
 		},
 		{
 			name: "non-enum type should not have enum values",
@@ -533,9 +535,10 @@ func TestToSpecSchema_EnumWithUnderlyingType(t *testing.T) {
 				TypeString: "int",
 				Tag:        `json:"count"`,
 			},
-			enumLookup:  mockEnumLookup,
-			wantType:    []string{"integer"},
-			wantHasEnum: false,
+			enumLookup:    mockEnumLookup,
+			wantHasEnum:   false,
+			wantPrimitive: true,
+			wantType:      []string{"integer"},
 		},
 	}
 
@@ -546,20 +549,13 @@ func TestToSpecSchema_EnumWithUnderlyingType(t *testing.T) {
 			assert.NotNil(t, schema)
 			assert.True(t, required)
 
-			// Check type
-			assert.Equal(t, len(tt.wantType), len(schema.Type))
-			if len(tt.wantType) > 0 && len(schema.Type) > 0 {
-				assert.Equal(t, tt.wantType[0], schema.Type[0])
-			}
-
-			// Check enum values
 			if tt.wantHasEnum {
-				assert.NotNil(t, schema.Enum, "Schema should have enum values")
-				assert.Equal(t, tt.wantEnumCount, len(schema.Enum), "Enum count should match")
-
-				// Should not generate nested types for inline enums
-				assert.Equal(t, 0, len(nestedTypes), "Inline enums should not generate nested types")
-			} else {
+				// Enum types should produce a $ref to the definition
+				assert.Equal(t, tt.wantRef, schema.Ref.String(), "Should create $ref to enum definition")
+				assert.Contains(t, nestedTypes, tt.wantNested, "Should include enum type in nestedTypes")
+			} else if tt.wantPrimitive {
+				// Non-enum primitives should have inline type
+				assert.Contains(t, schema.Type, tt.wantType[0])
 				assert.Nil(t, schema.Enum, "Non-enum should not have enum values")
 			}
 

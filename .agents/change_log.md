@@ -1,5 +1,32 @@
 # Core-Swag Change Log
 
+## 2026-02-27: Fix Enum Properties to Use $ref Definitions Instead of Inlining
+
+**Problem:** Enum fields (like `organization_type`, `role`, `status`, `config_key`) were inlining enum values directly in the property schema without `x-enum-varnames`. The legacy swagger output placed enums in the `definitions` section with `x-enum-varnames` and used `$ref` from properties.
+
+**Root Cause:** Three code paths explicitly inlined enum values instead of creating `$ref` references:
+1. `buildSchemaForType()` in `struct_field.go:311` - comment said "inline the enum values instead of creating a reference"
+2. `getPrimitiveSchemaForFieldType()` in `struct_field.go:437` - ConstantField handling inlined enums
+3. `field_processor.go:92-131` and `field_processor.go:420-452` - StructParserService also inlined enums
+
+The definition creation machinery in `buildSchemasRecursive()` already handled creating enum definitions with `x-enum-varnames`, but it was never triggered because enum types returned `nil` for `nestedTypes`.
+
+**Fix:**
+1. Changed `buildSchemaForType()` to create `$ref` to `#/definitions/constants.TypeName` and return enum type as nestedType
+2. Changed `getPrimitiveSchemaForFieldType()` ConstantField paths to create `$ref`
+3. Changed both enum paths in `field_processor.go` to create `$ref` instead of inlining
+
+**Files Modified:**
+- `internal/model/struct_field.go` - Both `buildSchemaForType()` and `getPrimitiveSchemaForFieldType()`
+- `internal/parser/struct/field_processor.go` - Both ConstantField and package-qualified type paths
+
+**Tests Updated:**
+- `testing/core_models_integration_test.go` - Updated 4 enum tests + added `AccountJoined.organization_type` test
+- `internal/model/struct_field_test.go` - Updated `TestToSpecSchema_EnumWithUnderlyingType`
+- `internal/model/struct_builder_test.go` - Updated `TestEnumDetection_StringEnum` and `TestEnumDetection_IntEnum`
+
+---
+
 ## 2026-02-26: Fix BuildAllSchemas - Embedded Fields & Tag Parsing
 
 **Problem:** `BuildAllSchemas` produced schemas with empty properties. Tests `TestBuildAllSchemas_BillingPlan`, `TestBuildAllSchemas_Account`, and `TestBuildAllSchemas_WithPackageQualifiedNested` all failed.
