@@ -292,7 +292,7 @@ func TestCoreModelsIntegration(t *testing.T) {
 
 		// Check that private fields are excluded
 		assert.NotContains(t, props, "hashed_password", "Should NOT have hashed_password field (no public tag)")
-		assert.NotContains(t, props, "properties", "Should NOT have properties field (no public tag)")
+		assert.Contains(t, props, "properties", "Should have properties field (has public:view tag)")
 		assert.NotContains(t, props, "signup_properties", "Should NOT have signup_properties field (no public tag)")
 
 		// Log all properties for debugging

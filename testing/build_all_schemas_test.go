@@ -89,7 +89,7 @@ func TestBuildAllSchemas_Account(t *testing.T) {
 	assert.Contains(t, accountPublic.Properties, "first_name")
 	assert.Contains(t, accountPublic.Properties, "last_name")
 	assert.Contains(t, accountPublic.Properties, "email")
-	assert.NotContains(t, accountPublic.Properties, "properties")        // This is not public
+	assert.Contains(t, accountPublic.Properties, "properties")           // Has public:"view" tag
 	assert.NotContains(t, accountPublic.Properties, "signup_properties") // This is not public
 	assert.NotContains(t, accountPublic.Properties, "hashed_password")   // This is not public
 

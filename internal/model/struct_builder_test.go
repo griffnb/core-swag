@@ -855,6 +855,107 @@ func TestNestedStructs_DeepNesting(t *testing.T) {
 	assert.Contains(t, nestedTypes, "Contact", "Should collect Contact as nested type")
 }
 
+// TestPublicPropagation_ChildStructWithoutPublicTags verifies that when building
+// a Public variant for a struct whose fields have NO public tags, ALL fields are included.
+// This is the key behavior for nested structs like Properties that are referenced
+// from a parent with public:"view" - the child should not have all fields stripped out.
+func TestPublicPropagation_ChildStructWithoutPublicTags(t *testing.T) {
+	t.Run("struct with no public tags includes all fields in public mode", func(t *testing.T) {
+		// Simulates Properties struct: none of its fields have public tags.
+		// When parent Account marks Properties as public:"view", BuildAllSchemas
+		// generates PropertiesPublic by calling BuildSpecSchema with public=true.
+		// All fields should be included since there's nothing to filter.
+		builder := &StructBuilder{
+			Fields: []*StructField{
+				{Name: "InviteKey", TypeString: "string", Tag: `json:"invite_key,omitempty"`},
+				{Name: "InviteTS", TypeString: "int64", Tag: `json:"invite_ts,omitempty"`},
+				{Name: "LastSeen", TypeString: "int64", Tag: `json:"last_seen,omitempty"`},
+				{Name: "ExternalUserInfo", TypeString: "any", Tag: `json:"external_user_info,omitempty"`},
+			},
+		}
+
+		schema, _, err := builder.BuildSpecSchema("Properties", true, false, nil)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		assertSchema(t, schema).
+			hasProperty("invite_key").
+			hasProperty("invite_ts").
+			hasProperty("last_seen").
+			hasProperty("external_user_info").
+			propertyCount(4)
+	})
+
+	t.Run("struct with some public tags still filters in public mode", func(t *testing.T) {
+		// Simulates Account struct: some fields have public tags, some don't.
+		// In public mode, only public-tagged fields should be included.
+		builder := &StructBuilder{
+			Fields: []*StructField{
+				{Name: "FirstName", TypeString: "string", Tag: `public:"edit" json:"first_name"`},
+				{Name: "Email", TypeString: "string", Tag: `public:"edit" json:"email"`},
+				{Name: "HashedPassword", TypeString: "string", Tag: `json:"hashed_password"`},
+				{Name: "InternalSecret", TypeString: "string", Tag: `json:"internal_secret"`},
+			},
+		}
+
+		schema, _, err := builder.BuildSpecSchema("Account", true, false, nil)
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		assertSchema(t, schema).
+			hasProperty("first_name").
+			hasProperty("email").
+			notHasProperty("hashed_password").
+			notHasProperty("internal_secret").
+			propertyCount(2)
+	})
+
+	t.Run("non-public mode always includes all fields regardless", func(t *testing.T) {
+		builder := &StructBuilder{
+			Fields: []*StructField{
+				{Name: "FirstName", TypeString: "string", Tag: `public:"edit" json:"first_name"`},
+				{Name: "HashedPassword", TypeString: "string", Tag: `json:"hashed_password"`},
+			},
+		}
+
+		schema, _, err := builder.BuildSpecSchema("Account", false, false, nil)
+		require.NoError(t, err)
+
+		assertSchema(t, schema).
+			hasProperty("first_name").
+			hasProperty("hashed_password").
+			propertyCount(2)
+	})
+
+	t.Run("nested struct ref uses Public suffix when parent has public tags", func(t *testing.T) {
+		// When Account (which has public tags) references Properties via public:"view",
+		// the ref should point to PropertiesPublic
+		builder := &StructBuilder{
+			Fields: []*StructField{
+				{Name: "Properties", TypeString: "account.Properties", Tag: `public:"view" json:"properties"`},
+				{Name: "Email", TypeString: "string", Tag: `public:"edit" json:"email"`},
+				{Name: "Secret", TypeString: "string", Tag: `json:"secret"`},
+			},
+		}
+
+		schema, nestedTypes, err := builder.BuildSpecSchema("Account", true, false, nil)
+		require.NoError(t, err)
+
+		assertSchema(t, schema).
+			hasProperty("properties").
+			hasProperty("email").
+			notHasProperty("secret").
+			propertyCount(2)
+
+		assert.Contains(t, nestedTypes, "account.PropertiesPublic",
+			"Nested struct should reference Public variant in public mode")
+
+		propSchema := schema.Properties["properties"]
+		assert.Equal(t, "#/definitions/account.PropertiesPublic", propSchema.Ref.String(),
+			"Properties $ref should point to PropertiesPublic")
+	})
+}
+
 // TestForceRequired tests forceRequired parameter
 func TestForceRequired(t *testing.T) {
 	builder := &StructBuilder{

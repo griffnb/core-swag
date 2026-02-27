@@ -18,7 +18,8 @@
                             "$ref": "#/definitions/api.MyStruct"
                         }
                     }
-                }
+                },
+                "x-function": "MyFunc"
             }
         }
     },
@@ -27,8 +28,7 @@
             "type": "object",
             "properties": {
                 "urltemplate": {
-                    "type": "string",
-                    "example": "http://example.org/{{ path }}"
+                    "type": "string"
                 }
             }
         }

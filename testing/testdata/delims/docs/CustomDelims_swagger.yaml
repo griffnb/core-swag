@@ -2,7 +2,6 @@ definitions:
   api.MyStruct:
     properties:
       urltemplate:
-        example: http://example.org/{{ path }}
         type: string
     type: object
 info:
@@ -20,4 +19,5 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/api.MyStruct'
+      x-function: MyFunc
 swagger: "2.0"

@@ -18,7 +18,8 @@ func (s *Service) LoadWithGoPackages(searchDirs []string, absMainAPIFilePath str
 	}
 
 	absDirs := make([]string, 0, len(searchDirs)+1)
-	absDirs = append(absDirs, filepath.Dir(absMainAPIFilePath))
+	mainDir, _ := filepath.Abs(filepath.Dir(absMainAPIFilePath))
+	absDirs = append(absDirs, mainDir)
 	for _, dir := range searchDirs {
 		absDir, err := filepath.Abs(dir)
 		if err != nil {
@@ -27,10 +28,20 @@ func (s *Service) LoadWithGoPackages(searchDirs []string, absMainAPIFilePath str
 		absDirs = append(absDirs, absDir+"/...")
 	}
 
+	// Use the first search directory as the working directory so go/packages
+	// resolves within the correct module context.
+	workDir := filepath.Dir(absMainAPIFilePath)
+	if len(searchDirs) > 0 {
+		if abs, err := filepath.Abs(searchDirs[0]); err == nil {
+			workDir = abs
+		}
+	}
+
 	fset := token.NewFileSet()
 	pkgs, err := packages.Load(&packages.Config{
 		Mode: mode,
 		Fset: fset,
+		Dir:  workDir,
 	}, absDirs...)
 	if err != nil {
 		return nil, err

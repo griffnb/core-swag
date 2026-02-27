@@ -37,7 +37,7 @@ func TestOrchestratorBasic(t *testing.T) {
 	orc := New(config)
 
 	// Parse testdata/delims
-	searchDirs := []string{"../../testdata/delims"}
+	searchDirs := []string{"../../testing/testdata/delims"}
 	mainFile := "main.go"
 	parseDepth := 100
 
@@ -69,6 +69,9 @@ func TestOrchestratorBasic(t *testing.T) {
 	typeDefs := orc.Registry().UniqueDefinitions()
 	t.Logf("Registry has %d type definitions", len(typeDefs))
 	for _, typeDef := range typeDefs {
+		if typeDef == nil {
+			continue
+		}
 		if typeDef.TypeName() == "api.MyStruct" || typeDef.TypeName() == "MyStruct" {
 			t.Logf("Found MyStruct in registry: %s", typeDef.TypeName())
 		}

@@ -1,5 +1,39 @@
 # Core-Swag Change Log
 
+## 2026-02-27: Fix All Failing Tests (excluding legacy_files)
+
+**Fixed:**
+- Testdata paths in gen, loader, orchestrator tests — `../testdata/` to `../../testing/testdata/`
+- AllOf composition bug in route parser — `convertSpecSchemaToDomain` now extracts Properties from AllOf elements
+- Nil pointer in orchestrator debug_test — added nil guard for tombstone entries in UniqueDefinitions
+- Error message assertion in TestGen_TypeOverridesFile — updated to match actual format with file path
+- Loader go/packages cross-module fix — set `Dir` on `packages.Config` to search dir
+- Loader depth tests — switched to `WithGoList(true)` since depth library can't resolve cross-module
+- Testing module go.sum — ran go mod tidy
+
+**Still failing (pre-existing in original swag project too):**
+- Plugin tests (BuildDescriptionWithQuotes, BuildDocCustomDelims) — fail in original project
+- TestGen_GeneratedDoc — needs runtime package decision for generated docs.go import
+- JSON comparison tests (ErrorAndInterface, StateAdmin, StateUser) — fail in original project
+
+## 2026-02-27: Fix Public Route Filtering Not Propagating to Child Structs
+
+**Problem:** When a route has `@Public` annotation, the response struct gets a "Public" suffix (e.g., `AccountWithFeaturesPublic`). Inside that struct, child struct references also get the "Public" suffix (e.g., `PropertiesPublic`). However, if the child struct (like `Properties`) has NO `public` tags on its own fields, ALL fields were being filtered out, creating an empty `PropertiesPublic` schema.
+
+**Root Cause:** In `BuildSpecSchema()` in `struct_builder.go`, when `public=true`, every field was checked for `IsPublic()`. If a child struct like `Properties` had no `public` tags on any of its fields, they all got filtered out, producing an empty schema.
+
+**Fix:** Added a check in `BuildSpecSchema()`: before applying public filtering, scan all fields to see if ANY has a `public` tag. If no fields have public tags, the struct doesn't participate in public filtering (it's fully public), so `effectivePublic` is set to `false`. This means:
+- `AccountPublic` still filters correctly (has mix of public and non-public fields)
+- `PropertiesPublic` includes ALL fields (no public tags = everything is public)
+
+**Files Changed:**
+1. `internal/model/struct_builder.go` - Added `effectivePublic` logic
+2. `internal/model/struct_builder_test.go` - Added `TestPublicPropagation_ChildStructWithoutPublicTags` with 4 subtests
+3. `testing/build_all_schemas_test.go` - Fixed wrong assertion: `properties` field HAS `public:"view"` tag
+4. `testing/core_models_integration_test.go` - Fixed wrong assertion: `properties` field should be in AccountPublic
+
+**Tests:** `internal/model` all pass, `testing` module (BuildAllSchemas, EmbeddedFieldTagFiltering) all pass.
+
 ## 2026-02-27: Fix Enum Properties to Use $ref Definitions Instead of Inlining
 
 **Problem:** Enum fields (like `organization_type`, `role`, `status`, `config_key`) were inlining enum values directly in the property schema without `x-enum-varnames`. The legacy swagger output placed enums in the `definitions` section with `x-enum-varnames` and used `$ref` from properties.

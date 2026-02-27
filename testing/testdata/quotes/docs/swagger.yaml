@@ -23,6 +23,7 @@ paths:
           description: ok
           schema:
             type: string
+      x-function: RandomFunc
 swagger: "2.0"
 tags:
 - description: "# Title with \"quotes\"\n\nAs we want to verify that this markdown

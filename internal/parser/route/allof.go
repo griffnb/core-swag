@@ -127,7 +127,16 @@ func convertSpecSchemaToDomain(s *spec.Schema) *domain.Schema {
 	if len(s.AllOf) > 0 {
 		domainSchema.AllOf = make([]*domain.Schema, 0, len(s.AllOf))
 		for _, allOfSchema := range s.AllOf {
-			domainSchema.AllOf = append(domainSchema.AllOf, convertSpecSchemaToDomain(&allOfSchema))
+			converted := convertSpecSchemaToDomain(&allOfSchema)
+			domainSchema.AllOf = append(domainSchema.AllOf, converted)
+			// Extract properties from AllOf elements to the top-level schema
+			// so callers can access override fields directly (e.g., data, meta)
+			for name, prop := range converted.Properties {
+				if domainSchema.Properties == nil {
+					domainSchema.Properties = make(map[string]*domain.Schema)
+				}
+				domainSchema.Properties[name] = prop
+			}
 		}
 		// Use type "object" for AllOf compositions
 		domainSchema.Type = "object"

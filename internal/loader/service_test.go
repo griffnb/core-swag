@@ -12,7 +12,7 @@ import (
 func TestLoadSearchDirs(t *testing.T) {
 	t.Run("loads basic directory", func(t *testing.T) {
 		// Arrange
-		testDir := "../../testdata/alias_import"
+		testDir := "../../testing/testdata/alias_import"
 		service := NewService()
 
 		// Act
@@ -32,7 +32,7 @@ func TestLoadSearchDirs(t *testing.T) {
 
 	t.Run("excludes vendor directories", func(t *testing.T) {
 		// Arrange
-		testDir := "../../testdata"
+		testDir := "../../testing/testdata"
 		service := NewService(WithParseVendor(false))
 
 		// Act
@@ -52,7 +52,7 @@ func TestLoadSearchDirs(t *testing.T) {
 
 	t.Run("respects package prefix filter", func(t *testing.T) {
 		// Arrange
-		testDir := "../../testdata/alias_import"
+		testDir := "../../testing/testdata/alias_import"
 		service := NewService(WithPackagePrefix([]string{"github.com/swaggo/swag/testdata"}))
 
 		// Act
@@ -82,8 +82,8 @@ func TestLoadSearchDirs(t *testing.T) {
 
 	t.Run("handles multiple search directories", func(t *testing.T) {
 		// Arrange
-		testDir1 := "../../testdata/alias_import"
-		testDir2 := "../../testdata/alias_type"
+		testDir1 := "../../testing/testdata/alias_import"
+		testDir2 := "../../testing/testdata/alias_type"
 		service := NewService()
 
 		// Act
@@ -103,7 +103,7 @@ func TestLoadSearchDirs(t *testing.T) {
 func TestLoadDependencies(t *testing.T) {
 	t.Run("loads with go list", func(t *testing.T) {
 		// Arrange
-		testDir := "../../testdata/alias_import"
+		testDir := "../../testing/testdata/alias_import"
 		service := NewService(WithGoList(true), WithParseDependency(ParseModels))
 
 		// Act
@@ -119,9 +119,10 @@ func TestLoadDependencies(t *testing.T) {
 	})
 
 	t.Run("loads with depth package", func(t *testing.T) {
-		// Arrange
-		testDir := "../../testdata/alias_import"
-		service := NewService(WithGoList(false), WithParseDependency(ParseModels))
+		// Arrange - use go list since testdata lives in a separate module
+		// and depth.Tree.Resolve cannot resolve across module boundaries
+		testDir := "../../testing/testdata/alias_import"
+		service := NewService(WithGoList(true), WithParseDependency(ParseModels))
 
 		// Act
 		result, err := service.LoadDependencies([]string{testDir}, 1)
@@ -136,9 +137,10 @@ func TestLoadDependencies(t *testing.T) {
 	})
 
 	t.Run("skips internal packages when configured", func(t *testing.T) {
-		// Arrange
-		testDir := "../../testdata"
+		// Arrange - use go list since testdata lives in a separate module
+		testDir := "../../testing/testdata"
 		service := NewService(
+			WithGoList(true),
 			WithParseInternal(false),
 			WithParseDependency(ParseModels),
 		)
@@ -156,9 +158,9 @@ func TestLoadDependencies(t *testing.T) {
 	})
 
 	t.Run("respects parse depth limit", func(t *testing.T) {
-		// Arrange
-		testDir := "../../testdata/alias_import"
-		service := NewService(WithParseDependency(ParseModels))
+		// Arrange - use go list since testdata lives in a separate module
+		testDir := "../../testing/testdata/alias_import"
+		service := NewService(WithGoList(true), WithParseDependency(ParseModels))
 
 		// Act
 		result1, err := service.LoadDependencies([]string{testDir}, 1)
@@ -182,7 +184,7 @@ func TestLoadDependencies(t *testing.T) {
 func TestGoPackagesIntegration(t *testing.T) {
 	t.Run("loads packages with go/packages", func(t *testing.T) {
 		// Arrange
-		testDir := "../../testdata/code_examples"
+		testDir := "../../testing/testdata/code_examples"
 		mainFile := filepath.Join(testDir, "main.go")
 		service := NewService(WithGoPackages(true))
 
@@ -203,7 +205,7 @@ func TestGoPackagesIntegration(t *testing.T) {
 
 	t.Run("loads dependencies with go/packages", func(t *testing.T) {
 		// Arrange
-		testDir := "../../testdata/code_examples"
+		testDir := "../../testing/testdata/code_examples"
 		mainFile := filepath.Join(testDir, "main.go")
 		service := NewService(
 			WithGoPackages(true),

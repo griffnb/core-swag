@@ -18,7 +18,8 @@
                             "type": "string"
                         }
                     }
-                }
+                },
+                "x-function": "RandomFunc"
             }
         }
     },
