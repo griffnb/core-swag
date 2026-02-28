@@ -224,6 +224,11 @@ func buildSchemaForType(
 		console.Logger.Debug("Building schema for type: $Bold{%s} (original: $Bold{%s})\n", typeStr, originalTypeStr)
 	}
 
+	// Save full type string before normalization for accurate $ref creation.
+	// When types have full module paths (e.g., "github.com/chargebee/chargebee-go/v3/enum.Source"),
+	// the definition may be stored with the full-path name if NotUnique=true.
+	fullTypeStr := typeStr
+
 	// Normalize type name to short form (package.Type instead of full/module/path/package.Type)
 	typeStr = normalizeTypeName(typeStr)
 	if debug && typeStr != originalTypeStr {
@@ -235,6 +240,7 @@ func buildSchemaForType(
 	if isPointer {
 		typeStr = strings.TrimPrefix(typeStr, "*")
 	}
+	fullTypeStr = strings.TrimPrefix(fullTypeStr, "*")
 
 	// Handle any/interface{} types as object
 	if isAnyType(typeStr) {
@@ -265,7 +271,12 @@ func buildSchemaForType(
 	// Handle arrays
 	if strings.HasPrefix(typeStr, "[]") {
 		elemType := strings.TrimPrefix(typeStr, "[]")
-		elemSchema, elemNestedTypes, err := buildSchemaForType(elemType, public, forceRequired, originalTypeStr, enumLookup)
+		// Pass full-path element type so recursive call can build accurate $refs
+		fullElemType := elemType
+		if strings.HasPrefix(fullTypeStr, "[]") {
+			fullElemType = strings.TrimPrefix(fullTypeStr, "[]")
+		}
+		elemSchema, elemNestedTypes, err := buildSchemaForType(fullElemType, public, forceRequired, originalTypeStr, enumLookup)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -275,7 +286,7 @@ func buildSchemaForType(
 
 	// Handle maps
 	if strings.HasPrefix(typeStr, "map[") {
-		// Extract value type
+		// Extract value type from normalized typeStr
 		bracketCount := 0
 		valueStart := -1
 		for i, ch := range typeStr {
@@ -292,8 +303,27 @@ func buildSchemaForType(
 		if valueStart == -1 {
 			return nil, nil, fmt.Errorf("invalid map type: %s", typeStr)
 		}
-		valueType := typeStr[valueStart:]
-		valueSchema, valueNestedTypes, err := buildSchemaForType(valueType, public, forceRequired, originalTypeStr, enumLookup)
+		// Extract full-path value type for accurate $ref creation in recursive call
+		fullValueType := typeStr[valueStart:]
+		if strings.HasPrefix(fullTypeStr, "map[") {
+			fullBracketCount := 0
+			fullValueStart := -1
+			for i, ch := range fullTypeStr {
+				if ch == '[' {
+					fullBracketCount++
+				} else if ch == ']' {
+					fullBracketCount--
+					if fullBracketCount == 0 {
+						fullValueStart = i + 1
+						break
+					}
+				}
+			}
+			if fullValueStart != -1 {
+				fullValueType = fullTypeStr[fullValueStart:]
+			}
+		}
+		valueSchema, valueNestedTypes, err := buildSchemaForType(fullValueType, public, forceRequired, originalTypeStr, enumLookup)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -320,8 +350,12 @@ func buildSchemaForType(
 			if debug {
 				console.Logger.Debug("Detected Enum type: $Bold{%s} with %d values, creating $ref\n", typeStr, len(enums))
 			}
-			// Create a $ref to the enum definition instead of inlining
+			// Use full-path definition name when the original type has a module path.
+			// This matches the definition name used by TypeSpecDef.TypeName() for NotUnique types.
 			refName := typeStr
+			if strings.Contains(fullTypeStr, "/") {
+				refName = makeFullPathDefinitionName(fullTypeStr)
+			}
 			schema := spec.RefSchema("#/definitions/" + refName)
 			nestedTypes = append(nestedTypes, refName)
 			return schema, nestedTypes, nil
@@ -359,19 +393,50 @@ func buildSchemaForType(
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
 	}
 
-	// Add Public suffix if in public mode
+	// Use full-path definition name when the original type has a module path.
+	// This ensures $refs match the definition names used by the registry for NotUnique types.
 	refName := typeName
-	if public {
-		refName = typeName + "Public"
+	if strings.Contains(fullTypeStr, "/") {
+		refName = makeFullPathDefinitionName(fullTypeStr)
 	}
 
-	// Create reference schema using the full type name
+	// Add Public suffix if in public mode
+	if public {
+		refName = refName + "Public"
+	}
+
+	// Create reference schema using the type name
 	schema := spec.RefSchema("#/definitions/" + refName)
 	nestedTypes = append(nestedTypes, refName) // Use refName to include Public suffix when public=true
 	if debug {
 		console.Logger.Debug("Created Ref Schema for type: $Bold{$Red{%s}} Ref: $Bold{#/definitions/%s}\n", typeStr, refName)
 	}
 	return schema, nestedTypes, nil
+}
+
+// makeFullPathDefinitionName converts a full module path type string to the
+// definition name format used by TypeSpecDef.TypeName() for NotUnique types.
+// Input:  "github.com/chargebee/chargebee-go/v3/enum.Source"
+// Output: "github_com_chargebee_chargebee-go_v3_enum.Source"
+// This matches the algorithm in TypeSpecDef.TypeName() at internal/domain/types.go:62-67.
+func makeFullPathDefinitionName(fullTypeStr string) string {
+	// Split at last "." to separate package path from type name
+	lastDot := strings.LastIndex(fullTypeStr, ".")
+	if lastDot == -1 {
+		return fullTypeStr
+	}
+	pkgPath := fullTypeStr[:lastDot]
+	typeName := fullTypeStr[lastDot+1:]
+
+	// Replace \, /, . in pkgPath with _ (same transform as TypeSpecDef.TypeName)
+	pkgPath = strings.Map(func(r rune) rune {
+		if r == '\\' || r == '/' || r == '.' {
+			return '_'
+		}
+		return r
+	}, pkgPath)
+
+	return pkgPath + "." + typeName
 }
 
 // isPrimitiveType checks if a type string is a Go primitive type
@@ -432,8 +497,13 @@ func getPrimitiveSchemaForFieldType(typeStr string, originalTypeStr string, enum
 			if enumLookup != nil {
 				enums, err := enumLookup.GetEnumsForType(normalizedEnum, nil)
 				if err == nil && len(enums) > 0 {
-					schema := spec.RefSchema("#/definitions/" + normalizedEnum)
-					return schema, []string{normalizedEnum}, nil
+					// Use full-path definition name when enum type has a module path
+					refName := normalizedEnum
+					if strings.Contains(enumType, "/") {
+						refName = makeFullPathDefinitionName(enumType)
+					}
+					schema := spec.RefSchema("#/definitions/" + refName)
+					return schema, []string{refName}, nil
 				}
 			}
 		}
@@ -446,8 +516,13 @@ func getPrimitiveSchemaForFieldType(typeStr string, originalTypeStr string, enum
 			if enumLookup != nil {
 				enums, err := enumLookup.GetEnumsForType(normalizedEnum, nil)
 				if err == nil && len(enums) > 0 {
-					schema := spec.RefSchema("#/definitions/" + normalizedEnum)
-					return schema, []string{normalizedEnum}, nil
+					// Use full-path definition name when enum type has a module path
+					refName := normalizedEnum
+					if strings.Contains(enumType, "/") {
+						refName = makeFullPathDefinitionName(enumType)
+					}
+					schema := spec.RefSchema("#/definitions/" + refName)
+					return schema, []string{refName}, nil
 				}
 			}
 		}

@@ -398,6 +398,27 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 		s.swagger.Definitions[name] = schema
 	}
 
+	// Add redirect definitions for unique types so full-path $refs resolve correctly.
+	// When buildSchemaForType creates $refs with full-path names (e.g., "github_com_..._enum.ApiVersion"),
+	// but the type is unique and stored with a short name (e.g., "enum.ApiVersion"), we add a redirect
+	// definition that points the full-path name to the short-name definition.
+	for _, typeDef := range uniqueDefs {
+		if typeDef == nil {
+			continue
+		}
+		actualName := typeDef.TypeName()
+		fullPathName := makeFullPathDefName(typeDef.PkgPath, typeDef.Name())
+		if fullPathName != actualName {
+			if _, exists := s.swagger.Definitions[fullPathName]; !exists {
+				s.swagger.Definitions[fullPathName] = spec.Schema{
+					SchemaProps: spec.SchemaProps{
+						Ref: spec.MustCreateRef("#/definitions/" + actualName),
+					},
+				}
+			}
+		}
+	}
+
 	if s.config.Debug != nil {
 		s.config.Debug.Printf("Orchestrator: Built %d schema definitions", len(s.swagger.Definitions))
 	}
