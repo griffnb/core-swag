@@ -162,12 +162,16 @@
 
 **Requirements:** 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4
 
-This is the main pipeline restructure. The orchestrator `Parse()` method changes from eager to demand-driven.
+This is the main pipeline restructure. The orchestrator `Parse()` method changes from eager to demand-driven. In this task, the old Phase 3.5 code is **bypassed but not deleted** — it gets marked `@Deprecated` so we can verify the new path works before removing the old code in Task 10.
 
 **Implementation:**
 1. In `internal/orchestrator/service.go`, modify the `Parse()` method:
 
-   **a) Remove Phase 3.5** (lines 282-305): Delete the entire `structParser.ParseFile()` loop. Leave a comment noting it was removed in favor of demand-driven schema building.
+   **a) Bypass Phase 3.5** (lines 282-305): Comment out the `structParser.ParseFile()` loop body and add a deprecation notice. Do NOT delete the code yet:
+   ```go
+   // @Deprecated: Phase 3.5 bypassed — demand-driven schema building in Phase 5 replaces this.
+   // This code will be removed in a future cleanup pass. See .agents/specs/performance-optimization/design.md
+   ```
 
    **b) Move route parsing before schema building** (already the case — Phase 4 is lines 307-360, Phase 5 is lines 366-403). The order is already correct after removing Phase 3.5. Just verify routes are parsed before schemas are built.
 
@@ -232,14 +236,14 @@ This is the main pipeline restructure. The orchestrator `Parse()` method changes
 - Update `.agents/change_log.md` with what was tried and what worked
 
 **Completion Criteria:**
-- [ ] Phase 3.5 removed from orchestrator
+- [ ] Phase 3.5 bypassed and marked `@Deprecated` in orchestrator
 - [ ] Route parsing happens before schema building
 - [ ] Only route-referenced types get schemas built
 - [ ] `make test-project-1` produces identical output
 - [ ] `make test-project-2` produces identical output
 - [ ] `go test -race ./...` passes
 
-**Escape Condition:** If output doesn't match after 3 iterations, add back Phase 3.5 as a fallback and document which types are missing. The cache seeding from Tasks 1-2 still provides value even without the pipeline restructure.
+**Escape Condition:** If output doesn't match after 3 iterations, re-enable Phase 3.5 as a fallback and document which types are missing. The cache seeding from Tasks 1-2 still provides value even without the pipeline restructure.
 
 ---
 
@@ -388,9 +392,62 @@ This is the main pipeline restructure. The orchestrator `Parse()` method changes
 
 ---
 
-## Task 9: Final Verification and Cleanup
+## Task 9: Mark All Legacy Code Paths as Deprecated
+
+**Requirements:** 2.1, 2.4
+
+Now that the demand-driven pipeline is working and verified, mark all old code paths that are no longer called as `@Deprecated`. This makes it clear to any developer (or AI) reading the code that these are legacy paths scheduled for removal.
+
+**Implementation:**
+1. **`internal/parser/struct/service.go`** — The `StructParserService` and its `ParseFile` method are no longer called by the orchestrator. Add deprecation notices:
+   - On the `Service` struct doc comment: `// Deprecated: StructParserService is no longer used by the orchestrator pipeline. Demand-driven schema building via CoreStructParser replaces this. Scheduled for removal.`
+   - On `ParseFile` method: `// Deprecated: No longer called by orchestrator. See demand-driven pipeline in orchestrator/service.go.`
+   - On `ParseStruct` method: `// Deprecated: No longer called by orchestrator. See demand-driven pipeline.`
+   - On `BuildPublicSchema` method: `// Deprecated: Public variants are now built via CoreStructParser.BuildAllSchemas.`
+   - On `NewService` constructor: `// Deprecated: StructParserService is no longer used by the orchestrator.`
+
+2. **`internal/orchestrator/service.go`** — The `structParser` field on the `Service` struct is no longer used in the pipeline. Mark it:
+   - On the `structParser` field: add comment `// Deprecated: no longer used in demand-driven pipeline. Scheduled for removal.`
+   - On the `structParser` initialization in `New()` (line ~165): add comment `// Deprecated: structParser no longer used in pipeline.`
+
+3. **`internal/schema/builder.go`** — Check if the old Phase 5 path (iterating ALL `UniqueDefinitions`) left any dead code. If `BuildSchema` is still used by the demand-driven path for non-struct types, it stays. But if any methods are only used by the old Phase 3.5 flow (e.g., `AddDefinition` was only called by StructParserService.ParseFile), mark those as deprecated too.
+
+4. **Verify no other callers exist** for the deprecated code:
+   - Search for `structParser.ParseFile` — should only appear in the bypassed orchestrator code and tests
+   - Search for `structparser.NewService` — should only appear in orchestrator `New()` and tests
+   - If external callers exist outside the orchestrator, do NOT deprecate — document instead
+
+5. Run all tests to confirm deprecation comments don't break anything.
+
+**Verification:**
+- Run: `grep -rn "@Deprecated\|Deprecated:" internal/parser/struct/ internal/orchestrator/service.go`
+- Expected: deprecation markers on all identified legacy code
+- Run: `go build ./...`
+- Expected: compiles cleanly (comments don't affect compilation)
+- Run: `go test ./... -v`
+- Expected: all tests pass (deprecated code still exists, just marked)
+- Run: `make test-project-1` and `make test-project-2`
+- Expected: identical output
+
+**Self-Correction:**
+- If `AddDefinition` is still called by the demand-driven path: don't deprecate it, only deprecate things that are truly unused
+- If there are callers outside the orchestrator: add a `// Note: still used by X` comment instead of deprecating
+
+**Completion Criteria:**
+- [ ] All legacy code paths marked `Deprecated` with clear explanation
+- [ ] No false deprecations (everything marked is genuinely unused by the new pipeline)
+- [ ] All tests pass
+- [ ] Change log updated
+
+**Escape Condition:** If unclear whether something is still used, err on the side of NOT deprecating. Better to leave it unmarked than to incorrectly deprecate active code.
+
+---
+
+## Task 10: Final Verification
 
 **Requirements:** 1.7, 2.3, 7.1, 7.4
+
+Full verification pass before declaring the optimization complete.
 
 **Implementation:**
 1. Run the full test suite: `go test ./... -v`
@@ -398,13 +455,13 @@ This is the main pipeline restructure. The orchestrator `Parse()` method changes
 3. Run integration tests:
    - `make test-project-1` — diff output against `testing/project-1-example-swagger.json`
    - `make test-project-2` — diff output against `testing/project-2-example-swagger.json`
-4. Run with debug mode enabled on a test project to verify the new logging output
+4. Run with debug mode enabled on a test project to verify the new logging output shows cache stats and route-referenced type counts
 5. Review all changed files for:
    - Unused imports
-   - Dead code from Phase 3.5 removal (the orchestrator call is gone but StructParserService code stays)
    - Consistent error handling patterns
    - Go doc comments on all new exported functions
-6. Update `.agents/change_log.md` with a summary of all changes made
+6. Verify deprecated code is clearly marked and separated from active code
+7. Update `.agents/change_log.md` with a summary of all changes made
 
 **Verification:**
 - Run: `go test ./... -v`
@@ -425,6 +482,77 @@ This is the main pipeline restructure. The orchestrator `Parse()` method changes
 - [ ] All integration tests pass with identical output
 - [ ] `go test -race ./...` clean
 - [ ] `go vet ./...` clean
+- [ ] All deprecated code clearly marked
 - [ ] Change log updated
 
 **Escape Condition:** N/A — this is the final verification. All issues must be resolved.
+
+---
+
+## Task 11: Remove Deprecated Legacy Code
+
+**Requirements:** 2.1, 2.2, 2.4
+
+This is the cleanup pass. All deprecated code from Task 9 gets removed. This task should only be executed AFTER Task 10 confirms the new pipeline is fully working and verified.
+
+**Implementation:**
+1. **Remove `structParser` from orchestrator:**
+   - In `internal/orchestrator/service.go`, remove the `structParser` field from the `Service` struct
+   - Remove the `structparser.NewService(...)` call and its variable in `New()`
+   - Remove the `structparser` import
+   - Remove the bypassed Phase 3.5 code block entirely (the commented-out loop)
+
+2. **Remove `StructParserService` and its file:**
+   - Delete or gut `internal/parser/struct/service.go` — the entire file was the orchestrator-level struct parser that is now replaced by the demand-driven CoreStructParser path
+   - Check if any methods from this file are still used by tests or other callers:
+     - If test files test the StructParserService directly: those tests should be removed or migrated to test the CoreStructParser path instead
+     - If no other callers: remove the entire file
+   - If `internal/parser/struct/` becomes an empty package, remove the directory
+
+3. **Clean up SchemaBuilder if needed:**
+   - If `AddDefinition` is no longer called by any production code (only was called by StructParserService.ParseFile), remove it
+   - If `GetDefinition` is no longer called, remove it
+   - Verify by searching: `grep -rn "AddDefinition\|GetDefinition" internal/`
+   - Only remove methods with zero callers outside of tests for the deprecated code
+
+4. **Remove deprecated tests:**
+   - Any test file that exclusively tests the removed StructParserService (e.g., `internal/parser/struct/service_test.go`) should be removed
+   - Tests that test shared functionality (like ParseStruct helpers used elsewhere) should be kept
+
+5. **Clean up imports:**
+   - Run `go build ./...` to find any broken imports
+   - Run `go vet ./...` to catch issues
+
+**Verification:**
+- Run: `go build ./...`
+- Expected: compiles cleanly with no references to removed code
+- Run: `go test ./... -v`
+- Expected: all remaining tests pass
+- Run: `go test -race ./...`
+- Expected: no races
+- Run: `make test-project-1`
+- Expected: identical output (removal of dead code doesn't change behavior)
+- Run: `make test-project-2`
+- Expected: identical output
+- Run: `grep -rn "structParser\|StructParserService\|structparser" internal/orchestrator/`
+- Expected: no references to the removed code in the orchestrator
+- Run: `go vet ./...`
+- Expected: clean
+
+**Self-Correction:**
+- If compilation fails after removal: something still references the deleted code — find it with `grep` and update or remove the reference
+- If tests fail: a test may depend on the removed code — check if it's testing deprecated functionality (remove the test) or shared functionality (keep the code)
+- If `make test-project-*` output changes: something in the removal broke the pipeline — revert the last change and investigate which removed piece was still needed
+- Update `.agents/change_log.md` with what was removed
+
+**Completion Criteria:**
+- [ ] `structParser` field and initialization removed from orchestrator
+- [ ] Phase 3.5 code block fully removed (not just commented out)
+- [ ] StructParserService code removed (or clearly documented if kept for external use)
+- [ ] No dangling references to removed code
+- [ ] All tests pass
+- [ ] `make test-project-1` and `make test-project-2` produce identical output
+- [ ] `go vet ./...` clean
+- [ ] Change log updated
+
+**Escape Condition:** If removal breaks something unexpected, keep the specific piece that's still needed and document WHY it's still needed. The goal is zero confusion — either code is active and documented, or it's gone.
