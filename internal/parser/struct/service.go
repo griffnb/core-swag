@@ -94,6 +94,21 @@ func (s *Service) resolveFullTypeName(typeName string, file *ast.File) string {
 	return typeName
 }
 
+// resolveDefinitionName resolves the correct definition name for a $ref.
+// If the type is registered with NotUnique=true (name collision), it returns the
+// full-path definition name (e.g., "github_com_chargebee_chargebee-go_v3_enum.Source").
+// Otherwise returns the short name (e.g., "enum.Source").
+func (s *Service) resolveDefinitionName(typeName string, file *ast.File) string {
+	if s.registry == nil || file == nil {
+		return typeName
+	}
+	typeDef := s.registry.FindTypeSpec(typeName, file)
+	if typeDef == nil {
+		return typeName
+	}
+	return typeDef.TypeName()
+}
+
 // NewService creates a new struct parser service
 func NewService(registry *registry.Service, schemaBuilder *schema.BuilderService, enumLookup model.TypeEnumLookup) *Service {
 	return &Service{

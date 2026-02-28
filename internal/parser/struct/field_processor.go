@@ -68,11 +68,14 @@ func (s *Service) processField(file *ast.File, field *ast.Field, public bool) (m
 			// If the extracted type doesn't have a package qualifier (no ".")
 			// and is not a primitive type, add the package name
 			// But DON'T add package to slice/map prefixes - only to the base type
-			if file != nil && !strings.Contains(fieldType, ".") && !isPrimitiveTypeName(fieldType) {
+			if file != nil && !strings.Contains(fieldType, ".") && !isPrimitiveTypeName(fieldType) &&
+				fieldType != "map" && fieldType != "interface" && fieldType != "object" {
 				// Handle slices: []Type -> []package.Type
 				if strings.HasPrefix(fieldType, "[]") {
 					elemType := strings.TrimPrefix(fieldType, "[]")
-					if !isPrimitiveTypeName(elemType) && !strings.Contains(elemType, ".") {
+					if !isPrimitiveTypeName(elemType) && !strings.Contains(elemType, ".") &&
+						elemType != "map" && elemType != "interface" && elemType != "object" &&
+						!strings.HasPrefix(elemType, "map[") {
 						fieldType = "[]" + file.Name.Name + "." + elemType
 					}
 				} else if strings.HasPrefix(fieldType, "map[") {
@@ -112,8 +115,9 @@ func (s *Service) processField(file *ast.File, field *ast.Field, public bool) (m
 				fullTypeName := s.resolveFullTypeName(enumType, file)
 				enumValues, enumErr := s.enumLookup.GetEnumsForType(fullTypeName, file)
 				if enumErr == nil && len(enumValues) > 0 {
-					// Create a $ref to the enum definition instead of inlining
-					schema := *spec.RefSchema("#/definitions/" + enumType)
+					// Use registry to get correct definition name (handles NotUnique types)
+					refName := s.resolveDefinitionName(enumType, file)
+					schema := *spec.RefSchema("#/definitions/" + refName)
 					properties := map[string]spec.Schema{jsonName: schema}
 					var required []string
 					if tags.Required && !tags.OmitEmpty {
@@ -311,6 +315,10 @@ func exprToString(expr ast.Expr) string {
 		return "*" + exprToString(t.X)
 	case *ast.ArrayType:
 		return "[]" + exprToString(t.Elt)
+	case *ast.MapType:
+		return "map"
+	case *ast.InterfaceType:
+		return "interface"
 	case *ast.IndexExpr:
 		// Generic type like Generic[T]
 		return exprToString(t.X) + "[" + exprToString(t.Index) + "]"
@@ -379,12 +387,25 @@ func (s *Service) buildPropertySchema(fieldType string, tags fieldTags, file *as
 			}
 		} else if strings.Contains(elemType, ".") {
 			// Check if element type is a package-qualified struct type (contains ".")
-			// Only add Public suffix for actual struct types, not enums or type aliases
+			// For enum types, use registry to get correct definition name (handles NotUnique types)
+			// For struct types, keep short name since StructParserService stores definitions that way
 			refName := elemType
-			if public && s.isStructType(elemType, file) {
-				refName = elemType + "Public"
+			if s.isStructType(elemType, file) {
+				if public {
+					refName = elemType + "Public"
+				}
+			} else {
+				refName = s.resolveDefinitionName(elemType, file)
 			}
 			elemSchema = spec.RefSchema("#/definitions/" + refName)
+		} else if elemType == "map" || elemType == "interface" || elemType == "object" ||
+			strings.HasPrefix(elemType, "map[") {
+			// Meta-types - treat as generic object
+			elemSchema = &spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Type: []string{"object"},
+				},
+			}
 		} else {
 			// Primitive or local type
 			elemSchema = &spec.Schema{
@@ -428,14 +449,22 @@ func (s *Service) buildPropertySchema(fieldType string, tags fieldTags, file *as
 				if err == nil && len(enumValues) > 0 {
 					// This is an enum type - create a $ref to the enum definition
 					// Enums don't get Public suffix since enum values are identical regardless of public context
-					return *spec.RefSchema("#/definitions/" + fieldType)
+					// Use registry to get correct definition name (handles NotUnique types)
+					refName := s.resolveDefinitionName(fieldType, file)
+					return *spec.RefSchema("#/definitions/" + refName)
 				}
 			}
 			// Not an enum - only add Public suffix if the type is a struct.
 			// Constants, type aliases to primitives, etc. don't have Public variants.
+			// For struct types, keep short name since StructParserService stores definitions that way.
+			// For non-struct types, use registry to get correct definition name (handles NotUnique types).
 			refName := fieldType
-			if public && s.isStructType(fieldType, file) {
-				refName = fieldType + "Public"
+			if s.isStructType(fieldType, file) {
+				if public {
+					refName = fieldType + "Public"
+				}
+			} else {
+				refName = s.resolveDefinitionName(fieldType, file)
 			}
 			return *spec.RefSchema("#/definitions/" + refName)
 		} else {

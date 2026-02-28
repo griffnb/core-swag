@@ -1,5 +1,29 @@
 # Core-Swag Change Log
 
+## 2026-02-27: Fix $ref Name Mismatch for NotUnique Types (2 rounds)
+
+**Problem:** When multiple packages define a type with the same short name (e.g., `enum.Source` in 3 chargebee sub-packages), the registry marks them `NotUnique` and stores definitions with full-path names like `github_com_chargebee_chargebee-go_v3_enum.Source`. But `$ref` creation used normalized short names (`enum.Source`), creating dangling references.
+
+**Round 1 — Fixed `struct_field.go` only (didn't work):**
+- Added `makeFullPathDefinitionName()` utility and modified `buildSchemaForType()` in `internal/model/struct_field.go`
+- Added redirect definitions in `internal/orchestrator/service.go`
+- This fixed the CoreStructParser path but NOT the StructParserService path
+- The `field_processor.go` in `internal/parser/struct/` also creates `$ref` using short names from AST parsing
+
+**Round 2 — Fixed `field_processor.go` (success):**
+- Root cause: `field_processor.go` uses AST-level type resolution which only provides short names
+- Added `resolveDefinitionName()` to `internal/parser/struct/service.go` — uses `registry.FindTypeSpec()` and `typeDef.TypeName()` to get the correct definition name
+- Applied only to enum/non-struct `$ref` creation (lines 116, 431, 387, 440 in field_processor.go)
+- For struct types, kept short names because StructParserService stores struct/Public definitions with short names
+- Result: 0 new broken refs, and actually resolved 31 pre-existing broken refs in project-2
+
+**Files changed:**
+- `internal/model/struct_field.go` — `makeFullPathDefinitionName()`, `buildSchemaForType()` full-path refs, `getPrimitiveSchemaForFieldType()` ConstantField fixes
+- `internal/orchestrator/service.go` — Redirect definitions for unique types
+- `internal/orchestrator/ref_reconciler.go` (new) — `makeFullPathDefName()` utility
+- `internal/parser/struct/service.go` — `resolveDefinitionName()` helper
+- `internal/parser/struct/field_processor.go` — Fixed 4 `$ref` creation points
+
 ## 2026-02-27: Fix Public Route Nested Struct $ref Propagation (3 rounds)
 
 **Problem 1 — Public flag not propagated to child $refs:**
