@@ -2,26 +2,22 @@ package gen
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
-	"plugin"
 	"strings"
 	"testing"
 
-	"github.com/go-openapi/spec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const searchDir = "../../testing/testdata/simple"
 
-var outputTypes = []string{"go", "json", "yaml"}
+var outputTypes = []string{"json", "yaml"}
 
 func TestGen_Build(t *testing.T) {
 	config := &Config{
@@ -34,7 +30,6 @@ func TestGen_Build(t *testing.T) {
 	assert.NoError(t, New().Build(config))
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
 		filepath.Join(config.OutputDir, "swagger.json"),
 		filepath.Join(config.OutputDir, "swagger.yaml"),
 	}
@@ -52,7 +47,7 @@ func TestGen_SpecificOutputTypes(t *testing.T) {
 		SearchDir:          searchDir,
 		MainAPIFile:        "./main.go",
 		OutputDir:          "../../testing/testdata/simple/docs",
-		OutputTypes:        []string{"go", "unknownType"},
+		OutputTypes:        []string{"json", "unknownType"},
 		PropNamingStrategy: "",
 	}
 	assert.NoError(t, New().Build(config))
@@ -61,8 +56,7 @@ func TestGen_SpecificOutputTypes(t *testing.T) {
 		expectedFile string
 		shouldExist  bool
 	}{
-		{filepath.Join(config.OutputDir, "docs.go"), true},
-		{filepath.Join(config.OutputDir, "swagger.json"), false},
+		{filepath.Join(config.OutputDir, "swagger.json"), true},
 		{filepath.Join(config.OutputDir, "swagger.yaml"), false},
 	}
 	for _, tc := range tt {
@@ -90,64 +84,30 @@ func TestGen_BuildInstanceName(t *testing.T) {
 	}
 	assert.NoError(t, New().Build(config))
 
-	goSourceFile := filepath.Join(config.OutputDir, "docs.go")
-
-	// Validate default registration name
-	expectedCode, err := os.ReadFile(goSourceFile)
-	if err != nil {
-		require.NoError(t, err)
-	}
-
-	if !strings.Contains(
-		string(expectedCode),
-		"swag.Register(SwaggerInfo.InstanceName(), SwaggerInfo)",
-	) {
-		t.Fatal(errors.New("generated go code does not contain the correct default registration sequence"))
-	}
-
-	if !strings.Contains(
-		string(expectedCode),
-		"var SwaggerInfo =",
-	) {
-		t.Fatal(errors.New("generated go code does not contain the correct default variable declaration"))
-	}
-
-	// Custom name
-	config.InstanceName = "Custom"
-	goSourceFile = filepath.Join(config.OutputDir, config.InstanceName+"_"+"docs.go")
-	assert.NoError(t, New().Build(config))
-
-	expectedCode, err = os.ReadFile(goSourceFile)
-	if err != nil {
-		require.NoError(t, err)
-	}
-
-	if !strings.Contains(
-		string(expectedCode),
-		"swag.Register(SwaggerInfoCustom.InstanceName(), SwaggerInfoCustom)",
-	) {
-		t.Fatal(errors.New("generated go code does not contain the correct registration sequence"))
-	}
-
-	if !strings.Contains(
-		string(expectedCode),
-		"var SwaggerInfoCustom =",
-	) {
-		t.Fatal(errors.New("generated go code does not contain the correct variable declaration"))
-	}
-
-	// cleanup
+	// Default instance name produces swagger.json/swagger.yaml
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, config.InstanceName+"_"+"docs.go"),
-		filepath.Join(config.OutputDir, config.InstanceName+"_"+"swagger.json"),
-		filepath.Join(config.OutputDir, config.InstanceName+"_"+"swagger.yaml"),
+		filepath.Join(config.OutputDir, "swagger.json"),
+		filepath.Join(config.OutputDir, "swagger.yaml"),
 	}
-
 	for _, expectedFile := range expectedFiles {
 		if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
 			require.NoError(t, err)
 		}
+		_ = os.Remove(expectedFile)
+	}
 
+	// Custom instance name produces Custom_swagger.json/Custom_swagger.yaml
+	config.InstanceName = "Custom"
+	assert.NoError(t, New().Build(config))
+
+	customFiles := []string{
+		filepath.Join(config.OutputDir, config.InstanceName+"_"+"swagger.json"),
+		filepath.Join(config.OutputDir, config.InstanceName+"_"+"swagger.yaml"),
+	}
+	for _, expectedFile := range customFiles {
+		if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
+			require.NoError(t, err)
+		}
 		_ = os.Remove(expectedFile)
 	}
 }
@@ -164,7 +124,6 @@ func TestGen_BuildSnakeCase(t *testing.T) {
 	assert.NoError(t, New().Build(config))
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
 		filepath.Join(config.OutputDir, "swagger.json"),
 		filepath.Join(config.OutputDir, "swagger.yaml"),
 	}
@@ -189,7 +148,6 @@ func TestGen_BuildLowerCamelcase(t *testing.T) {
 	assert.NoError(t, New().Build(config))
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
 		filepath.Join(config.OutputDir, "swagger.json"),
 		filepath.Join(config.OutputDir, "swagger.yaml"),
 	}
@@ -200,127 +158,6 @@ func TestGen_BuildLowerCamelcase(t *testing.T) {
 
 		_ = os.Remove(expectedFile)
 	}
-}
-
-func TestGen_BuildDescriptionWithQuotes(t *testing.T) {
-	t.Skip("Legacy swag test: requires plugin build and github.com/swaggo/swag runtime")
-	config := &Config{
-		SearchDir:        "../../testing/testdata/quotes",
-		MainAPIFile:      "./main.go",
-		OutputDir:        "../../testing/testdata/quotes/docs",
-		OutputTypes:      outputTypes,
-		MarkdownFilesDir: "../../testing/testdata/quotes",
-	}
-
-	require.NoError(t, New().Build(config))
-
-	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
-		filepath.Join(config.OutputDir, "swagger.json"),
-		filepath.Join(config.OutputDir, "swagger.yaml"),
-	}
-	for _, expectedFile := range expectedFiles {
-		if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
-			require.NoError(t, err)
-		}
-	}
-
-	cmd := exec.Command("go", "build", "-buildmode=plugin", "github.com/griffnb/core-swag/testing/testdata/quotes")
-
-	cmd.Dir = config.SearchDir
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		require.NoError(t, err, string(output))
-	}
-
-	p, err := plugin.Open(filepath.Join(config.SearchDir, "quotes.so"))
-	if err != nil {
-		require.NoError(t, err)
-	}
-
-	defer os.Remove("quotes.so")
-
-	readDoc, err := p.Lookup("ReadDoc")
-	if err != nil {
-		require.NoError(t, err)
-	}
-
-	jsonOutput := readDoc.(func() string)()
-
-	var jsonDoc interface{}
-	if err := json.Unmarshal([]byte(jsonOutput), &jsonDoc); err != nil {
-		require.NoError(t, err)
-	}
-
-	expectedJSON, err := os.ReadFile(filepath.Join(config.SearchDir, "expected.json"))
-	if err != nil {
-		require.NoError(t, err)
-	}
-
-	assert.JSONEq(t, string(expectedJSON), jsonOutput)
-}
-
-func TestGen_BuildDocCustomDelims(t *testing.T) {
-	t.Skip("Legacy swag test: requires plugin build and github.com/swaggo/swag runtime")
-	config := &Config{
-		SearchDir:          "../../testing/testdata/delims",
-		MainAPIFile:        "./main.go",
-		OutputDir:          "../../testing/testdata/delims/docs",
-		OutputTypes:        outputTypes,
-		MarkdownFilesDir:   "../../testing/testdata/delims",
-		InstanceName:       "CustomDelims",
-		LeftTemplateDelim:  "{%",
-		RightTemplateDelim: "%}",
-	}
-
-	require.NoError(t, New().Build(config))
-
-	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "CustomDelims_docs.go"),
-		filepath.Join(config.OutputDir, "CustomDelims_swagger.json"),
-		filepath.Join(config.OutputDir, "CustomDelims_swagger.yaml"),
-	}
-	for _, expectedFile := range expectedFiles {
-		if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
-			require.NoError(t, err)
-		}
-	}
-
-	cmd := exec.Command("go", "build", "-buildmode=plugin", "github.com/griffnb/core-swag/testing/testdata/delims")
-
-	cmd.Dir = config.SearchDir
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		require.NoError(t, err, string(output))
-	}
-
-	p, err := plugin.Open(filepath.Join(config.SearchDir, "delims.so"))
-	if err != nil {
-		require.NoError(t, err)
-	}
-
-	defer os.Remove("delims.so")
-
-	readDoc, err := p.Lookup("ReadDoc")
-	if err != nil {
-		require.NoError(t, err)
-	}
-
-	jsonOutput := readDoc.(func() string)()
-
-	var jsonDoc interface{}
-	if err := json.Unmarshal([]byte(jsonOutput), &jsonDoc); err != nil {
-		require.NoError(t, err)
-	}
-
-	expectedJSON, err := os.ReadFile(filepath.Join(config.SearchDir, "expected.json"))
-	if err != nil {
-		require.NoError(t, err)
-	}
-
-	assert.JSONEq(t, string(expectedJSON), jsonOutput)
 }
 
 func TestGen_jsonIndent(t *testing.T) {
@@ -356,7 +193,6 @@ func TestGen_jsonToYAML(t *testing.T) {
 	assert.Error(t, gen.Build(config))
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
 		filepath.Join(config.OutputDir, "swagger.json"),
 	}
 
@@ -411,7 +247,7 @@ func TestGen_OutputIsNotExist(t *testing.T) {
 
 func TestGen_FailToWrite(t *testing.T) {
 	outputDir := filepath.Join(os.TempDir(), "swagg", "test")
-	outputTypes := []string{"go", "json", "yaml"}
+	outputTypes := []string{"json", "yaml"}
 
 	var propNamingStrategy string
 	config := &Config{
@@ -443,14 +279,6 @@ func TestGen_FailToWrite(t *testing.T) {
 	}
 	assert.Error(t, New().Build(config))
 
-	_ = os.RemoveAll(filepath.Join(outputDir, "docs.go"))
-
-	err = os.Mkdir(filepath.Join(outputDir, "docs.go"), 0755)
-	if err != nil {
-		require.NoError(t, err)
-	}
-	assert.Error(t, New().Build(config))
-
 	err = os.RemoveAll(outputDir)
 	if err != nil {
 		require.NoError(t, err)
@@ -469,7 +297,6 @@ func TestGen_configWithOutputDir(t *testing.T) {
 	assert.NoError(t, New().Build(config))
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
 		filepath.Join(config.OutputDir, "swagger.json"),
 		filepath.Join(config.OutputDir, "swagger.yaml"),
 	}
@@ -484,7 +311,7 @@ func TestGen_configWithOutputDir(t *testing.T) {
 
 func TestGen_configWithOutputTypesAll(t *testing.T) {
 	searchDir := "../../testing/testdata/simple"
-	outputTypes := []string{"go", "json", "yaml"}
+	outputTypes := []string{"json", "yaml"}
 
 	config := &Config{
 		SearchDir:          searchDir,
@@ -497,7 +324,6 @@ func TestGen_configWithOutputTypesAll(t *testing.T) {
 	assert.NoError(t, New().Build(config))
 
 	expectedFiles := []string{
-		path.Join(config.OutputDir, "docs.go"),
 		path.Join(config.OutputDir, "swagger.json"),
 		path.Join(config.OutputDir, "swagger.yaml"),
 	}
@@ -512,7 +338,7 @@ func TestGen_configWithOutputTypesAll(t *testing.T) {
 
 func TestGen_configWithOutputTypesSingle(t *testing.T) {
 	searchDir := "../../testing/testdata/simple"
-	outputTypes := []string{"go", "json", "yaml"}
+	outputTypes := []string{"json", "yaml"}
 
 	for _, outputType := range outputTypes {
 		config := &Config{
@@ -525,13 +351,8 @@ func TestGen_configWithOutputTypesSingle(t *testing.T) {
 
 		assert.NoError(t, New().Build(config))
 
-		outFileName := "swagger"
-		if outputType == "go" {
-			outFileName = "docs"
-		}
-
 		expectedFiles := []string{
-			path.Join(config.OutputDir, outFileName+"."+outputType),
+			path.Join(config.OutputDir, "swagger."+outputType),
 		}
 		for _, expectedFile := range expectedFiles {
 			if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
@@ -540,119 +361,6 @@ func TestGen_configWithOutputTypesSingle(t *testing.T) {
 
 			_ = os.Remove(expectedFile)
 		}
-	}
-}
-
-func TestGen_formatSource(t *testing.T) {
-	src := `package main
-
-import "net
-
-func main() {}
-`
-	g := New()
-
-	res := g.formatSource([]byte(src))
-	assert.Equal(t, []byte(src), res, "Should return same content due to fmt fail")
-
-	src2 := `package main
-
-import "fmt"
-
-func main() {
-fmt.Print("Hello world")
-}
-`
-	res = g.formatSource([]byte(src2))
-	assert.NotEqual(t, []byte(src2), res, "Should return fmt code")
-}
-
-type mockWriter struct {
-	hook func([]byte)
-}
-
-func (w *mockWriter) Write(data []byte) (int, error) {
-	if w.hook != nil {
-		w.hook(data)
-	}
-
-	return len(data), nil
-}
-
-func TestGen_writeGoDoc(t *testing.T) {
-	gen := New()
-
-	swapTemplate := packageTemplate
-
-	packageTemplate = `{{{`
-	err := gen.writeGoDoc("docs", nil, nil, &Config{})
-	assert.Error(t, err)
-
-	packageTemplate = `{{.Data}}`
-	swagger := &spec.Swagger{
-		VendorExtensible: spec.VendorExtensible{},
-		SwaggerProps: spec.SwaggerProps{
-			Info: &spec.Info{},
-		},
-	}
-
-	err = gen.writeGoDoc("docs", &mockWriter{}, swagger, &Config{})
-	assert.Error(t, err)
-
-	packageTemplate = `{{ if .GeneratedTime }}Fake Time{{ end }}`
-	err = gen.writeGoDoc("docs",
-		&mockWriter{
-			hook: func(data []byte) {
-				assert.Equal(t, "Fake Time", string(data))
-			},
-		}, swagger, &Config{GeneratedTime: true})
-	assert.NoError(t, err)
-
-	err = gen.writeGoDoc("docs",
-		&mockWriter{
-			hook: func(data []byte) {
-				assert.Equal(t, "", string(data))
-			},
-		}, swagger, &Config{GeneratedTime: false})
-	assert.NoError(t, err)
-
-	packageTemplate = swapTemplate
-}
-
-func TestGen_GeneratedDoc(t *testing.T) {
-	t.Skip("Legacy swag test: generated docs.go imports github.com/swaggo/swag which is not available")
-	config := &Config{
-		SearchDir:          searchDir,
-		MainAPIFile:        "./main.go",
-		OutputDir:          "../../testing/testdata/simple/docs",
-		OutputTypes:        outputTypes,
-		PropNamingStrategy: "",
-	}
-
-	assert.NoError(t, New().Build(config))
-
-	goCMD, err := exec.LookPath("go")
-	assert.NoError(t, err)
-
-	cmd := exec.Command(goCMD, "build", filepath.Join(config.OutputDir, "docs.go"))
-
-	cmd.Stdout = os.Stdout
-
-	cmd.Stderr = os.Stderr
-
-	assert.NoError(t, cmd.Run())
-
-	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
-		filepath.Join(config.OutputDir, "swagger.json"),
-		filepath.Join(config.OutputDir, "swagger.yaml"),
-	}
-	for _, expectedFile := range expectedFiles {
-		if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
-			require.NoError(t, err)
-		}
-
-		_ = os.Remove(expectedFile)
 	}
 }
 
@@ -669,7 +377,6 @@ func TestGen_cgoImports(t *testing.T) {
 	assert.NoError(t, New().Build(config))
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
 		filepath.Join(config.OutputDir, "swagger.json"),
 		filepath.Join(config.OutputDir, "swagger.yaml"),
 	}
@@ -843,7 +550,6 @@ func TestGen_Debugger(t *testing.T) {
 	assert.True(t, buf.Len() > 0)
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
 		filepath.Join(config.OutputDir, "swagger.json"),
 		filepath.Join(config.OutputDir, "swagger.yaml"),
 	}
@@ -869,7 +575,6 @@ func TestGen_ErrorAndInterface(t *testing.T) {
 	assert.NoError(t, New().Build(config))
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "docs.go"),
 		filepath.Join(config.OutputDir, "swagger.json"),
 		filepath.Join(config.OutputDir, "swagger.yaml"),
 	}
@@ -913,7 +618,6 @@ func TestGen_StateAdmin(t *testing.T) {
 	assert.NoError(t, New().Build(config))
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "admin_docs.go"),
 		filepath.Join(config.OutputDir, "admin_swagger.json"),
 		filepath.Join(config.OutputDir, "admin_swagger.yaml"),
 	}
@@ -953,7 +657,6 @@ func TestGen_StateUser(t *testing.T) {
 	assert.NoError(t, New().Build(config))
 
 	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "user_docs.go"),
 		filepath.Join(config.OutputDir, "user_swagger.json"),
 		filepath.Join(config.OutputDir, "user_swagger.yaml"),
 	}

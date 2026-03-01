@@ -2,33 +2,31 @@ package gen
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"go/format"
 	"io"
 	"log"
 	"math"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
-	"text/template"
-	"time"
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/console"
-	swag "github.com/griffnb/core-swag/internal/legacy_files"
 	"github.com/griffnb/core-swag/internal/loader"
 	"github.com/griffnb/core-swag/internal/orchestrator"
 	"github.com/griffnb/core-swag/internal/schema"
 	"github.com/pkg/errors"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"sigs.k8s.io/yaml"
 )
 
 var open = os.Open
+
+// Version is the current version of core-swag.
+const Version = "v1.16.7"
+
+// DefaultInstanceName is the default name for a swagger instance.
+const DefaultInstanceName = "swagger"
 
 // DefaultOverridesFile is the location swagger will look for type overrides.
 const DefaultOverridesFile = ".swaggo"
@@ -61,7 +59,6 @@ func New() *Gen {
 	}
 
 	gen.outputTypeMap = map[string]genTypeWriter{
-		"go":   gen.writeDocSwagger,
 		"json": gen.writeJSONSwagger,
 		"yaml": gen.writeYAMLSwagger,
 		"yml":  gen.writeYAMLSwagger,
@@ -72,7 +69,7 @@ func New() *Gen {
 
 // Config presents Gen configurations.
 type Config struct {
-	Debugger swag.Debugger
+	Debugger Debugger
 
 	// SearchDir the swag would parse,comma separated if multiple
 	SearchDir string
@@ -123,9 +120,6 @@ type Config struct {
 	// Strict whether swag should error or warn when it detects cases which are most likely user errors
 	Strict bool
 
-	// GeneratedTime whether swag should generate the timestamp at the top of docs.go
-	GeneratedTime bool
-
 	// RequiredByDefault set validation required for all fields by default
 	RequiredByDefault bool
 
@@ -137,15 +131,6 @@ type Config struct {
 
 	// include only tags mentioned when searching, comma separated
 	Tags string
-
-	// LeftTemplateDelim defines the left delimiter for the template generation
-	LeftTemplateDelim string
-
-	// RightTemplateDelim defines the right delimiter for the template generation
-	RightTemplateDelim string
-
-	// PackageName defines package name of generated `docs.go`
-	PackageName string
 
 	// CollectionFormat set default collection format
 	CollectionFormat string
@@ -169,7 +154,7 @@ func (g *Gen) Build(config *Config) error {
 		g.debug = config.Debugger
 	}
 	if config.InstanceName == "" {
-		config.InstanceName = swag.Name
+		config.InstanceName = DefaultInstanceName
 	}
 
 	searchDirs := strings.Split(config.SearchDir, ",")
@@ -179,14 +164,6 @@ func (g *Gen) Build(config *Config) error {
 				return fmt.Errorf("dir: %s does not exist", searchDir)
 			}
 		}
-	}
-
-	if config.LeftTemplateDelim == "" {
-		config.LeftTemplateDelim = "{{"
-	}
-
-	if config.RightTemplateDelim == "" {
-		config.RightTemplateDelim = "}}"
 	}
 
 	var overrides map[string]string
@@ -267,49 +244,6 @@ func (g *Gen) Build(config *Config) error {
 	return nil
 }
 
-func (g *Gen) writeDocSwagger(config *Config, swagger *spec.Swagger) error {
-	filename := "docs.go"
-
-	if config.State != "" {
-		filename = config.State + "_" + filename
-	}
-
-	if config.InstanceName != swag.Name {
-		filename = config.InstanceName + "_" + filename
-	}
-
-	docFileName := path.Join(config.OutputDir, filename)
-
-	absOutputDir, err := filepath.Abs(config.OutputDir)
-	if err != nil {
-		return err
-	}
-
-	var packageName string
-	if len(config.PackageName) > 0 {
-		packageName = config.PackageName
-	} else {
-		packageName = filepath.Base(absOutputDir)
-		packageName = strings.ReplaceAll(packageName, "-", "_")
-	}
-
-	docs, err := os.Create(docFileName)
-	if err != nil {
-		return err
-	}
-	defer docs.Close()
-
-	// Write doc
-	err = g.writeGoDoc(packageName, docs, swagger, config)
-	if err != nil {
-		return err
-	}
-
-	console.Logger.Debug("create docs.go at %+v", docFileName)
-
-	return nil
-}
-
 func (g *Gen) writeJSONSwagger(config *Config, swagger *spec.Swagger) error {
 	filename := "swagger.json"
 
@@ -317,7 +251,7 @@ func (g *Gen) writeJSONSwagger(config *Config, swagger *spec.Swagger) error {
 		filename = config.State + "_" + filename
 	}
 
-	if config.InstanceName != swag.Name {
+	if config.InstanceName != DefaultInstanceName {
 		filename = config.InstanceName + "_" + filename
 	}
 
@@ -352,7 +286,7 @@ func (g *Gen) writeYAMLSwagger(config *Config, swagger *spec.Swagger) error {
 		filename = config.State + "_" + filename
 	}
 
-	if config.InstanceName != swag.Name {
+	if config.InstanceName != DefaultInstanceName {
 		filename = config.InstanceName + "_" + filename
 	}
 
@@ -389,15 +323,6 @@ func (g *Gen) writeFile(b []byte, file string) error {
 	_, err = f.Write(b)
 
 	return err
-}
-
-func (g *Gen) formatSource(src []byte) []byte {
-	code, err := format.Source(src)
-	if err != nil {
-		code = src // Formatter failed, return original code.
-	}
-
-	return code
 }
 
 // Read and parse the overrides file.
@@ -444,133 +369,6 @@ func parseOverrides(r io.Reader) (map[string]string, error) {
 
 	return overrides, nil
 }
-
-func (g *Gen) writeGoDoc(packageName string, output io.Writer, swagger *spec.Swagger, config *Config) error {
-	generator, err := template.New("swagger_info").Funcs(template.FuncMap{
-		"printDoc": func(v string) string {
-			// Add schemes
-			v = "{\n    \"schemes\": " + config.LeftTemplateDelim + " marshal .Schemes " + config.RightTemplateDelim + "," + v[1:]
-			// Sanitize backticks
-			return strings.Replace(v, "`", "`+\"`\"+`", -1)
-		},
-	}).Parse(packageTemplate)
-	if err != nil {
-		return err
-	}
-
-	swaggerSpec := &spec.Swagger{
-		VendorExtensible: swagger.VendorExtensible,
-		SwaggerProps: spec.SwaggerProps{
-			ID:       swagger.ID,
-			Consumes: swagger.Consumes,
-			Produces: swagger.Produces,
-			Swagger:  swagger.Swagger,
-			Info: &spec.Info{
-				VendorExtensible: swagger.Info.VendorExtensible,
-				InfoProps: spec.InfoProps{
-					Description:    config.LeftTemplateDelim + "escape .Description" + config.RightTemplateDelim,
-					Title:          config.LeftTemplateDelim + ".Title" + config.RightTemplateDelim,
-					TermsOfService: swagger.Info.TermsOfService,
-					Contact:        swagger.Info.Contact,
-					License:        swagger.Info.License,
-					Version:        config.LeftTemplateDelim + ".Version" + config.RightTemplateDelim,
-				},
-			},
-			Host:                config.LeftTemplateDelim + ".Host" + config.RightTemplateDelim,
-			BasePath:            config.LeftTemplateDelim + ".BasePath" + config.RightTemplateDelim,
-			Paths:               swagger.Paths,
-			Definitions:         swagger.Definitions,
-			Parameters:          swagger.Parameters,
-			Responses:           swagger.Responses,
-			SecurityDefinitions: swagger.SecurityDefinitions,
-			Security:            swagger.Security,
-			Tags:                swagger.Tags,
-			ExternalDocs:        swagger.ExternalDocs,
-		},
-	}
-
-	// crafted docs.json
-	buf, err := g.jsonIndent(swaggerSpec)
-	if err != nil {
-		return err
-	}
-
-	state := ""
-	if len(config.State) > 0 {
-		state = cases.Title(language.English).String(strings.ToLower(config.State))
-	}
-
-	buffer := &bytes.Buffer{}
-
-	err = generator.Execute(buffer, struct {
-		Timestamp          time.Time
-		Doc                string
-		Host               string
-		PackageName        string
-		BasePath           string
-		Title              string
-		Description        string
-		Version            string
-		State              string
-		InstanceName       string
-		Schemes            []string
-		GeneratedTime      bool
-		LeftTemplateDelim  string
-		RightTemplateDelim string
-	}{
-		Timestamp:          time.Now(),
-		GeneratedTime:      config.GeneratedTime,
-		Doc:                string(buf),
-		Host:               swagger.Host,
-		PackageName:        packageName,
-		BasePath:           swagger.BasePath,
-		Schemes:            swagger.Schemes,
-		Title:              swagger.Info.Title,
-		Description:        swagger.Info.Description,
-		Version:            swagger.Info.Version,
-		State:              state,
-		InstanceName:       config.InstanceName,
-		LeftTemplateDelim:  config.LeftTemplateDelim,
-		RightTemplateDelim: config.RightTemplateDelim,
-	})
-	if err != nil {
-		return err
-	}
-
-	code := g.formatSource(buffer.Bytes())
-
-	// write
-	_, err = output.Write(code)
-
-	return err
-}
-
-var packageTemplate = `// Package {{.PackageName}} Code generated by swaggo/swag{{ if .GeneratedTime }} at {{ .Timestamp }}{{ end }}. DO NOT EDIT
-package {{.PackageName}}
-
-// TODO: this import path needs to point to a runtime package that provides Spec and Register
-import "github.com/swaggo/swag"
-
-const docTemplate{{ if ne .InstanceName "swagger" }}{{ .InstanceName }} {{- end }}{{ .State }} = ` + "`{{ printDoc .Doc}}`" + `
-
-// Swagger{{ .State }}Info{{ if ne .InstanceName "swagger" }}{{ .InstanceName }} {{- end }} holds exported Swagger Info so clients can modify it
-var Swagger{{ .State }}Info{{ if ne .InstanceName "swagger" }}{{ .InstanceName }} {{- end }} = &swag.Spec{
-	Version:     {{ printf "%q" .Version}},
-	Host:        {{ printf "%q" .Host}},
-	BasePath:    {{ printf "%q" .BasePath}},
-	Schemes:     []string{ {{ range $index, $schema := .Schemes}}{{if gt $index 0}},{{end}}{{printf "%q" $schema}}{{end}} },
-	Title:       {{ printf "%q" .Title}},
-	Description: {{ printf "%q" .Description}},
-	InfoInstanceName: {{ printf "%q" .InstanceName }},
-	SwaggerTemplate: docTemplate{{ if ne .InstanceName "swagger" }}{{ .InstanceName }} {{- end }}{{ .State }},
-	LeftDelim:        {{ printf "%q" .LeftTemplateDelim}},
-	RightDelim:       {{ printf "%q" .RightTemplateDelim}},
-}
-
-func init() {
-	swag.Register(Swagger{{ .State }}Info{{ if ne .InstanceName "swagger" }}{{ .InstanceName }} {{- end }}.InstanceName(), Swagger{{ .State }}Info{{ if ne .InstanceName "swagger" }}{{ .InstanceName }} {{- end }})
-}
-`
 
 // parseExcludes converts comma-separated exclude string to map.
 func parseExcludes(excludes string) map[string]struct{} {

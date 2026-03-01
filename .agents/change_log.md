@@ -1,5 +1,22 @@
 # Core-Swag Change Log
 
+## 2026-03-01: Remove internal/legacy_files package
+
+**What was done:**
+- Removed docs.go generation (`writeDocSwagger`, `writeGoDoc`, `formatSource`, `packageTemplate`) from `internal/gen/gen.go`
+- Removed docs.go-only Config fields: `GeneratedTime`, `LeftTemplateDelim`, `RightTemplateDelim`, `PackageName`
+- Added `Version` and `DefaultInstanceName` constants to `internal/gen/gen.go`
+- Added `TransToValidCollectionFormat` function to `internal/parser/field/helpers.go`
+- Updated `cmd/core-swag/main.go` to import from `field` and `gen` instead of `legacy_files`
+- Changed default output types from `"go,json,yaml"` to `"json,yaml"`
+- Removed `"go"` output type from gen outputTypeMap
+- Cleaned up `gen_test.go`: removed 3 skipped legacy tests, removed docs.go expectations from all remaining tests
+- Deleted entire `internal/legacy_files/` directory (26 files)
+- Cleaned .gitignore entries for testdata/quotes and testdata/delims
+- Ran `go mod tidy` to remove orphaned dependencies
+
+**Verification:** `go build ./...`, `go vet ./...`, gen tests, `make test-project-1`, `make test-project-2` all pass.
+
 ## 2026-03-01: Add source info to "Skipping unknown ref" logs + handle map[] body params
 
 **Problem 1:** "Skipping unknown ref X (not in registry)" gave no context about which route or file referenced the unknown type.

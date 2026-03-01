@@ -12,7 +12,7 @@ import (
 	"github.com/griffnb/core-swag/internal/console"
 	"github.com/griffnb/core-swag/internal/format"
 	"github.com/griffnb/core-swag/internal/gen"
-	swag "github.com/griffnb/core-swag/internal/legacy_files"
+	"github.com/griffnb/core-swag/internal/parser/field"
 )
 
 const (
@@ -30,7 +30,6 @@ const (
 	markdownFilesFlag        = "markdownFiles"
 	codeExampleFilesFlag     = "codeExampleFiles"
 	parseInternalFlag        = "parseInternal"
-	generatedTimeFlag        = "generatedTime"
 	requiredByDefaultFlag    = "requiredByDefault"
 	parseDepthFlag           = "parseDepth"
 	instanceNameFlag         = "instanceName"
@@ -39,8 +38,6 @@ const (
 	quietFlag                = "quiet"
 	tagsFlag                 = "tags"
 	parseExtensionFlag       = "parseExtension"
-	templateDelimsFlag       = "templateDelims"
-	packageName              = "packageName"
 	collectionFormatFlag     = "collectionFormat"
 	packagePrefixFlag        = "packagePrefix"
 	stateFlag                = "state"
@@ -74,20 +71,20 @@ var initFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    propertyStrategyFlag,
 		Aliases: []string{"p"},
-		Value:   swag.CamelCase,
-		Usage:   "Property Naming Strategy like " + swag.SnakeCase + "," + swag.CamelCase + "," + swag.PascalCase,
+		Value:   field.CamelCase,
+		Usage:   "Property Naming Strategy like " + field.SnakeCase + "," + field.CamelCase + "," + field.PascalCase,
 	},
 	&cli.StringFlag{
 		Name:    outputFlag,
 		Aliases: []string{"o"},
 		Value:   "./docs",
-		Usage:   "Output directory for all the generated files(swagger.json, swagger.yaml and docs.go)",
+		Usage:   "Output directory for all the generated files (swagger.json, swagger.yaml)",
 	},
 	&cli.StringFlag{
 		Name:    outputTypesFlag,
 		Aliases: []string{"ot"},
-		Value:   "go,json,yaml",
-		Usage:   "Output types of generated files (docs.go, swagger.json, swagger.yaml) like go,json,yaml",
+		Value:   "json,yaml",
+		Usage:   "Output types of generated files (swagger.json, swagger.yaml) like json,yaml",
 	},
 	&cli.BoolFlag{
 		Name:  parseVendorFlag,
@@ -123,10 +120,6 @@ var initFlags = []cli.Flag{
 	&cli.BoolFlag{
 		Name:  parseInternalFlag,
 		Usage: "Parse go files in internal packages, disabled by default",
-	},
-	&cli.BoolFlag{
-		Name:  generatedTimeFlag,
-		Usage: "Generate timestamp at the top of docs.go, disabled by default",
 	},
 	&cli.IntFlag{
 		Name:  parseDepthFlag,
@@ -165,17 +158,6 @@ var initFlags = []cli.Flag{
 		Usage:   "A comma-separated list of tags to filter the APIs for which the documentation is generated.Special case if the tag is prefixed with the '!' character then the APIs with that tag will be excluded",
 	},
 	&cli.StringFlag{
-		Name:    templateDelimsFlag,
-		Aliases: []string{"td"},
-		Value:   "",
-		Usage:   "Provide custom delimiters for Go template generation. The format is leftDelim,rightDelim. For example: \"[[,]]\"",
-	},
-	&cli.StringFlag{
-		Name:  packageName,
-		Value: "",
-		Usage: "A package name of docs.go, using output directory name by default (check `--output` option)",
-	},
-	&cli.StringFlag{
 		Name:    collectionFormatFlag,
 		Aliases: []string{"cf"},
 		Value:   "csv",
@@ -209,31 +191,13 @@ func initAction(ctx *cli.Context) error {
 	strategy := ctx.String(propertyStrategyFlag)
 
 	switch strategy {
-	case swag.CamelCase, swag.SnakeCase, swag.PascalCase:
+	case field.CamelCase, field.SnakeCase, field.PascalCase:
 	default:
 		return fmt.Errorf("not supported %s propertyStrategy", strategy)
 	}
 
-	leftDelim, rightDelim := "{{", "}}"
-
 	if ctx.IsSet(debugFlag) {
 		console.Logger.DebugLevel = 1
-	}
-
-	if ctx.IsSet(templateDelimsFlag) {
-		delims := strings.Split(ctx.String(templateDelimsFlag), ",")
-		if len(delims) != 2 {
-			return fmt.Errorf(
-				"exactly two template delimiters must be provided, comma separated",
-			)
-		} else if delims[0] == delims[1] {
-			return fmt.Errorf("template delimiters must be different")
-		}
-		leftDelim, rightDelim = strings.TrimSpace(
-			delims[0],
-		), strings.TrimSpace(
-			delims[1],
-		)
 	}
 
 	outputTypes := strings.Split(ctx.String(outputTypesFlag), ",")
@@ -245,7 +209,7 @@ func initAction(ctx *cli.Context) error {
 		logger = log.New(io.Discard, "", log.LstdFlags)
 	}
 
-	collectionFormat := swag.TransToValidCollectionFormat(
+	collectionFormat := field.TransToValidCollectionFormat(
 		ctx.String(collectionFormatFlag),
 	)
 	if collectionFormat == "" {
@@ -274,7 +238,6 @@ func initAction(ctx *cli.Context) error {
 		MarkdownFilesDir:    ctx.String(markdownFilesFlag),
 		ParseInternal:       ctx.Bool(parseInternalFlag),
 		UseStructNames:      ctx.Bool(useStructNameFlag),
-		GeneratedTime:       ctx.Bool(generatedTimeFlag),
 		RequiredByDefault:   ctx.Bool(requiredByDefaultFlag),
 		CodeExampleFilesDir: ctx.String(codeExampleFilesFlag),
 		ParseDepth:          ctx.Int(parseDepthFlag),
@@ -282,9 +245,6 @@ func initAction(ctx *cli.Context) error {
 		OverridesFile:       ctx.String(overridesFileFlag),
 		ParseGoList:         ctx.Bool(parseGoListFlag),
 		Tags:                ctx.String(tagsFlag),
-		LeftTemplateDelim:   leftDelim,
-		RightTemplateDelim:  rightDelim,
-		PackageName:         ctx.String(packageName),
 		Debugger:            logger,
 		CollectionFormat:    collectionFormat,
 		PackagePrefix:       ctx.String(packagePrefixFlag),
@@ -296,13 +256,13 @@ func initAction(ctx *cli.Context) error {
 
 func main() {
 	app := cli.NewApp()
-	app.Version = swag.Version
+	app.Version = gen.Version
 	app.Usage = "Automatically generate RESTful API documentation with Swagger 2.0 for Go."
 	app.Commands = []*cli.Command{
 		{
 			Name:    "init",
 			Aliases: []string{"i"},
-			Usage:   "Create docs.go",
+			Usage:   "Generate swagger documentation",
 			Action:  initAction,
 			Flags:   initFlags,
 		},

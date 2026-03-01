@@ -1,6 +1,19 @@
 package field
 
-import "github.com/go-openapi/spec"
+import (
+	"github.com/go-openapi/spec"
+)
+
+// TransToValidCollectionFormat validates and returns a collection format string.
+// Returns empty string if the format is not valid.
+func TransToValidCollectionFormat(format string) string {
+	switch format {
+	case "csv", "multi", "pipes", "tsv", "ssv":
+		return format
+	}
+
+	return ""
+}
 
 // SchemaHelper provides schema-related utility functions needed by field parser.
 // This interface allows the field parser to work without depending on the swag package.
