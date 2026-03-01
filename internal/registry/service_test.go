@@ -310,6 +310,71 @@ type User struct {
 	})
 }
 
+func TestFindTypeSpecByName(t *testing.T) {
+	t.Run("returns correct TypeSpecDef for known type", func(t *testing.T) {
+		// Arrange
+		svc := NewService()
+		src := `package account
+type Account struct {
+	Name string
+}`
+		_ = svc.ParseFile("github.com/test/account", "account.go", src, domain.ParseAll)
+		_, _ = svc.ParseTypes()
+
+		// Act
+		result := svc.FindTypeSpecByName("account.Account")
+
+		// Assert
+		if result == nil {
+			t.Fatal("expected to find account.Account, got nil")
+		}
+		if result.Name() != "Account" {
+			t.Errorf("expected type name Account, got %s", result.Name())
+		}
+		if result.PkgPath != "github.com/test/account" {
+			t.Errorf("expected PkgPath github.com/test/account, got %s", result.PkgPath)
+		}
+	})
+
+	t.Run("returns nil for unknown type", func(t *testing.T) {
+		// Arrange
+		svc := NewService()
+		src := `package account
+type Account struct {
+	Name string
+}`
+		_ = svc.ParseFile("github.com/test/account", "account.go", src, domain.ParseAll)
+		_, _ = svc.ParseTypes()
+
+		// Act
+		result := svc.FindTypeSpecByName("account.DoesNotExist")
+
+		// Assert
+		if result != nil {
+			t.Errorf("expected nil for unknown type, got %+v", result)
+		}
+	})
+
+	t.Run("returns nil for empty string", func(t *testing.T) {
+		// Arrange
+		svc := NewService()
+		src := `package account
+type Account struct {
+	Name string
+}`
+		_ = svc.ParseFile("github.com/test/account", "account.go", src, domain.ParseAll)
+		_, _ = svc.ParseTypes()
+
+		// Act
+		result := svc.FindTypeSpecByName("")
+
+		// Assert
+		if result != nil {
+			t.Errorf("expected nil for empty string, got %+v", result)
+		}
+	})
+}
+
 func TestService_UniqueDefinitions(t *testing.T) {
 	t.Run("returns all unique type definitions", func(t *testing.T) {
 		// Arrange

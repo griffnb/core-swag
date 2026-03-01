@@ -5,13 +5,13 @@ package orchestrator
 import (
 	"fmt"
 	"path/filepath"
+	"runtime"
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/loader"
 	"github.com/griffnb/core-swag/internal/model"
 	"github.com/griffnb/core-swag/internal/parser/base"
 	"github.com/griffnb/core-swag/internal/parser/route"
-	structparser "github.com/griffnb/core-swag/internal/parser/struct"
 	"github.com/griffnb/core-swag/internal/registry"
 	"github.com/griffnb/core-swag/internal/schema"
 )
@@ -23,7 +23,6 @@ type Service struct {
 	schemaBuilder *schema.BuilderService
 	baseParser    *base.Service
 	routeParser   *route.Service
-	structParser  *structparser.Service
 	swagger       *spec.Swagger
 	config        *Config
 }
@@ -161,16 +160,12 @@ func New(config *Config) *Service {
 	// Inject registry for @NoPublic annotation support
 	routeParser.SetRegistry(registryService)
 
-	// Create struct parser service with enum lookup support
-	structParserService := structparser.NewService(registryService, schemaBuilder, enumLookup)
-
 	return &Service{
 		loader:        loaderService,
 		registry:      registryService,
 		schemaBuilder: schemaBuilder,
 		baseParser:    baseParser,
 		routeParser:   routeParser,
-		structParser:  structParserService,
 		swagger:       swagger,
 		config:        config,
 	}
@@ -221,6 +216,15 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 		s.config.Debug.Printf("Orchestrator: Loaded %d files", len(loadResult.Files))
 	}
 
+	// Step 1b: Seed downstream caches from loaded packages to eliminate redundant packages.Load() calls
+	if loadResult.Packages != nil {
+		if s.config.Debug != nil {
+			s.config.Debug.Printf("Orchestrator: Step 1b - Seeding package caches from %d top-level packages", len(loadResult.Packages))
+		}
+		model.SeedGlobalPackageCache(loadResult.Packages)
+		model.SeedEnumPackageCache(loadResult.Packages)
+	}
+
 	// Step 2: Register types with registry
 	if s.config.Debug != nil {
 		s.config.Debug.Printf("Orchestrator: Step 2 - Registering types")
@@ -252,6 +256,15 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 		s.config.Debug.Printf("Orchestrator: Parsed %d schemas from registry", len(schemas))
 	}
 
+	// Set global name resolver so CoreStructParser produces short $ref names for
+	// unique types and full-path names for NotUnique types. Must happen after
+	// ParseTypes() which sets the NotUnique flags.
+	model.SetGlobalNameResolver(newRegistryNameResolver(s.registry))
+
+	if s.config.Debug != nil {
+		s.config.Debug.Printf("Orchestrator: Registry has %d unique definitions", len(s.registry.UniqueDefinitions()))
+	}
+
 	// Step 3: Parse general API info from main file
 	if s.config.Debug != nil {
 		s.config.Debug.Printf("Orchestrator: Step 3 - Parsing general API info")
@@ -279,148 +292,41 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 		return nil, fmt.Errorf("failed to parse general API info: %w", err)
 	}
 
-	// Step 3.5: Parse struct definitions from all files
+	// Step 4: Parse routes from all files (parallel)
 	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Step 3.5 - Parsing struct definitions")
+		s.config.Debug.Printf("Orchestrator: Step 4 - Parsing routes (parallel, limit=%d)", runtime.NumCPU())
 	}
 
-	// Parse structs from each file
-	if s.structParser != nil {
-		structCount := 0
-		for astFile, fileInfo := range loadResult.Files {
-			err = s.structParser.ParseFile(astFile, fileInfo.Path)
-			if err != nil {
-				// Log error but continue (some files may not have structs)
-				if s.config.Debug != nil {
-					s.config.Debug.Printf("Warning: failed to parse structs in %s: %v", fileInfo.Path, err)
-				}
-			} else {
-				structCount++
-			}
-		}
-
-		if s.config.Debug != nil {
-			s.config.Debug.Printf("Orchestrator: Parsed structs from %d files", structCount)
-		}
-	}
-
-	// Step 4: Parse routes from all files
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Step 4 - Parsing routes")
-	}
-
-	// Parse routes from each file
-	routeCount := 0
-	for astFile, fileInfo := range loadResult.Files {
-		routes, err := s.routeParser.ParseRoutes(astFile, fileInfo.Path, fileInfo.FileSet)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse routes from %s: %w", fileInfo.Path, err)
-		}
-
-		// Convert each route to spec.Operation and add to swagger
-		for _, r := range routes {
-			operation := route.RouteToSpecOperation(r)
-			if operation == nil {
-				continue
-			}
-
-			// Ensure path exists in swagger
-			if s.swagger.Paths == nil {
-				s.swagger.Paths = &spec.Paths{Paths: make(map[string]spec.PathItem)}
-			}
-			if s.swagger.Paths.Paths == nil {
-				s.swagger.Paths.Paths = make(map[string]spec.PathItem)
-			}
-
-			// Get or create path item
-			pathItem := s.swagger.Paths.Paths[r.Path]
-
-			// Add operation to appropriate method
-			switch r.Method {
-			case "GET":
-				pathItem.Get = operation
-			case "POST":
-				pathItem.Post = operation
-			case "PUT":
-				pathItem.Put = operation
-			case "DELETE":
-				pathItem.Delete = operation
-			case "PATCH":
-				pathItem.Patch = operation
-			case "OPTIONS":
-				pathItem.Options = operation
-			case "HEAD":
-				pathItem.Head = operation
-			}
-
-			// Update path item
-			s.swagger.Paths.Paths[r.Path] = pathItem
-			routeCount++
-		}
+	allRoutes, routeCount, err := s.parseRoutesParallel(loadResult.Files)
+	if err != nil {
+		return nil, err
 	}
 
 	if s.config.Debug != nil {
 		s.config.Debug.Printf("Orchestrator: Parsed %d routes", routeCount)
 	}
 
-	// Step 5: Build schemas
+	// Step 5: Build schemas (demand-driven)
+	// Only build schemas for types referenced by routes, not all 60K+ registry types.
+	// BuildAllSchemas handles Public variants and transitive nested dependencies.
+	referencedTypes := CollectReferencedTypes(allRoutes)
 	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Step 5 - Building schemas")
+		s.config.Debug.Printf("Orchestrator: Step 5 - Building schemas (demand-driven, %d route-referenced types)",
+			len(referencedTypes))
 	}
 
-	// Build schemas for all types
-	uniqueDefs := s.registry.UniqueDefinitions()
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Found %d unique type definitions", len(uniqueDefs))
-		for name, typeDef := range uniqueDefs {
-			if typeDef != nil {
-				s.config.Debug.Printf("  - %s (from %s)", name, typeDef.PkgPath)
-			}
-		}
-	}
-
-	for _, typeDef := range uniqueDefs {
-		if typeDef == nil {
-			continue // Skip nil definitions
-		}
-
-		_, err = s.schemaBuilder.BuildSchema(typeDef)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build schema for %s: %w", typeDef.TypeName(), err)
-		}
-	}
-
-	// Sync schemas to swagger
-	if s.swagger.Definitions == nil {
-		s.swagger.Definitions = make(spec.Definitions)
-	}
-	for name, schema := range s.schemaBuilder.Definitions() {
-		s.swagger.Definitions[name] = schema
-	}
-
-	// Add redirect definitions for unique types so full-path $refs resolve correctly.
-	// When buildSchemaForType creates $refs with full-path names (e.g., "github_com_..._enum.ApiVersion"),
-	// but the type is unique and stored with a short name (e.g., "enum.ApiVersion"), we add a redirect
-	// definition that points the full-path name to the short-name definition.
-	for _, typeDef := range uniqueDefs {
-		if typeDef == nil {
-			continue
-		}
-		actualName := typeDef.TypeName()
-		fullPathName := makeFullPathDefName(typeDef.PkgPath, typeDef.Name())
-		if fullPathName != actualName {
-			if _, exists := s.swagger.Definitions[fullPathName]; !exists {
-				s.swagger.Definitions[fullPathName] = spec.Schema{
-					SchemaProps: spec.SchemaProps{
-						Ref: spec.MustCreateRef("#/definitions/" + actualName),
-					},
-				}
-			}
-		}
+	err = s.buildDemandDrivenSchemas(referencedTypes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build demand-driven schemas: %w", err)
 	}
 
 	if s.config.Debug != nil {
 		s.config.Debug.Printf("Orchestrator: Built %d schema definitions", len(s.swagger.Definitions))
+	}
+
+	if s.config.Debug != nil {
+		hits, misses := model.GlobalCacheStats()
+		s.config.Debug.Printf("Orchestrator: Package cache hits=%d misses=%d", hits, misses)
 	}
 
 	// Step 6: Cleanup unused definitions

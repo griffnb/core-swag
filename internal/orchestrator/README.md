@@ -150,8 +150,8 @@ The orchestrator depends on these services:
 - **RegistryService** (`internal/registry`) - Manages type registry
 - **SchemaBuilderService** (`internal/schema`) - Builds OpenAPI schemas
 - **BaseParserService** (`internal/parser/base`) - Parses general API info
-- **StructParserService** (`internal/parser/struct`) - Parses struct definitions (future)
-- **RouteParserService** (`internal/parser/route`) - Parses route annotations (future)
+- **RouteParserService** (`internal/parser/route`) - Parses route annotations
+- **CoreStructParser** (`internal/model`) - Builds struct schemas via demand-driven pipeline
 
 ## Public Methods
 

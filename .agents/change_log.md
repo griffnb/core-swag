@@ -1,5 +1,93 @@
 # Core-Swag Change Log
 
+## 2026-03-01: Task 11 — Removed Deprecated Legacy Code from Orchestrator
+
+**What was done:**
+- Removed `structParser` field from orchestrator `Service` struct
+- Removed `structparser.NewService()` initialization and assignment in `New()`
+- Removed `structparser` import from orchestrator
+- Removed Phase 3.5 bypass comment block from `Parse()` method
+- Cleaned up stale `StructParserService` references in orchestrator comments and README
+- `internal/parser/struct/` package left in place (self-contained with tests, marked deprecated in Task 9)
+
+**Files changed:**
+- `internal/orchestrator/service.go` — removed structParser field, import, init, Phase 3.5 block
+- `internal/orchestrator/name_resolver.go` — removed StructParserService references from comments
+- `internal/orchestrator/README.md` — updated service list to reflect CoreStructParser
+
+**Verification:** `go build`, `go vet`, `go test -race ./internal/...`, `make test-project-1`, `make test-project-2` all pass.
+
+## 2026-02-28: Demand-Driven Pipeline ACTIVATED — Phase 3.5 Bypassed, 3 Bugs Fixed
+
+**Summary:** The demand-driven schema building pipeline is now active. Phase 3.5 (StructParserService) is bypassed. Only route-referenced types get schemas built (393 types vs 62,686 in registry).
+
+**Bug 1 — Root type schema not stored (processed map race):**
+- `buildSchemaForRef` set `processed[baseName] = true` before iterating BuildAllSchemas results
+- When BuildAllSchemas returned a schema keyed as `baseName`, the `!processed[name]` check skipped it
+- Result: every base (non-public) type was silently dropped — only Public variants and nested types survived
+- Fix: changed from `!processed[name]` to `_, exists := s.swagger.Definitions[name]; !exists`
+
+**Bug 2 — Package name mismatch in BuildAllSchemas:**
+- BuildAllSchemas derived packageName from pkgPath's last segment (e.g., `v84` for `stripe-go/v84`)
+- But routes reference types using Go package name (e.g., `stripe.Subscription`)
+- Definitions were keyed as `v84.Subscription` but routes referenced `stripe.Subscription`
+- Fix: added `packageNameOverride` variadic parameter to BuildAllSchemas, passed `typeDef.File.Name.Name`
+
+**Bug 3 — NotUnique types unreachable by short name:**
+- When types are NotUnique, their registry key changes to full-path format (e.g., `github_com_..._tag.Tag`)
+- `FindTypeSpecByName("tag.Tag")` returns nil because the short key was deleted (tombstone)
+- Types like `tag.Tag`, `contact.Contact`, `user.User` were skipped as "unknown"
+- Fix: added `findTypeByShortName` that scans all definitions matching by Go package name + type name
+
+**Results after all 3 fixes (project-1):**
+- 1839 definitions (622→1839 after processed-map fix, legacy=640)
+- 5 real broken refs remaining (service.* types not in registry + 2 malformed annotations)
+- 0 real broken refs on project-2
+
+**Files changed:**
+- `internal/orchestrator/schema_builder.go` — processed map fix, findTypeByShortName, package name passthrough
+- `internal/model/struct_field_lookup.go` — BuildAllSchemas packageNameOverride parameter
+
+## 2026-02-28: Performance Optimization — Cache Seeding, Route Collection, Parallel Route Parsing
+
+**What was done:**
+- Task 1: Added `SeedGlobalPackageCache()` and `SeedEnumPackageCache()` to pre-populate downstream caches from loaded packages
+- Task 2: Wired cache seeding into orchestrator after Step 1 (loading)
+- Task 3: Added `FindTypeSpecByName()` to registry for O(1) lookup by qualified name
+- Task 4: Created `refs.go` with `CollectReferencedTypes()` — walks routes to collect referenced type names
+- Task 5: Demand-driven pipeline with Phase 3.5 bypass, DefinitionNameResolver, and BuildAllSchemas
+- Task 6: Parallel route parsing with errgroup
+- Task 7: Shared FileSet for fallback packages.Load
+- Task 8: Cache hit/miss counters and debug logging
+
+**Files changed:**
+- `internal/model/struct_field_lookup.go` — SeedGlobalPackageCache, cache stats, packageNameOverride
+- `internal/model/struct_field.go` — DefinitionNameResolver interface, global resolver, resolveRefName
+- `internal/model/enum_lookup.go` — SeedEnumPackageCache
+- `internal/registry/service.go` — FindTypeSpecByName, AddTypeSpecForTest
+- `internal/orchestrator/name_resolver.go` (new) — registry-backed DefinitionNameResolver
+- `internal/orchestrator/name_resolver_test.go` (new) — resolver tests
+- `internal/orchestrator/schema_builder.go` (new) — demand-driven schema building
+- `internal/orchestrator/service.go` — cache seeding, Phase 3.5 bypass, demand-driven Phase 5, name resolver wiring
+- `internal/orchestrator/refs.go` (new) — CollectReferencedTypes
+- `internal/orchestrator/service.go` — cache seeding, route collection, parallel parsing, debug logging
+
+## 2026-02-28: Fix broken $ref for StructField[[]map[string]any] types
+
+**Problem:** A field like `*fields.StructField[[]map[string]any]` generated `$ref: "#/definitions/lawsuit."` — a package name with trailing dot and no type name.
+
+**Root cause:** `exprToString()` in `field_processor.go` had no case for `ast.MapType` or `ast.InterfaceType`, returning empty string via the default case. When extracting inner type from `StructField[[]map[string]any]`, the map became `""`, producing `"[]"` as inner type, which then got package-qualified to `"[]lawsuit."`.
+
+**Fix (3 targeted changes to `field_processor.go`):**
+1. `exprToString()` — Added `ast.MapType` → `"map"` and `ast.InterfaceType` → `"interface"` cases
+2. `processField()` — Added meta-type guards (`map`, `interface`, `object`) to prevent package-qualifying these types in the isCustomModel block
+3. `buildPropertySchema()` — Added meta-type handling for array elements so `map`/`interface`/`object` elements render as `{type: "object"}` instead of broken `$ref`
+
+**Note:** The CoreStructParser path (`internal/model/struct_field.go`) already handles `[]map[string]any` correctly. This bug only affects the StructParserService path (Phase 3.5) which will be removed in a future task. ~58 pre-existing broken refs remain from the StructParserService generating map/object types as `$ref` targets — these will resolve when Phase 3.5 is removed.
+
+**Files changed:**
+- `internal/parser/struct/field_processor.go` — 3 fixes (exprToString, processField, buildPropertySchema)
+
 ## 2026-02-27: Fix $ref Name Mismatch for NotUnique Types (2 rounds)
 
 **Problem:** When multiple packages define a type with the same short name (e.g., `enum.Source` in 3 chargebee sub-packages), the registry marks them `NotUnique` and stores definitions with full-path names like `github_com_chargebee_chargebee-go_v3_enum.Source`. But `$ref` creation used normalized short names (`enum.Source`), creating dangling references.

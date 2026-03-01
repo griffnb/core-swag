@@ -144,6 +144,19 @@ func (s *Service) AddPackages(pkgs []*packages.Package) {
 	}
 }
 
+// FindTypeSpecByName looks up a type definition by its qualified name
+// (e.g., "account.Account"). Returns nil if not found.
+func (s *Service) FindTypeSpecByName(name string) *domain.TypeSpecDef {
+	return s.uniqueDefinitions[name]
+}
+
+// AddTypeSpecForTest directly inserts a type definition into the registry.
+// This is intended only for test setup — production code should use
+// CollectAstFile + ParseTypes.
+func (s *Service) AddTypeSpecForTest(name string, typeDef *domain.TypeSpecDef) {
+	s.uniqueDefinitions[name] = typeDef
+}
+
 // UniqueDefinitions returns the unique type definitions map.
 func (s *Service) UniqueDefinitions() map[string]*domain.TypeSpecDef {
 	return s.uniqueDefinitions

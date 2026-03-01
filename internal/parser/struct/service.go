@@ -13,8 +13,10 @@ import (
 	"github.com/griffnb/core-swag/internal/schema"
 )
 
-// Service handles struct parsing for OpenAPI schema generation.
-// It supports both standard Go structs and custom model structs with fields.StructField[T].
+// Deprecated: Service is no longer called by the orchestrator pipeline. The
+// demand-driven pipeline (Phase 5) builds all struct schemas via
+// CoreStructParser.BuildAllSchemas instead. This service remains for test
+// coverage only and is scheduled for removal.
 type Service struct {
 	registry      *registry.Service
 	schemaBuilder *schema.BuilderService
@@ -109,7 +111,8 @@ func (s *Service) resolveDefinitionName(typeName string, file *ast.File) string 
 	return typeDef.TypeName()
 }
 
-// NewService creates a new struct parser service
+// Deprecated: NewService creates a new struct parser service. No longer used
+// by the orchestrator pipeline. See demand-driven pipeline in orchestrator.
 func NewService(registry *registry.Service, schemaBuilder *schema.BuilderService, enumLookup model.TypeEnumLookup) *Service {
 	return &Service{
 		registry:      registry,

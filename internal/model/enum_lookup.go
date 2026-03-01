@@ -19,13 +19,60 @@ var (
 	enumCacheMutex   sync.RWMutex
 )
 
+// SeedEnumPackageCache pre-populates the enum package cache with all packages
+// and their transitive imports. This avoids redundant packages.Load calls
+// during enum resolution by warming the cache upfront.
+func SeedEnumPackageCache(pkgs []*packages.Package) {
+	if len(pkgs) == 0 {
+		return
+	}
+
+	visited := make(map[string]bool)
+
+	var walk func(pkg *packages.Package)
+	walk = func(pkg *packages.Package) {
+		if pkg == nil {
+			return
+		}
+		if visited[pkg.PkgPath] {
+			return
+		}
+		visited[pkg.PkgPath] = true
+
+		if enumPackageCache[pkg.PkgPath] == nil {
+			enumPackageCache[pkg.PkgPath] = pkg
+		}
+
+		for _, imp := range pkg.Imports {
+			walk(imp)
+		}
+	}
+
+	enumCacheMutex.Lock()
+	defer enumCacheMutex.Unlock()
+
+	for _, pkg := range pkgs {
+		walk(pkg)
+	}
+}
+
 // ParserEnumLookup implements TypeEnumLookup using CoreStructParser
 type ParserEnumLookup struct {
-	Parser       *CoreStructParser
-	BaseModule   string
-	PkgPath      string
-	packageCache map[string]*packages.Package // Local cache for loaded packages
-	cacheMutex   sync.RWMutex                 // Protect local cache
+	Parser        *CoreStructParser
+	BaseModule    string
+	PkgPath       string
+	packageCache  map[string]*packages.Package // Local cache for loaded packages
+	cacheMutex    sync.RWMutex                 // Protect local cache
+	sharedFileSet *token.FileSet               // Shared FileSet for fallback packages.Load calls
+}
+
+// getOrCreateFileSet returns the shared FileSet, creating one if needed.
+// token.FileSet is internally thread-safe so no additional mutex is required.
+func (p *ParserEnumLookup) getOrCreateFileSet() *token.FileSet {
+	if p.sharedFileSet == nil {
+		p.sharedFileSet = token.NewFileSet()
+	}
+	return p.sharedFileSet
 }
 
 // GetEnumsForType looks up enum values for a given type name
@@ -97,6 +144,7 @@ func (p *ParserEnumLookup) GetEnumsForType(typeName string, file *ast.File) ([]E
 		cfg := &packages.Config{
 			Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
 				packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
+			Fset: p.getOrCreateFileSet(),
 		}
 
 		pkgs, err := packages.Load(cfg, targetPkgPath)

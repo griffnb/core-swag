@@ -49,6 +49,38 @@ type EnumValue struct {
 	Comment string
 }
 
+// DefinitionNameResolver resolves the canonical definition name for a type.
+// For unique types it returns the short name (e.g., "constants.Role").
+// For NotUnique types it returns the full-path name
+// (e.g., "github_com_chargebee_chargebee-go_v3_enum.Source").
+type DefinitionNameResolver interface {
+	ResolveDefinitionName(fullTypePath string) string
+}
+
+// globalNameResolver is the active definition name resolver set by the
+// orchestrator before schema building. When nil, buildSchemaForType falls
+// back to makeFullPathDefinitionName (backward-compatible default).
+var globalNameResolver DefinitionNameResolver
+
+// SetGlobalNameResolver sets the global definition name resolver.
+func SetGlobalNameResolver(r DefinitionNameResolver) {
+	globalNameResolver = r
+}
+
+// resolveRefName resolves the $ref name for a type. When a global name
+// resolver is configured it returns the canonical name (short for unique
+// types, full-path for NotUnique). Otherwise it falls back to
+// makeFullPathDefinitionName for backward compatibility.
+func resolveRefName(shortName, fullPath string) string {
+	if !strings.Contains(fullPath, "/") {
+		return shortName
+	}
+	if globalNameResolver != nil {
+		return globalNameResolver.ResolveDefinitionName(fullPath)
+	}
+	return makeFullPathDefinitionName(fullPath)
+}
+
 // ToSpecSchema converts a StructField to OpenAPI spec.Schema
 // propName: extracted from json tag (first part before comma)
 // schema: the OpenAPI schema for this field
@@ -350,12 +382,8 @@ func buildSchemaForType(
 			if debug {
 				console.Logger.Debug("Detected Enum type: $Bold{%s} with %d values, creating $ref\n", typeStr, len(enums))
 			}
-			// Use full-path definition name when the original type has a module path.
-			// This matches the definition name used by TypeSpecDef.TypeName() for NotUnique types.
-			refName := typeStr
-			if strings.Contains(fullTypeStr, "/") {
-				refName = makeFullPathDefinitionName(fullTypeStr)
-			}
+			// Resolve definition name: short for unique types, full-path for NotUnique.
+			refName := resolveRefName(typeStr, fullTypeStr)
 			schema := spec.RefSchema("#/definitions/" + refName)
 			nestedTypes = append(nestedTypes, refName)
 			return schema, nestedTypes, nil
@@ -393,12 +421,8 @@ func buildSchemaForType(
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
 	}
 
-	// Use full-path definition name when the original type has a module path.
-	// This ensures $refs match the definition names used by the registry for NotUnique types.
-	refName := typeName
-	if strings.Contains(fullTypeStr, "/") {
-		refName = makeFullPathDefinitionName(fullTypeStr)
-	}
+	// Resolve definition name: short for unique types, full-path for NotUnique.
+	refName := resolveRefName(typeName, fullTypeStr)
 
 	// Add Public suffix if in public mode
 	if public {
@@ -497,11 +521,7 @@ func getPrimitiveSchemaForFieldType(typeStr string, originalTypeStr string, enum
 			if enumLookup != nil {
 				enums, err := enumLookup.GetEnumsForType(normalizedEnum, nil)
 				if err == nil && len(enums) > 0 {
-					// Use full-path definition name when enum type has a module path
-					refName := normalizedEnum
-					if strings.Contains(enumType, "/") {
-						refName = makeFullPathDefinitionName(enumType)
-					}
+					refName := resolveRefName(normalizedEnum, enumType)
 					schema := spec.RefSchema("#/definitions/" + refName)
 					return schema, []string{refName}, nil
 				}
@@ -516,11 +536,7 @@ func getPrimitiveSchemaForFieldType(typeStr string, originalTypeStr string, enum
 			if enumLookup != nil {
 				enums, err := enumLookup.GetEnumsForType(normalizedEnum, nil)
 				if err == nil && len(enums) > 0 {
-					// Use full-path definition name when enum type has a module path
-					refName := normalizedEnum
-					if strings.Contains(enumType, "/") {
-						refName = makeFullPathDefinitionName(enumType)
-					}
+					refName := resolveRefName(normalizedEnum, enumType)
 					schema := spec.RefSchema("#/definitions/" + refName)
 					return schema, []string{refName}, nil
 				}

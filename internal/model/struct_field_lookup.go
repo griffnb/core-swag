@@ -8,6 +8,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/console"
@@ -21,6 +22,61 @@ var (
 	debugMode          = false // Set to true to enable debug logging
 )
 
+// cacheHits and cacheMisses track how often LookupStructFields resolves a
+// package from the global cache vs falling back to packages.Load.
+var (
+	cacheHits   int64
+	cacheMisses int64
+)
+
+// GlobalCacheStats returns the global package cache hit and miss counts.
+func GlobalCacheStats() (hits, misses int64) {
+	return atomic.LoadInt64(&cacheHits), atomic.LoadInt64(&cacheMisses)
+}
+
+// ResetGlobalCacheStats resets the cache statistics counters for test isolation.
+func ResetGlobalCacheStats() {
+	atomic.StoreInt64(&cacheHits, 0)
+	atomic.StoreInt64(&cacheMisses, 0)
+}
+
+// SeedGlobalPackageCache pre-populates the global package cache with all
+// packages and their transitive imports. This avoids redundant packages.Load
+// calls during struct parsing by warming the cache upfront.
+func SeedGlobalPackageCache(pkgs []*packages.Package) {
+	if len(pkgs) == 0 {
+		return
+	}
+
+	visited := make(map[string]bool)
+
+	var walk func(pkg *packages.Package)
+	walk = func(pkg *packages.Package) {
+		if pkg == nil {
+			return
+		}
+		if visited[pkg.PkgPath] {
+			return
+		}
+		visited[pkg.PkgPath] = true
+
+		if globalPackageCache[pkg.PkgPath] == nil {
+			globalPackageCache[pkg.PkgPath] = pkg
+		}
+
+		for _, imp := range pkg.Imports {
+			walk(imp)
+		}
+	}
+
+	globalCacheMutex.Lock()
+	defer globalCacheMutex.Unlock()
+
+	for _, pkg := range pkgs {
+		walk(pkg)
+	}
+}
+
 type CoreStructParser struct {
 	basePackage   *packages.Package
 	packageMap    map[string]*packages.Package
@@ -29,6 +85,16 @@ type CoreStructParser struct {
 	typeCache     map[string]*StructBuilder    // Cache processed types
 	cacheMutex    sync.RWMutex                 // Protect caches
 	packageLoader sync.Once                    // Load packages only once
+	sharedFileSet *token.FileSet               // Shared FileSet for fallback packages.Load calls
+}
+
+// getOrCreateFileSet returns the shared FileSet, creating one if needed.
+// token.FileSet is internally thread-safe so no additional mutex is required.
+func (c *CoreStructParser) getOrCreateFileSet() *token.FileSet {
+	if c.sharedFileSet == nil {
+		c.sharedFileSet = token.NewFileSet()
+	}
+	return c.sharedFileSet
 }
 
 // toPascalCase converts package_name or package-name to PascalCase (PackageName)
@@ -87,10 +153,11 @@ func (c *CoreStructParser) LookupStructFields(baseModule, importPath, typeName s
 	var packageMap map[string]*packages.Package
 
 	if !pkgCached {
+		atomic.AddInt64(&cacheMisses, 1)
 		console.Logger.Debug("Loading package: %s\n", importPath)
 		cfg := &packages.Config{
 			Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedName | packages.NeedImports | packages.NeedDeps,
-			Fset: token.NewFileSet(),
+			Fset: c.getOrCreateFileSet(),
 		}
 		// Load the main package with all its dependencies
 		pkgs, err := packages.Load(cfg, importPath)
@@ -129,6 +196,7 @@ func (c *CoreStructParser) LookupStructFields(baseModule, importPath, typeName s
 		globalCacheMutex.Unlock()
 		console.Logger.Debug("Cached %d packages from %s\n", len(packageMap), importPath)
 	} else {
+		atomic.AddInt64(&cacheHits, 1)
 		console.Logger.Debug("Using globally cached package: %s\n", importPath)
 		// Use cached packages from global cache
 		globalCacheMutex.RLock()
@@ -588,14 +656,20 @@ func (c *CoreStructParser) checkMap(fieldType types.Type) ([]*StructField, strin
 	return nil, "", false
 }
 
-// BuildAllSchemas generates both public and non-public schema variants for a type
-// Returns a map of schema names to schemas (includes both base and Public variants)
-func BuildAllSchemas(baseModule, pkgPath, typeName string) (map[string]*spec.Schema, error) {
+// BuildAllSchemas generates both public and non-public schema variants for a type.
+// packageNameOverride, when non-empty, is used as the definition prefix instead of
+// deriving it from the last segment of pkgPath.  This is important when the Go
+// package name differs from the import path segment (e.g. package "stripe" lives at
+// path ".../stripe-go/v84").
+// Returns a map of schema names to schemas (includes both base and Public variants).
+func BuildAllSchemas(baseModule, pkgPath, typeName string, packageNameOverride ...string) (map[string]*spec.Schema, error) {
 	parser := &CoreStructParser{}
 
-	// Extract package name from pkgPath (last segment)
+	// Use override if provided, otherwise derive from pkgPath
 	packageName := pkgPath
-	if idx := strings.LastIndex(pkgPath, "/"); idx >= 0 {
+	if len(packageNameOverride) > 0 && packageNameOverride[0] != "" {
+		packageName = packageNameOverride[0]
+	} else if idx := strings.LastIndex(pkgPath, "/"); idx >= 0 {
 		packageName = pkgPath[idx+1:]
 	}
 

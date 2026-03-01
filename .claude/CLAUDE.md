@@ -44,18 +44,11 @@ This ensures the checklist remains an accurate reflection of project progress an
 
 This project uses **TWO struct parsers** that work together, each serving a specific purpose:
 
-### 1. StructParserService (Orchestrator-level)
-**Location:** `internal/parser/struct/service.go` (~3,882 lines)
-**Used by:** Orchestrator (`internal/orchestrator/service.go`)
-**Purpose:** File-level struct parsing during code generation
-**Features:**
-- Parses entire Go files via `ParseFile(astFile, filePath)`
-- Handles embedded fields and struct composition
-- Processes json tags, validation tags, swaggerignore
-- Integrates with Registry for type resolution
-- Adds definitions to SchemaBuilder
-
-**When to use:** When parsing Go files in the orchestrator
+### 1. StructParserService (Deprecated)
+**Location:** `internal/parser/struct/service.go`
+**Used by:** No production callers (removed from orchestrator in performance optimization)
+**Status:** Deprecated — kept for test coverage only, scheduled for full removal
+**Purpose:** Was file-level struct parsing during code generation, now replaced by demand-driven CoreStructParser pipeline
 
 ### 2. CoreStructParser (Schema-level)
 **Location:** `internal/model/struct_field_lookup.go` (~775 lines)
@@ -92,9 +85,7 @@ This project uses **TWO struct parsers** that work together, each serving a spec
 **Result:** SchemaBuilder now exclusively uses CoreStructParser (no duplicate parsing)
 
 ### Key Design Decision
-These two parsers are intentionally separate:
-- **StructParserService** handles orchestration-level concerns (files, registry, caching)
-- **CoreStructParser** handles schema-level concerns (types, go/packages, Public variants)
-- Both use the same underlying implementation (StructField.ToSpecSchema)
-
-**DO NOT** try to consolidate these further - they serve different architectural layers.
+The orchestrator now uses a demand-driven pipeline where CoreStructParser builds schemas
+only for route-referenced types. StructParserService is deprecated and no longer called.
+- **CoreStructParser** handles all schema building (types, go/packages, Public variants)
+- **StructField.ToSpecSchema()** is the shared implementation for all schema generation
