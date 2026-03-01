@@ -217,6 +217,9 @@ func (c *CoreStructParser) LookupStructFields(baseModule, importPath, typeName s
 
 	console.Logger.Debug("Processing package: %+v %s\n", pkg, typeName)
 
+	// Set basePackage so processStructField can qualify same-package types
+	c.basePackage = pkg
+
 	visited := make(map[string]bool)
 	c.visited = visited
 	fields := c.ExtractFieldsRecursive(pkg, typeName, packageMap, visited)
@@ -303,9 +306,15 @@ func (c *CoreStructParser) processStructField(f *StructField, packageMap map[str
 		subTypePackage = strings.Join(subParts[:len(subParts)-1], ".")
 		subTypeName = typeName
 	} else {
-		f.TypeString = arrayPrefix + subTypeName
-		builder.Fields = append(builder.Fields, f)
-		return
+		// Same-package type — qualify with current package name
+		if c.basePackage != nil {
+			originalTypeName = arrayPrefix + c.basePackage.Name + "." + subTypeName
+			subTypePackage = c.basePackage.PkgPath
+		} else {
+			f.TypeString = arrayPrefix + subTypeName
+			builder.Fields = append(builder.Fields, f)
+			return
+		}
 	}
 
 	console.Logger.Debug("-----Final Sub type Package %s\n Final Sub Type Name: %s\n", subTypePackage, subTypeName)

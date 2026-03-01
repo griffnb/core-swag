@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/go-openapi/spec"
-	"github.com/griffnb/core-swag/internal/domain"
 	"github.com/griffnb/core-swag/internal/model"
 )
 
@@ -14,9 +13,7 @@ import (
 // actually referenced by route annotations. For struct types it uses
 // BuildAllSchemas which generates both public and non-public variants and
 // resolves transitive nested dependencies. For non-struct types (enums, aliases)
-// it uses the SchemaBuilder. After building, it adds redirect definitions so
-// that unqualified $ref names (used by route annotations) resolve to the
-// qualified definition names.
+// it uses the SchemaBuilder.
 func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]bool) error {
 	if s.swagger.Definitions == nil {
 		s.swagger.Definitions = make(spec.Definitions)
@@ -37,13 +34,6 @@ func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]bool) erro
 		}
 	}
 
-	// Add unqualified-name redirects. Route annotations often reference types
-	// without package prefixes (e.g., "AdminForceClassifyInput" instead of
-	// "account_classifications.AdminForceClassifyInput"). Create $ref redirects
-	// from unqualified names to the qualified definition, but only if the
-	// unqualified name doesn't already exist as a definition.
-	s.addUnqualifiedRedirects()
-
 	return nil
 }
 
@@ -63,18 +53,8 @@ func (s *Service) buildSchemaForRef(refName string, processed map[string]bool) e
 		return nil
 	}
 
-	// Try to find the type in the registry
+	// Direct qualified lookup — all refs should now use package.Type format
 	typeDef := s.registry.FindTypeSpecByName(baseName)
-	if typeDef == nil {
-		// Route $refs often omit the package prefix. Search by unqualified name.
-		typeDef = s.findUnqualifiedType(baseName)
-	}
-	if typeDef == nil {
-		// For NotUnique types, the registry key is full-path format. Try
-		// matching by Go package name + type name (e.g., "tag.Tag" matches
-		// a typeDef where File.Name.Name == "tag" and Name() == "Tag").
-		typeDef = s.findTypeByShortName(baseName)
-	}
 
 	if typeDef == nil {
 		if s.config.Debug != nil {
@@ -132,86 +112,3 @@ func (s *Service) buildSchemaForRef(refName string, processed map[string]bool) e
 	return nil
 }
 
-// findUnqualifiedType searches the registry for a type by its unqualified
-// name (without package prefix). This handles the case where route annotations
-// reference types defined in the same controller file without a package prefix.
-func (s *Service) findUnqualifiedType(typeName string) *domain.TypeSpecDef {
-	// Only search for truly unqualified names (no dot)
-	if strings.Contains(typeName, ".") {
-		return nil
-	}
-
-	for _, typeDef := range s.registry.UniqueDefinitions() {
-		if typeDef == nil {
-			continue
-		}
-		if typeDef.Name() == typeName {
-			return typeDef
-		}
-	}
-	return nil
-}
-
-// findTypeByShortName searches the registry for a NotUnique type that matches
-// a short qualified name like "tag.Tag". When types are marked NotUnique, their
-// registry key changes to a full-path format (e.g., "github_com_..._tag.Tag"),
-// making them unreachable via FindTypeSpecByName("tag.Tag"). This method
-// scans all definitions to find a match by Go package name + type name.
-func (s *Service) findTypeByShortName(qualifiedName string) *domain.TypeSpecDef {
-	dotIdx := strings.LastIndex(qualifiedName, ".")
-	if dotIdx < 0 {
-		return nil
-	}
-	pkgName := qualifiedName[:dotIdx]
-	typeName := qualifiedName[dotIdx+1:]
-
-	for _, typeDef := range s.registry.UniqueDefinitions() {
-		if typeDef == nil {
-			continue
-		}
-		if typeDef.Name() == typeName &&
-			typeDef.File != nil && typeDef.File.Name != nil &&
-			typeDef.File.Name.Name == pkgName {
-			return typeDef
-		}
-	}
-	return nil
-}
-
-// addUnqualifiedRedirects creates redirect definitions from unqualified type
-// names to their qualified definitions. This allows route $refs like
-// "#/definitions/AdminForceClassifyInput" to resolve to
-// "#/definitions/account_classifications.AdminForceClassifyInput".
-func (s *Service) addUnqualifiedRedirects() {
-	// Collect qualified definition names first to avoid modifying map during iteration
-	redirects := make(map[string]string) // unqualified → qualified
-
-	for defName := range s.swagger.Definitions {
-		dotIdx := strings.LastIndex(defName, ".")
-		if dotIdx < 0 {
-			continue
-		}
-		unqualified := defName[dotIdx+1:]
-		if _, exists := s.swagger.Definitions[unqualified]; exists {
-			// Already exists as its own definition — don't redirect
-			continue
-		}
-		if existing, alreadyRedirected := redirects[unqualified]; alreadyRedirected {
-			// Ambiguous — multiple qualified names for the same unqualified name.
-			// Keep the first one found (arbitrary but deterministic within a run).
-			if s.config.Debug != nil {
-				s.config.Debug.Printf("Orchestrator: Ambiguous redirect for %s: %s vs %s", unqualified, existing, defName)
-			}
-			continue
-		}
-		redirects[unqualified] = defName
-	}
-
-	for unqualified, qualified := range redirects {
-		s.swagger.Definitions[unqualified] = spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Ref: spec.MustCreateRef("#/definitions/" + qualified),
-			},
-		}
-	}
-}
