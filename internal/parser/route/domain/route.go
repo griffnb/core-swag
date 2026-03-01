@@ -147,6 +147,9 @@ type Schema struct {
 	// Properties for object schemas
 	Properties map[string]*Schema
 
+	// AdditionalProperties for map types (map[string]T)
+	AdditionalProperties *Schema
+
 	// AllOf for composed schemas
 	AllOf []*Schema
 

@@ -1,5 +1,23 @@
 # Core-Swag Change Log
 
+## 2026-03-01: Handle map[] types in AllOf response overrides
+
+**Problem:** `@Success 200 {object} response.SuccessResponse{data=map[string]object_sync.Diffables}` treated `map[string]object_sync.Diffables` as a single opaque `$ref` name, producing `"$ref": "#/definitions/map[string]object_sync.Diffables"` instead of `additionalProperties` with a `$ref` to the value type.
+
+**What was done:**
+- Added `AdditionalProperties *Schema` field to `domain.Schema`
+- Added `map[` prefix handling in `buildAllOfResponseSchema` — extracts value type, builds `spec.MapProperty` schema
+- Added `AdditionalProperties` conversion in `convertSpecSchemaToDomain` and `SchemaToSpec`
+- Added `AdditionalProperties` walking in `collectRefsFromSchema` so inner value types are collected as referenced types
+
+**Files changed:**
+- `internal/parser/route/domain/route.go` — added AdditionalProperties field
+- `internal/parser/route/allof.go` — map type handling + domain conversion
+- `internal/parser/route/converter.go` — SchemaToSpec AdditionalProperties support
+- `internal/orchestrator/refs.go` — walk AdditionalProperties for ref collection
+
+**Verification:** `object_sync.Diffables` now resolves (4 schemas built). Swagger output shows correct `additionalProperties` structure. All tests pass.
+
 ## 2026-03-01: Fix Naming/Reference Resolution — Use Fully Qualified Names
 
 **Problem:** Unqualified type names caused ambiguous redirect warnings and incorrect `$ref` targets. When `StructField[T]` had a same-package type parameter, `processStructField` set `TypeString` to the bare name (e.g., `Properties`) instead of `phone.Properties`. Also, `@Param body` annotations didn't qualify types with the controller's package name.

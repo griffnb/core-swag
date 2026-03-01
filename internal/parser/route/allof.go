@@ -40,6 +40,19 @@ func (s *Service) buildAllOfResponseSchema(dataType, packageName string, isPubli
 	// Build override schemas from field overrides
 	overrideSchemas := make(map[string]spec.Schema)
 	for fieldName, fieldType := range overrides {
+		// Parse field type to handle maps: map[string]Account
+		isMap := strings.HasPrefix(fieldType, "map[")
+		var mapValueType string
+		if isMap {
+			idx := strings.Index(fieldType, "]")
+			if idx >= 0 && idx+1 < len(fieldType) {
+				mapValueType = fieldType[idx+1:]
+				fieldType = mapValueType
+			} else {
+				isMap = false
+			}
+		}
+
 		// Parse field type to handle arrays: []Account
 		isArray := strings.HasPrefix(fieldType, "[]")
 		if isArray {
@@ -57,52 +70,39 @@ func (s *Service) buildAllOfResponseSchema(dataType, packageName string, isPubli
 			qualifiedFieldType = qualifiedFieldType + "Public"
 		}
 
-		// Build field schema
-		var fieldSchema spec.Schema
-		if isArray {
-			// Array of types
-			if isPrimitiveType(fieldType) {
-				fieldSchema = spec.Schema{
-					SchemaProps: spec.SchemaProps{
-						Type: []string{"array"},
-						Items: &spec.SchemaOrArray{
-							Schema: &spec.Schema{
-								SchemaProps: spec.SchemaProps{
-									Type: []string{convertTypeToSchemaType(fieldType)},
-								},
-							},
-						},
-					},
-				}
-			} else {
-				fieldSchema = spec.Schema{
-					SchemaProps: spec.SchemaProps{
-						Type: []string{"array"},
-						Items: &spec.SchemaOrArray{
-							Schema: &spec.Schema{
-								SchemaProps: spec.SchemaProps{
-									Ref: spec.MustCreateRef("#/definitions/" + qualifiedFieldType),
-								},
-							},
-						},
-					},
-				}
+		// Build the inner value schema (used by all branches)
+		var valueSchema spec.Schema
+		if isPrimitiveType(fieldType) {
+			valueSchema = spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Type: []string{convertTypeToSchemaType(fieldType)},
+				},
 			}
 		} else {
-			// Single type
-			if isPrimitiveType(fieldType) {
-				fieldSchema = spec.Schema{
-					SchemaProps: spec.SchemaProps{
-						Type: []string{convertTypeToSchemaType(fieldType)},
-					},
-				}
-			} else {
-				fieldSchema = spec.Schema{
-					SchemaProps: spec.SchemaProps{
-						Ref: spec.MustCreateRef("#/definitions/" + qualifiedFieldType),
-					},
-				}
+			valueSchema = spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Ref: spec.MustCreateRef("#/definitions/" + qualifiedFieldType),
+				},
 			}
+		}
+
+		// Build field schema
+		var fieldSchema spec.Schema
+		if isMap {
+			// Map type: map[string]ValueType → object with additionalProperties
+			fieldSchema = *spec.MapProperty(&valueSchema)
+		} else if isArray {
+			// Array type: []ValueType
+			fieldSchema = spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Type: []string{"array"},
+					Items: &spec.SchemaOrArray{
+						Schema: &valueSchema,
+					},
+				},
+			}
+		} else {
+			fieldSchema = valueSchema
 		}
 
 		overrideSchemas[fieldName] = fieldSchema
@@ -164,6 +164,11 @@ func convertSpecSchemaToDomain(s *spec.Schema) *domain.Schema {
 		for name, prop := range s.Properties {
 			domainSchema.Properties[name] = convertSpecSchemaToDomain(&prop)
 		}
+	}
+
+	// Handle additionalProperties (for map types)
+	if s.AdditionalProperties != nil && s.AdditionalProperties.Schema != nil {
+		domainSchema.AdditionalProperties = convertSpecSchemaToDomain(s.AdditionalProperties.Schema)
 	}
 
 	// Handle required fields

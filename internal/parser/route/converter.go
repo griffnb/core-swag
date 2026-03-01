@@ -236,6 +236,17 @@ func SchemaToSpec(schema *domain.Schema) *spec.Schema {
 		}
 	}
 
+	// Handle additionalProperties for map types
+	if schema.AdditionalProperties != nil {
+		converted := SchemaToSpec(schema.AdditionalProperties)
+		if converted != nil {
+			specSchema.AdditionalProperties = &spec.SchemaOrBool{
+				Allows: true,
+				Schema: converted,
+			}
+		}
+	}
+
 	// Handle required fields
 	if len(schema.Required) > 0 {
 		specSchema.Required = schema.Required

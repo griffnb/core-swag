@@ -48,6 +48,9 @@ func collectRefsFromSchema(s *routedomain.Schema, refs map[string]bool) {
 	if s.Items != nil {
 		collectRefsFromSchema(s.Items, refs)
 	}
+	if s.AdditionalProperties != nil {
+		collectRefsFromSchema(s.AdditionalProperties, refs)
+	}
 	for _, prop := range s.Properties {
 		collectRefsFromSchema(prop, refs)
 	}

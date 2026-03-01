@@ -63,24 +63,29 @@ func (s *Service) parseParam(op *operation, line string) error {
 	// For body parameters with model types, use Schema instead of Type
 	// Body parameters need proper schema references for complex types
 	if paramType == "body" && isModelType(dataType) {
-		// Qualify unqualified type names with the controller's package name
-		qualifiedType := dataType
-		if op.packageName != "" && !strings.Contains(dataType, ".") {
-			qualifiedType = op.packageName + "." + dataType
-		}
-		// Build schema for model type
-		if isArray {
-			// Array of models
-			param.Schema = &domain.Schema{
-				Type: "array",
-				Items: &domain.Schema{
-					Ref: "#/definitions/" + qualifiedType,
-				},
-			}
+		// Handle map types inline: map[string]interface{} → object, map[string]Model → additionalProperties
+		if strings.HasPrefix(dataType, "map[") {
+			param.Schema = buildMapParamSchema(dataType, op.packageName)
 		} else {
-			// Single model
-			param.Schema = &domain.Schema{
-				Ref: "#/definitions/" + qualifiedType,
+			// Qualify unqualified type names with the controller's package name
+			qualifiedType := dataType
+			if op.packageName != "" && !strings.Contains(dataType, ".") {
+				qualifiedType = op.packageName + "." + dataType
+			}
+			// Build schema for model type
+			if isArray {
+				// Array of models
+				param.Schema = &domain.Schema{
+					Type: "array",
+					Items: &domain.Schema{
+						Ref: "#/definitions/" + qualifiedType,
+					},
+				}
+			} else {
+				// Single model
+				param.Schema = &domain.Schema{
+					Ref: "#/definitions/" + qualifiedType,
+				}
 			}
 		}
 	} else {
@@ -98,6 +103,43 @@ func (s *Service) parseParam(op *operation, line string) error {
 
 	op.parameters = append(op.parameters, param)
 	return nil
+}
+
+// buildMapParamSchema builds an inline schema for map types in body parameters.
+// map[string]interface{} / map[string]any → { type: object }
+// map[string]SomeModel → { type: object, additionalProperties: { $ref: ... } }
+func buildMapParamSchema(dataType, packageName string) *domain.Schema {
+	idx := strings.Index(dataType, "]")
+	if idx < 0 || idx+1 >= len(dataType) {
+		return &domain.Schema{Type: "object"}
+	}
+	valueType := dataType[idx+1:]
+
+	// Native/wildcard value types → plain object
+	if valueType == "interface{}" || valueType == "any" || valueType == "string" {
+		return &domain.Schema{Type: "object"}
+	}
+
+	// Qualify value type if needed
+	qualifiedValue := valueType
+	if packageName != "" && !strings.Contains(valueType, ".") && !isPrimitiveType(valueType) {
+		qualifiedValue = packageName + "." + valueType
+	}
+
+	if isPrimitiveType(valueType) {
+		schemaType, _ := convertType(valueType)
+		return &domain.Schema{
+			Type: "object",
+			AdditionalProperties: &domain.Schema{Type: schemaType},
+		}
+	}
+
+	return &domain.Schema{
+		Type: "object",
+		AdditionalProperties: &domain.Schema{
+			Ref: "#/definitions/" + qualifiedValue,
+		},
+	}
 }
 
 // parseParam Attributes parses attribute modifiers like Format(int64), Enums(1,2,3), etc.
