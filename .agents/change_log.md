@@ -1,5 +1,25 @@
 # Core-Swag Change Log
 
+## 2026-03-01: Add source info to "Skipping unknown ref" logs + handle map[] body params
+
+**Problem 1:** "Skipping unknown ref X (not in registry)" gave no context about which route or file referenced the unknown type.
+**Problem 2:** `@Param body map[string]interface{}` was treated as a model type and incorrectly qualified with the package name.
+
+**What was done:**
+- Changed `CollectReferencedTypes` to return `map[string]string` (ref → source location) instead of `map[string]bool`
+- Added `routeSource()` helper that formats route info as `"METHOD /path → FuncName (file.go:line)"`
+- Updated `buildSchemaForRef` to include source in "Skipping unknown ref" log messages
+- Added `buildMapParamSchema` in parameter.go to handle map[] body params inline instead of as $refs
+- Updated all refs_test.go assertions + added TestCollectReferencedTypes_SourceInfo
+
+**Files changed:**
+- `internal/orchestrator/refs.go` — return source location with each ref
+- `internal/orchestrator/refs_test.go` — updated for new return type, added source info test
+- `internal/orchestrator/schema_builder.go` — include source in skip log messages
+- `internal/parser/route/parameter.go` — handle map[] body params as inline schemas
+
+**Verification:** All 35 orchestrator tests pass. Log output now shows: `Skipping unknown ref contact.Contact (not in registry) referenced by POST /admin/contact/ → adminCreate (admin.go:31)`
+
 ## 2026-03-01: Handle map[] types in AllOf response overrides
 
 **Problem:** `@Success 200 {object} response.SuccessResponse{data=map[string]object_sync.Diffables}` treated `map[string]object_sync.Diffables` as a single opaque `$ref` name, producing `"$ref": "#/definitions/map[string]object_sync.Diffables"` instead of `additionalProperties` with a `$ref` to the value type.

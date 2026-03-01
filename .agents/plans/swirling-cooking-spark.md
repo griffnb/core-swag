@@ -2,96 +2,86 @@
 
 ## Context
 
-The `internal/legacy_files` folder contains ~26 files of ported legacy code (the old swaggo parser, operation handler, generics, packages, etc.). The new architecture has fully replaced this with the orchestrator + schema + route parser pipeline. However, 4 files still import `legacy_files` for a handful of small symbols. The goal is to relocate those few symbols and delete the entire folder.
+The `internal/legacy_files` folder contains ~26 files of ported legacy swaggo code. The new architecture has fully replaced this with the orchestrator + schema + route parser pipeline. Only 4 files still import `legacy_files` for a handful of small symbols. The docs.go generation (which was the main consumer of the runtime types Spec/Register) is no longer needed since it's not part of any OpenAPI spec output.
 
-## Active Dependency Surface (only 10 symbols across 4 files)
+## Steps
 
-| Symbol | Used By | Already Exists Elsewhere? |
-|--------|---------|--------------------------|
-| `Name` (const `"swagger"`) | `gen/gen.go` (lines 172, 277, 320, 355) | No |
-| `Debugger` (interface) | `gen/gen.go` Config.Debugger (line 75) | Yes - `gen/gen.go:48` has its own identical `Debugger` |
-| `Spec` / `Register` | `gen/gen.go` packageTemplate string (lines 557, 571) | Only in template text referencing `github.com/swaggo/swag` — not a Go import |
-| `CamelCase`, `PascalCase`, `SnakeCase` | `cmd/core-swag/main.go` (lines 77, 78, 212) | Yes - `internal/parser/field/types.go:22-29` |
-| `TransToValidCollectionFormat` | `cmd/core-swag/main.go` (line 248) | No |
-| `Version` (const) | `cmd/core-swag/main.go` (line 299) | No |
-| `ReadDoc` | `testing/testdata/delims/main.go`, `testing/testdata/quotes/main.go` | No |
+### Step 1: Remove docs.go generation from `internal/gen/gen.go`
 
-## Plan
+The `writeDocSwagger`, `writeGoDoc`, and `packageTemplate` are all about generating docs.go files that imported from `github.com/swaggo/swag`. This output type is no longer needed.
 
-### Step 1: Move `TransToValidCollectionFormat` into `internal/parser/field/helpers.go`
+- **Remove** `writeDocSwagger` method (lines 270-309)
+- **Remove** `writeGoDoc` method (lines 448-546)
+- **Remove** `packageTemplate` var (lines 548-573)
+- **Remove** `"go": gen.writeDocSwagger` from outputTypeMap (line 64)
+- **Remove** docs.go-only Config fields: `GeneratedTime` (line 127), `LeftTemplateDelim` (line 142-143), `RightTemplateDelim` (line 145-146), `PackageName` (line 147-148)
+- **Remove** unused imports that were only needed for docs.go generation: `"go/format"`, `"time"`, `"text/template"`, `"golang.org/x/text/cases"`, `"golang.org/x/text/language"` — verify each is unused after removal
+- **Remove** `formatSource` method if only used by writeGoDoc
 
-This is a simple validation function that fits naturally with the existing field helpers (which already has `TransToValidSchemeType`, `CheckSchemaType`, etc.).
+### Step 2: Move remaining needed symbols into appropriate packages
 
-- **Add** `TransToValidCollectionFormat` to `internal/parser/field/helpers.go`
-- Small 8-line function, trivial move
+**In `internal/gen/gen.go`:**
+- **Add** `const Version = "v1.16.7"`
+- **Add** `const DefaultInstanceName = "swagger"`
+- **Change** `Config.Debugger` type from `swag.Debugger` → `Debugger` (local interface at line 48)
+- **Replace** all `swag.Name` references → `DefaultInstanceName` (lines 172, 277→deleted, 320, 355)
+- **Remove** the `swag` import (line 21)
 
-### Step 2: Move `Version` constant into `internal/gen/gen.go`
+**In `internal/parser/field/helpers.go`:**
+- **Add** `TransToValidCollectionFormat` function (8 lines, validates collection format strings)
 
-The version is only used by the CLI to set `app.Version`. Place it directly in the gen package since gen is the public API surface for the CLI.
+### Step 3: Update `cmd/core-swag/main.go`
 
-- **Add** `const Version = "v1.16.7"` to `internal/gen/gen.go`
+- **Replace** import `swag "github.com/griffnb/core-swag/internal/legacy_files"` with `"github.com/griffnb/core-swag/internal/parser/field"`
+- **Replace** `swag.CamelCase` → `field.CamelCase` (lines 77, 78, 212)
+- **Replace** `swag.SnakeCase` → `field.SnakeCase` (lines 78, 212)
+- **Replace** `swag.PascalCase` → `field.PascalCase` (lines 78, 212)
+- **Replace** `swag.TransToValidCollectionFormat` → `field.TransToValidCollectionFormat` (line 248)
+- **Replace** `swag.Version` → `gen.Version` (line 299)
+- **Update** outputTypes default value from `"go,json,yaml"` → `"json,yaml"` (line 89)
+- **Update** usage text to remove docs.go reference (line 90)
 
-### Step 3: Move `Name` constant into `internal/gen/gen.go`
+### Step 4: Delete testdata that depends on legacy_files
 
-Only used by gen.go itself for instance name defaulting and filename prefixing.
+These testdata dirs are used by tests that are already `t.Skip`'d as legacy:
+- **Delete** `testing/testdata/delims/` (entire dir)
+- **Delete** `testing/testdata/quotes/` (entire dir)
 
-- **Add** `const DefaultInstanceName = "swagger"` to `internal/gen/gen.go` (better name than `Name`)
-- **Update** 4 references from `swag.Name` to `DefaultInstanceName`
+### Step 5: Clean up `internal/gen/gen_test.go`
 
-### Step 4: Fix `Config.Debugger` type in `gen/gen.go`
+- **Remove** `"go"` from the `outputTypes` var (line 24): change to `[]string{"json", "yaml"}`
+- **Remove** skipped legacy tests: `TestGen_BuildDescriptionWithQuotes` (lines 205-262), `TestGen_BuildDocCustomDelims` (lines 264-327), `TestGen_GeneratedDoc` (lines 622-654)
+- **Update** any remaining test that checks for docs.go output to not expect it
+- **Remove** now-unused test imports (`"os/exec"`, `"plugin"` if only used by deleted tests)
 
-`gen.go:75` uses `swag.Debugger` but `gen.go:48` already defines an identical local `Debugger` interface. Just change the Config field to use the local one.
+### Step 6: Delete `internal/legacy_files/` folder
 
-- **Change** `Debugger swag.Debugger` → `Debugger Debugger` on line 75
+With all references removed, delete the entire directory (~26 source files + test files).
 
-### Step 5: Remove the `swag` import from `gen/gen.go`
+### Step 7: Clean up
 
-After steps 2-4, gen.go has no remaining references to legacy_files.
-
-- **Remove** line 21: `swag "github.com/griffnb/core-swag/internal/legacy_files"`
-
-### Step 6: Update `cmd/core-swag/main.go`
-
-- **Change** import from `legacy_files` to `"github.com/griffnb/core-swag/internal/parser/field"`
-- **Replace** `swag.CamelCase` → `field.CamelCase` (3 locations)
-- **Replace** `swag.SnakeCase` → `field.SnakeCase` (2 locations)
-- **Replace** `swag.PascalCase` → `field.PascalCase` (2 locations)
-- **Replace** `swag.TransToValidCollectionFormat` → `field.TransToValidCollectionFormat`
-- **Replace** `swag.Version` → `gen.Version` (already imports gen)
-
-### Step 7: Update testdata files
-
-The testdata files (`testing/testdata/delims/main.go` and `testing/testdata/quotes/main.go`) use `swag.ReadDoc()` which is part of the swagger runtime registry (`Swagger` interface, `Register`, `ReadDoc`, `Spec`). This runtime code is needed for generated `docs.go` files to work.
-
-However, these are **test data** files that simulate what a real project looks like. The generated `docs.go` template already references `github.com/swaggo/swag` (external package), not our internal legacy_files. These testdata files should also point to `github.com/swaggo/swag` to match the generated output.
-
-- **Change** import in both testdata files from `legacy_files` to `"github.com/swaggo/swag"`
-- Verify `github.com/swaggo/swag` is in `go.mod` (it should be since the generated template references it)
-
-### Step 8: Delete `internal/legacy_files/` folder
-
-With all references removed, delete the entire directory.
-
-### Step 9: Clean up `go.mod` / `go.sum`
-
-- Run `go mod tidy` to remove any dependencies that were only needed by legacy_files
+- `go mod tidy` to remove any orphaned dependencies
+- Remove `testdata/delims` and `testdata/quotes` entries from `.gitignore` (lines 3-6)
 
 ## Files Modified
 
 | File | Action |
 |------|--------|
+| `internal/gen/gen.go` | Remove docs.go generation; add Version + DefaultInstanceName; fix Debugger type; remove swag import |
+| `internal/gen/gen_test.go` | Remove "go" from outputTypes; delete 3 skipped legacy tests; clean up |
 | `internal/parser/field/helpers.go` | Add `TransToValidCollectionFormat` |
-| `internal/gen/gen.go` | Add `Version`, `DefaultInstanceName` constants; fix Debugger type; remove swag import |
-| `cmd/core-swag/main.go` | Switch import from legacy_files to field + gen |
-| `testing/testdata/delims/main.go` | Switch import to `github.com/swaggo/swag` |
-| `testing/testdata/quotes/main.go` | Switch import to `github.com/swaggo/swag` |
-| `internal/legacy_files/` (entire dir) | Delete |
+| `cmd/core-swag/main.go` | Switch imports from legacy_files to field + gen |
+| `testing/testdata/delims/` | Delete entire directory |
+| `testing/testdata/quotes/` | Delete entire directory |
+| `internal/legacy_files/` | Delete entire directory |
+| `.gitignore` | Remove testdata/quotes/docs and testdata/delims entries |
 
 ## Verification
 
 1. `go build ./...` — confirms no compilation errors
 2. `go vet ./...` — confirms no issues
-3. `make test-project-1` and `make test-project-2` — confirms real project integration still works
-4. `go test ./internal/gen/...` — confirms gen tests pass
-5. `go test ./cmd/...` — confirms CLI tests pass
+3. `go test ./internal/gen/...` — gen tests pass
+4. `go test ./cmd/...` — CLI tests pass (if any)
+5. `make test-project-1` and `make test-project-2` — real project integration still works
 6. Verify `internal/legacy_files/` no longer exists
+7. Verify no references to `legacy_files` or `swaggo/swag` remain in Go source files

@@ -6,6 +6,12 @@ import (
 	routedomain "github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
+// hasRef checks whether a ref name exists in the collected refs map.
+func hasRef(refs map[string]string, key string) bool {
+	_, ok := refs[key]
+	return ok
+}
+
 func TestCollectReferencedTypes_EmptyRoutes(t *testing.T) {
 	refs := CollectReferencedTypes(nil)
 	if len(refs) != 0 {
@@ -42,7 +48,7 @@ func TestCollectReferencedTypes_BodyParamRef(t *testing.T) {
 
 	refs := CollectReferencedTypes(routes)
 
-	if !refs["account.CreateRequest"] {
+	if !hasRef(refs, "account.CreateRequest") {
 		t.Fatalf("expected account.CreateRequest in refs, got %v", refs)
 	}
 	if len(refs) != 1 {
@@ -65,7 +71,7 @@ func TestCollectReferencedTypes_ResponseRef(t *testing.T) {
 
 	refs := CollectReferencedTypes(routes)
 
-	if !refs["user.User"] {
+	if !hasRef(refs, "user.User") {
 		t.Fatalf("expected user.User in refs, got %v", refs)
 	}
 	if len(refs) != 1 {
@@ -91,7 +97,7 @@ func TestCollectReferencedTypes_ArrayItemsRef(t *testing.T) {
 
 	refs := CollectReferencedTypes(routes)
 
-	if !refs["order.OrderLine"] {
+	if !hasRef(refs, "order.OrderLine") {
 		t.Fatalf("expected order.OrderLine in refs, got %v", refs)
 	}
 	if len(refs) != 1 {
@@ -117,10 +123,10 @@ func TestCollectReferencedTypes_AllOfRefs(t *testing.T) {
 
 	refs := CollectReferencedTypes(routes)
 
-	if !refs["base.BaseModel"] {
+	if !hasRef(refs, "base.BaseModel") {
 		t.Fatalf("expected base.BaseModel in refs, got %v", refs)
 	}
-	if !refs["account.Account"] {
+	if !hasRef(refs, "account.Account") {
 		t.Fatalf("expected account.Account in refs, got %v", refs)
 	}
 	if len(refs) != 2 {
@@ -138,7 +144,7 @@ func TestCollectReferencedTypes_PropertiesRefs(t *testing.T) {
 					Schema: &routedomain.Schema{
 						Type: "object",
 						Properties: map[string]*routedomain.Schema{
-							"billing": {Ref: "#/definitions/billing.Address"},
+							"billing":  {Ref: "#/definitions/billing.Address"},
 							"shipping": {Ref: "#/definitions/shipping.Address"},
 						},
 					},
@@ -149,10 +155,10 @@ func TestCollectReferencedTypes_PropertiesRefs(t *testing.T) {
 
 	refs := CollectReferencedTypes(routes)
 
-	if !refs["billing.Address"] {
+	if !hasRef(refs, "billing.Address") {
 		t.Fatalf("expected billing.Address in refs, got %v", refs)
 	}
-	if !refs["shipping.Address"] {
+	if !hasRef(refs, "shipping.Address") {
 		t.Fatalf("expected shipping.Address in refs, got %v", refs)
 	}
 	if len(refs) != 2 {
@@ -184,7 +190,7 @@ func TestCollectReferencedTypes_Deduplication(t *testing.T) {
 
 	refs := CollectReferencedTypes(routes)
 
-	if !refs["shared.ErrorResponse"] {
+	if !hasRef(refs, "shared.ErrorResponse") {
 		t.Fatalf("expected shared.ErrorResponse in refs, got %v", refs)
 	}
 	if len(refs) != 1 {
@@ -207,7 +213,7 @@ func TestCollectReferencedTypes_FullPathRef(t *testing.T) {
 
 	refs := CollectReferencedTypes(routes)
 
-	if !refs["account.AccountPublic"] {
+	if !hasRef(refs, "account.AccountPublic") {
 		t.Fatalf("expected account.AccountPublic in refs, got %v", refs)
 	}
 }
@@ -287,10 +293,10 @@ func TestCollectReferencedTypes_DeeplyNested(t *testing.T) {
 
 	refs := CollectReferencedTypes(routes)
 
-	if !refs["tag.Tag"] {
+	if !hasRef(refs, "tag.Tag") {
 		t.Fatalf("expected tag.Tag in refs, got %v", refs)
 	}
-	if !refs["catalog.Category"] {
+	if !hasRef(refs, "catalog.Category") {
 		t.Fatalf("expected catalog.Category in refs, got %v", refs)
 	}
 	if len(refs) != 2 {
@@ -329,11 +335,59 @@ func TestCollectReferencedTypes_MixedParamsAndResponses(t *testing.T) {
 
 	expected := []string{"invoice.CreateInput", "invoice.Invoice", "shared.ErrorResponse"}
 	for _, name := range expected {
-		if !refs[name] {
+		if !hasRef(refs, name) {
 			t.Errorf("expected %s in refs, got %v", name, refs)
 		}
 	}
 	if len(refs) != len(expected) {
 		t.Fatalf("expected %d refs, got %d: %v", len(expected), len(refs), refs)
 	}
+}
+
+func TestCollectReferencedTypes_SourceInfo(t *testing.T) {
+	routes := []*routedomain.Route{
+		{
+			Method:       "POST",
+			Path:         "/api/v1/users",
+			FunctionName: "CreateUser",
+			FilePath:     "/app/controllers/users_controller.go",
+			LineNumber:   42,
+			Parameters: []routedomain.Parameter{
+				{
+					Name:   "body",
+					In:     "body",
+					Schema: &routedomain.Schema{Ref: "#/definitions/user.CreateInput"},
+				},
+			},
+		},
+	}
+
+	refs := CollectReferencedTypes(routes)
+
+	source := refs["user.CreateInput"]
+	if source == "" {
+		t.Fatal("expected user.CreateInput in refs")
+	}
+	if !hasRef(refs, "user.CreateInput") {
+		t.Fatal("expected user.CreateInput in refs")
+	}
+	// Verify source contains route info
+	for _, expected := range []string{"POST", "/api/v1/users", "CreateUser", "users_controller.go", "42"} {
+		if !contains(source, expected) {
+			t.Errorf("expected source to contain %q, got %q", expected, source)
+		}
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsSubstr(s, substr))
+}
+
+func containsSubstr(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

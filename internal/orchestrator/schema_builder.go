@@ -14,15 +14,15 @@ import (
 // BuildAllSchemas which generates both public and non-public variants and
 // resolves transitive nested dependencies. For non-struct types (enums, aliases)
 // it uses the SchemaBuilder.
-func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]bool) error {
+func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]string) error {
 	if s.swagger.Definitions == nil {
 		s.swagger.Definitions = make(spec.Definitions)
 	}
 
 	processed := make(map[string]bool)
 
-	for refName := range referencedTypes {
-		if err := s.buildSchemaForRef(refName, processed); err != nil {
+	for refName, source := range referencedTypes {
+		if err := s.buildSchemaForRef(refName, source, processed); err != nil {
 			return err
 		}
 	}
@@ -38,7 +38,7 @@ func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]bool) erro
 }
 
 // buildSchemaForRef resolves a $ref name and builds its schema.
-func (s *Service) buildSchemaForRef(refName string, processed map[string]bool) error {
+func (s *Service) buildSchemaForRef(refName, source string, processed map[string]bool) error {
 	if processed[refName] {
 		return nil
 	}
@@ -58,7 +58,11 @@ func (s *Service) buildSchemaForRef(refName string, processed map[string]bool) e
 
 	if typeDef == nil {
 		if s.config.Debug != nil {
-			s.config.Debug.Printf("Orchestrator: Skipping unknown ref %s (not in registry)", refName)
+			if source != "" {
+				s.config.Debug.Printf("Orchestrator: Skipping unknown ref %s (not in registry) referenced by %s", refName, source)
+			} else {
+				s.config.Debug.Printf("Orchestrator: Skipping unknown ref %s (not in registry)", refName)
+			}
 		}
 		return nil
 	}
