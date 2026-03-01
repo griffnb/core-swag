@@ -1,5 +1,24 @@
 # Core-Swag Change Log
 
+## 2026-03-01: Fix enum types incorrectly treated as structs with Public variants
+
+**Problem:**
+Enum/constant types (e.g., `constants.Status`) were appearing in swagger output as `type: "object"` with Public variants (`constants.StatusPublic`), instead of proper enum definitions. Also caused DoublePublic issues like `FeatureSetPublicPublic`.
+
+**Root causes:**
+1. `buildSchemasRecursive` in `struct_field_lookup.go`: `LookupStructFields()` returned non-nil empty `StructBuilder` for non-struct types. The `if nestedBuilder == nil` check never triggered enum detection.
+2. Route parser (`response.go`) and allof builder (`allof.go`) blindly appended "Public" to ALL non-primitive types without checking if the type is a struct.
+
+**What was done:**
+- `internal/model/struct_field_lookup.go`: Changed nil check to `nestedBuilder == nil || len(nestedBuilder.Fields) == 0` to detect non-struct types. Strip "Public" suffix before enum lookup. Only create base enum schemas (no Public variant). Mark both base+Public as processed to block re-creation.
+- `internal/parser/route/response.go`: Added `isStructType()` helper using registry. Only append "Public" suffix for struct types.
+- `internal/parser/route/allof.go`: Same struct check for allof override fields.
+- `internal/orchestrator/schema_builder.go`: Mark non-struct Public variants as processed to prevent dangling refs.
+- `testing/core_models_integration_test.go`: Added 3 integration tests for enum Public variant prevention.
+- `internal/model/struct_builder_test.go`: Added unit test `TestBuildSpecSchema_EnumFieldInPublicMode_NoPublicSuffix`.
+
+**Result:** Zero enum Public variants, zero DoublePublic definitions, proper enum types with correct values in both test data and real projects.
+
 ## 2026-03-01: Remove internal/legacy_files package
 
 **What was done:**

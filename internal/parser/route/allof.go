@@ -40,45 +40,53 @@ func (s *Service) buildAllOfResponseSchema(dataType, packageName string, isPubli
 	// Build override schemas from field overrides
 	overrideSchemas := make(map[string]spec.Schema)
 	for fieldName, fieldType := range overrides {
-		// Parse field type to handle maps: map[string]Account
-		isMap := strings.HasPrefix(fieldType, "map[")
-		var mapValueType string
-		if isMap {
-			idx := strings.Index(fieldType, "]")
-			if idx >= 0 && idx+1 < len(fieldType) {
-				mapValueType = fieldType[idx+1:]
-				fieldType = mapValueType
-			} else {
-				isMap = false
-			}
-		}
-
-		// Parse field type to handle arrays: []Account
+		// Strip array prefix first so []map[string]T is handled correctly
 		isArray := strings.HasPrefix(fieldType, "[]")
 		if isArray {
 			fieldType = strings.TrimPrefix(fieldType, "[]")
 		}
 
-		// Qualify type if needed
-		qualifiedFieldType := fieldType
-		if packageName != "" && !strings.Contains(fieldType, ".") && !isPrimitiveType(fieldType) {
-			qualifiedFieldType = packageName + "." + fieldType
+		// Parse map type (after array strip, so []map[K]V works)
+		isMap := strings.HasPrefix(fieldType, "map[")
+		if isMap {
+			idx := strings.Index(fieldType, "]")
+			if idx >= 0 && idx+1 < len(fieldType) {
+				fieldType = fieldType[idx+1:]
+			} else {
+				isMap = false
+			}
 		}
 
-		// Apply @Public suffix if needed and not a primitive
-		if isPublic && !isPrimitiveType(fieldType) {
-			qualifiedFieldType = qualifiedFieldType + "Public"
-		}
-
-		// Build the inner value schema (used by all branches)
+		// Build the inner value schema
 		var valueSchema spec.Schema
-		if isPrimitiveType(fieldType) {
+
+		// map[string]any / map[string]interface{} → plain {type: "object"}
+		if isMap && isWildcardMapValue(fieldType) {
+			valueSchema = spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Type: []string{"object"},
+				},
+			}
+			// Treat as a plain object, not a map with additionalProperties
+			isMap = false
+		} else if isPrimitiveType(fieldType) {
 			valueSchema = spec.Schema{
 				SchemaProps: spec.SchemaProps{
 					Type: []string{convertTypeToSchemaType(fieldType)},
 				},
 			}
 		} else {
+			// Qualify type if needed
+			qualifiedFieldType := fieldType
+			if packageName != "" && !strings.Contains(fieldType, ".") {
+				qualifiedFieldType = packageName + "." + fieldType
+			}
+
+			// Apply @Public suffix if needed and is a struct type
+			if isPublic && s.isStructType(qualifiedFieldType) {
+				qualifiedFieldType = qualifiedFieldType + "Public"
+			}
+
 			valueSchema = spec.Schema{
 				SchemaProps: spec.SchemaProps{
 					Ref: spec.MustCreateRef("#/definitions/" + qualifiedFieldType),
@@ -182,6 +190,12 @@ func convertSpecSchemaToDomain(s *spec.Schema) *domain.Schema {
 	}
 
 	return domainSchema
+}
+
+// isWildcardMapValue returns true when a map value type means "any JSON value",
+// so the map should be rendered as {type: "object"} without additionalProperties.
+func isWildcardMapValue(valueType string) bool {
+	return valueType == "any" || valueType == "interface{}"
 }
 
 // isPrimitiveType checks if a type is a Go/OpenAPI primitive or a wildcard type

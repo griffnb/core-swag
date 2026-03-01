@@ -982,3 +982,64 @@ func TestForceRequired(t *testing.T) {
 		requiredField("name"). // Now required due to forceRequired
 		requiredCount(2)
 }
+
+// TestBuildSpecSchema_EnumFieldInPublicMode_NoPublicSuffix verifies that enum fields
+// do NOT get a Public suffix when building in public mode, while struct fields do.
+func TestBuildSpecSchema_EnumFieldInPublicMode_NoPublicSuffix(t *testing.T) {
+	enumLookup := newTestEnumLookup()
+	enumLookup.addEnum("constants.Status", []EnumValue{
+		{Key: "STATUS_ACTIVE", Value: 100},
+		{Key: "STATUS_DISABLED", Value: 200},
+		{Key: "STATUS_DELETED", Value: 300},
+	})
+	enumLookup.addEnum("constants.Role", []EnumValue{
+		{Key: "ROLE_USER", Value: 1},
+		{Key: "ROLE_ADMIN", Value: 100},
+	})
+
+	builder := &StructBuilder{
+		Fields: []*StructField{
+			{
+				Name:       "Status",
+				TypeString: "constants.Status",
+				Tag:        `public:"view" json:"status"`,
+			},
+			{
+				Name:       "Role",
+				TypeString: "constants.Role",
+				Tag:        `public:"view" json:"role"`,
+			},
+			{
+				Name:       "Profile",
+				TypeString: "account.Profile",
+				Tag:        `public:"view" json:"profile"`,
+			},
+		},
+	}
+
+	// Build Public variant
+	schema, nestedTypes, err := builder.BuildSpecSchema("Account", true, false, enumLookup)
+	require.NoError(t, err)
+
+	// Enum fields should reference base name (no Public suffix)
+	statusProp := schema.Properties["status"]
+	assert.Equal(t, "#/definitions/constants.Status", statusProp.Ref.String(),
+		"Enum ref should NOT have Public suffix in public mode")
+
+	roleProp := schema.Properties["role"]
+	assert.Equal(t, "#/definitions/constants.Role", roleProp.Ref.String(),
+		"Enum ref should NOT have Public suffix in public mode")
+
+	// Struct fields SHOULD have Public suffix
+	profileProp := schema.Properties["profile"]
+	assert.Equal(t, "#/definitions/account.ProfilePublic", profileProp.Ref.String(),
+		"Struct ref SHOULD have Public suffix in public mode")
+
+	// Enum types should be in nestedTypes WITHOUT Public suffix
+	assert.Contains(t, nestedTypes, "constants.Status")
+	assert.Contains(t, nestedTypes, "constants.Role")
+	assert.NotContains(t, nestedTypes, "constants.StatusPublic")
+	assert.NotContains(t, nestedTypes, "constants.RolePublic")
+	// Struct types SHOULD have Public suffix
+	assert.Contains(t, nestedTypes, "account.ProfilePublic")
+}

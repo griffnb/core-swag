@@ -959,6 +959,72 @@ func GetAPIAccount() {}
 		assert.Contains(t, dataSchema.Ref, "model.Account")
 	})
 
+	t.Run("should handle map[string]any field as plain object Response{data=map[string]any}", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {object} Response{data=map[string]any} "Success with map data"
+// @Router /map [get]
+func GetMap() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		responses := routes[0].Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+
+		assert.NotNil(t, schema.Properties)
+		assert.Contains(t, schema.Properties, "data")
+
+		dataSchema := schema.Properties["data"]
+		assert.Equal(t, "object", dataSchema.Type)
+		// Should NOT have a $ref — map[string]any is a plain object
+		assert.Empty(t, dataSchema.Ref)
+	})
+
+	t.Run("should handle []map[string]any field as array of objects Response{data=[]map[string]any}", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {object} Response{data=[]map[string]any} "Success with array of maps"
+// @Router /maps [get]
+func GetMaps() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		responses := routes[0].Responses
+		require.Contains(t, responses, 200)
+
+		schema := responses[200].Schema
+		require.NotNil(t, schema)
+
+		assert.NotNil(t, schema.Properties)
+		assert.Contains(t, schema.Properties, "data")
+
+		dataSchema := schema.Properties["data"]
+		assert.Equal(t, "array", dataSchema.Type)
+		require.NotNil(t, dataSchema.Items)
+		// Items should be plain object, not a $ref
+		assert.Equal(t, "object", dataSchema.Items.Type)
+		assert.Empty(t, dataSchema.Items.Ref)
+	})
+
 	t.Run("should handle primitive field overrides Response{count=int}", func(t *testing.T) {
 		src := `
 package test

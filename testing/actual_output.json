@@ -214,7 +214,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/TestUserInput"
+              "$ref": "#/definitions/api.TestUserInput"
             }
           },
           {
@@ -380,12 +380,44 @@
   "definitions": {
     "account.Account": {
       "type": "object",
+      "title": "Account",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "properties",
+        "signup_properties",
+        "hashed_password",
+        "password_updated_at_ts",
+        "email_verified_at_ts",
+        "last_login_ts",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session"
+      ],
       "properties": {
         "config_key": {
           "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "created_by_urn": {
           "type": "string"
@@ -415,7 +447,8 @@
           "type": "string"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "is_super_user_session": {
           "type": "integer"
@@ -427,7 +460,8 @@
           "type": "string"
         },
         "organization_id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "password_updated_at_ts": {
           "type": "integer"
@@ -454,7 +488,8 @@
           "type": "integer"
         },
         "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "updated_by_urn": {
           "type": "string"
@@ -469,12 +504,51 @@
     },
     "account.AccountJoined": {
       "type": "object",
+      "title": "AccountJoined",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "properties",
+        "signup_properties",
+        "hashed_password",
+        "password_updated_at_ts",
+        "email_verified_at_ts",
+        "last_login_ts",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session",
+        "name",
+        "organization_name",
+        "organization_type",
+        "created_by_name",
+        "updated_by_name",
+        "tags",
+        "nested_settings"
+      ],
       "properties": {
         "config_key": {
           "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "created_by_name": {
           "type": "string"
@@ -507,7 +581,8 @@
           "type": "string"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "is_super_user_session": {
           "type": "integer"
@@ -525,7 +600,8 @@
           "$ref": "#/definitions/account.NestedSettings"
         },
         "organization_id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "organization_name": {
           "type": "string"
@@ -564,7 +640,8 @@
           "type": "integer"
         },
         "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "updated_by_name": {
           "type": "string"
@@ -582,12 +659,42 @@
     },
     "account.AccountJoinedPublic": {
       "type": "object",
+      "title": "AccountJoinedPublic",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "properties",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session",
+        "organization_type",
+        "tags",
+        "nested_settings"
+      ],
       "properties": {
         "config_key": {
           "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "created_by_urn": {
           "type": "string"
@@ -611,7 +718,8 @@
           "$ref": "#/definitions/account.FlagsPublic"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "is_super_user_session": {
           "type": "integer"
@@ -623,7 +731,8 @@
           "$ref": "#/definitions/account.NestedSettingsPublic"
         },
         "organization_id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "organization_type": {
           "$ref": "#/definitions/constants.OrganizationType"
@@ -653,7 +762,8 @@
           "type": "integer"
         },
         "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "updated_by_urn": {
           "type": "string"
@@ -668,12 +778,39 @@
     },
     "account.AccountPublic": {
       "type": "object",
+      "title": "AccountPublic",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "properties",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session"
+      ],
       "properties": {
         "config_key": {
           "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "created_by_urn": {
           "type": "string"
@@ -697,7 +834,8 @@
           "$ref": "#/definitions/account.FlagsPublic"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "is_super_user_session": {
           "type": "integer"
@@ -706,7 +844,8 @@
           "type": "string"
         },
         "organization_id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "phone": {
           "type": "string"
@@ -727,7 +866,8 @@
           "type": "integer"
         },
         "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "updated_by_urn": {
           "type": "string"
@@ -742,12 +882,51 @@
     },
     "account.AccountWithFeatures": {
       "type": "object",
+      "title": "AccountWithFeatures",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "properties",
+        "signup_properties",
+        "hashed_password",
+        "password_updated_at_ts",
+        "email_verified_at_ts",
+        "last_login_ts",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session",
+        "billing_plan_level",
+        "billing_plan_price",
+        "billing_plan_id",
+        "billing_plan_name",
+        "billing_plan_feature_set",
+        "feature_set_overrides",
+        "feature_set"
+      ],
       "properties": {
         "billing_plan_feature_set": {
           "$ref": "#/definitions/billing_plan.FeatureSet"
         },
         "billing_plan_id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "billing_plan_level": {
           "type": "integer"
@@ -756,13 +935,14 @@
           "type": "string"
         },
         "billing_plan_price": {
-          "type": "number"
+          "type": "integer"
         },
         "config_key": {
           "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "created_by_urn": {
           "type": "string"
@@ -798,7 +978,8 @@
           "type": "string"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "is_super_user_session": {
           "type": "integer"
@@ -810,7 +991,8 @@
           "type": "string"
         },
         "organization_id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "password_updated_at_ts": {
           "type": "integer"
@@ -837,7 +1019,8 @@
           "type": "integer"
         },
         "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "updated_by_urn": {
           "type": "string"
@@ -852,9 +1035,41 @@
     },
     "account.AccountWithFeaturesPublic": {
       "type": "object",
+      "title": "AccountWithFeaturesPublic",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "external_id",
+        "test_user_type",
+        "organization_id",
+        "role",
+        "properties",
+        "config_key",
+        "verification",
+        "questions",
+        "flags",
+        "is_super_user_session",
+        "billing_plan_level",
+        "billing_plan_price",
+        "billing_plan_id",
+        "billing_plan_name",
+        "feature_set"
+      ],
       "properties": {
         "billing_plan_id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "billing_plan_level": {
           "type": "integer"
@@ -863,13 +1078,14 @@
           "type": "string"
         },
         "billing_plan_price": {
-          "type": "number"
+          "type": "integer"
         },
         "config_key": {
           "$ref": "#/definitions/constants.GlobalConfigKey"
         },
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "created_by_urn": {
           "type": "string"
@@ -896,7 +1112,8 @@
           "$ref": "#/definitions/account.FlagsPublic"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "is_super_user_session": {
           "type": "integer"
@@ -905,7 +1122,8 @@
           "type": "string"
         },
         "organization_id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "phone": {
           "type": "string"
@@ -926,178 +1144,8 @@
           "type": "integer"
         },
         "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.VerificationPublic"
-        }
-      }
-    },
-    "account.Authentication": {
-      "type": "object",
-      "properties": {
-        "keys": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "account.AuthenticationPublic": {
-      "type": "object"
-    },
-    "account.DBColumns": {
-      "type": "object",
-      "properties": {
-        "config_key": {
-          "$ref": "#/definitions/constants.GlobalConfigKey"
-        },
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "email": {
-          "type": "string"
-        },
-        "email_verified_at_ts": {
-          "type": "integer"
-        },
-        "external_id": {
-          "type": "string"
-        },
-        "first_name": {
-          "type": "string"
-        },
-        "flags": {
-          "$ref": "#/definitions/account.Flags"
-        },
-        "hashed_password": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "last_login_ts": {
-          "type": "integer"
-        },
-        "last_name": {
-          "type": "string"
-        },
-        "organization_id": {
-          "type": "string"
-        },
-        "password_updated_at_ts": {
-          "type": "integer"
-        },
-        "phone": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/account.Properties"
-        },
-        "questions": {
-          "type": "object"
-        },
-        "role": {
-          "$ref": "#/definitions/constants.Role"
-        },
-        "signup_properties": {
-          "$ref": "#/definitions/account.SignupProperties"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "test_user_type": {
-          "type": "integer"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.Verification"
-        }
-      }
-    },
-    "account.DBColumnsPublic": {
-      "type": "object",
-      "properties": {
-        "config_key": {
-          "$ref": "#/definitions/constants.GlobalConfigKey"
-        },
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "email": {
-          "type": "string"
-        },
-        "external_id": {
-          "type": "string"
-        },
-        "first_name": {
-          "type": "string"
-        },
-        "flags": {
-          "$ref": "#/definitions/account.FlagsPublic"
-        },
-        "id": {
-          "type": "string"
-        },
-        "last_name": {
-          "type": "string"
-        },
-        "organization_id": {
-          "type": "string"
-        },
-        "phone": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/account.PropertiesPublic"
-        },
-        "questions": {
-          "type": "object"
-        },
-        "role": {
-          "$ref": "#/definitions/constants.Role"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "test_user_type": {
-          "type": "integer"
-        },
-        "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "updated_by_urn": {
           "type": "string"
@@ -1112,130 +1160,201 @@
     },
     "account.Flags": {
       "type": "object",
+      "title": "AccountFlags",
+      "required": [
+        "force_pending_restart_flow",
+        "pending_restart_flow",
+        "send_dsrs",
+        "never_sent_dsrs",
+        "no_coverage",
+        "new_classification_id",
+        "terms_needed",
+        "simplify_login",
+        "shared_address_update",
+        "address_update_by",
+        "authorization_needed",
+        "show_new_data_brokers",
+        "new_data_brokers",
+        "last_broker_email_ts",
+        "lexis_freeze",
+        "classification_changed",
+        "welcome_back"
+      ],
       "properties": {
         "address_update_by": {
           "type": "string"
         },
         "authorization_needed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "classification_changed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "force_pending_restart_flow": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "last_broker_email_ts": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "lexis_freeze": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "never_sent_dsrs": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "new_classification_id": {
           "type": "string",
           "format": "uuid"
         },
         "new_data_brokers": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "no_coverage": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "pending_restart_flow": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "send_dsrs": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "shared_address_update": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
+          "type": "object"
         },
         "show_new_data_brokers": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "simplify_login": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "terms_needed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "welcome_back": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
     "account.FlagsPublic": {
       "type": "object",
+      "title": "AccountFlagsPublic",
+      "required": [
+        "force_pending_restart_flow",
+        "pending_restart_flow",
+        "send_dsrs",
+        "never_sent_dsrs",
+        "no_coverage",
+        "new_classification_id",
+        "terms_needed",
+        "simplify_login",
+        "shared_address_update",
+        "address_update_by",
+        "authorization_needed",
+        "show_new_data_brokers",
+        "new_data_brokers",
+        "lexis_freeze",
+        "classification_changed",
+        "welcome_back"
+      ],
       "properties": {
         "address_update_by": {
           "type": "string"
         },
         "authorization_needed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "classification_changed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "force_pending_restart_flow": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "lexis_freeze": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "never_sent_dsrs": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "new_classification_id": {
           "type": "string",
           "format": "uuid"
         },
         "new_data_brokers": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "no_coverage": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "pending_restart_flow": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "send_dsrs": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "shared_address_update": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
+          "type": "object"
         },
         "show_new_data_brokers": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "simplify_login": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "terms_needed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "welcome_back": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
     "account.IconTagJoin": {
       "type": "object",
+      "title": "AccountIconTagJoin",
+      "required": [
+        "id",
+        "name",
+        "urn",
+        "status",
+        "created_at",
+        "updated_at",
+        "role"
+      ],
       "properties": {
         "created_at": {
           "type": "string",
           "format": "date-time"
         },
         "id": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "name": {
           "type": "string"
@@ -1244,7 +1363,8 @@
           "$ref": "#/definitions/constants.Role"
         },
         "status": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "updated_at": {
           "type": "string",
@@ -1256,56 +1376,23 @@
       }
     },
     "account.IconTagJoinPublic": {
-      "type": "object"
-    },
-    "account.JoinData": {
       "type": "object",
-      "properties": {
-        "created_by_name": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "nested_settings": {
-          "$ref": "#/definitions/account.NestedSettings"
-        },
-        "organization_name": {
-          "type": "string"
-        },
-        "organization_type": {
-          "$ref": "#/definitions/constants.OrganizationType"
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/account.IconTagJoin"
-          }
-        },
-        "updated_by_name": {
-          "type": "string"
-        }
-      }
-    },
-    "account.JoinDataPublic": {
-      "type": "object",
-      "properties": {
-        "nested_settings": {
-          "$ref": "#/definitions/account.NestedSettingsPublic"
-        },
-        "organization_type": {
-          "$ref": "#/definitions/constants.OrganizationType"
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/account.IconTagJoinPublic"
-          }
-        }
-      }
+      "title": "AccountIconTagJoinPublic"
     },
     "account.JoinedOrgMember": {
       "type": "object",
+      "title": "AccountJoinedOrgMember",
+      "required": [
+        "id",
+        "union_id",
+        "union_local_id",
+        "union_local_name",
+        "union_local_number",
+        "local_member_id",
+        "union_status",
+        "status",
+        "meta_data"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -1341,6 +1428,18 @@
     },
     "account.JoinedOrgMemberPublic": {
       "type": "object",
+      "title": "AccountJoinedOrgMemberPublic",
+      "required": [
+        "id",
+        "union_id",
+        "union_local_id",
+        "union_local_name",
+        "union_local_number",
+        "local_member_id",
+        "union_status",
+        "status",
+        "meta_data"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -1374,24 +1473,12 @@
         }
       }
     },
-    "account.ManualFields": {
-      "type": "object",
-      "properties": {
-        "is_super_user_session": {
-          "type": "integer"
-        }
-      }
-    },
-    "account.ManualFieldsPublic": {
-      "type": "object",
-      "properties": {
-        "is_super_user_session": {
-          "type": "integer"
-        }
-      }
-    },
     "account.NestedSettings": {
       "type": "object",
+      "title": "AccountNestedSettings",
+      "required": [
+        "role"
+      ],
       "properties": {
         "role": {
           "$ref": "#/definitions/constants.StyleType"
@@ -1399,54 +1486,39 @@
       }
     },
     "account.NestedSettingsPublic": {
-      "type": "object"
-    },
-    "account.OAuthData": {
       "type": "object",
-      "properties": {
-        "access_token": {
-          "type": "string"
-        },
-        "companyId": {
-          "type": "string"
-        },
-        "expire_ts": {
-          "type": "integer"
-        },
-        "expires_in": {
-          "type": "integer"
-        },
-        "ext_id": {
-          "$ref": "#/definitions/constants.ExternalID"
-        },
-        "locationId": {
-          "type": "string"
-        },
-        "product_id": {
-          "type": "integer"
-        },
-        "refresh_token": {
-          "type": "string"
-        },
-        "scope": {
-          "type": "string"
-        },
-        "token_type": {
-          "type": "string"
-        },
-        "userId": {
-          "type": "string"
-        },
-        "userType": {
-          "type": "string"
-        }
-      }
-    },
-    "account.OAuthDataPublic": {
-      "type": "object"
+      "title": "AccountNestedSettingsPublic"
     },
     "account.OrgAccount": {
       "type": "object",
+      "title": "AccountOrgAccount",
+      "required": [
+        "id",
+        "account_id",
+        "org_member_id",
+        "status",
+        "name",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "organization_id",
+        "organization_name",
+        "union_id",
+        "union_local_id",
+        "union_local_name",
+        "union_local_number",
+        "organization_verification",
+        "onboard_action_finished_ts",
+        "organization_subscription_plan_id",
+        "organization_subscription_plan_name",
+        "organization_subscription_plan_properties",
+        "created_at",
+        "org_member",
+        "org_member_local_member_id",
+        "org_member_union_status",
+        "org_member_status",
+        "org_member_email"
+      ],
       "properties": {
         "account_id": {
           "type": "string",
@@ -1473,7 +1545,8 @@
           "type": "string"
         },
         "onboard_action_finished_ts": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "org_member": {
           "$ref": "#/definitions/account.JoinedOrgMember"
@@ -1511,11 +1584,12 @@
         "organization_subscription_plan_properties": {
           "type": "object",
           "additionalProperties": {
-            "type": "string"
+            "type": "object"
           }
         },
         "organization_verification": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "status": {
           "$ref": "#/definitions/constants.Status"
@@ -1538,6 +1612,34 @@
     },
     "account.OrgAccountPublic": {
       "type": "object",
+      "title": "AccountOrgAccountPublic",
+      "required": [
+        "id",
+        "account_id",
+        "org_member_id",
+        "status",
+        "name",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "organization_id",
+        "organization_name",
+        "union_id",
+        "union_local_id",
+        "union_local_name",
+        "union_local_number",
+        "organization_verification",
+        "onboard_action_finished_ts",
+        "organization_subscription_plan_id",
+        "organization_subscription_plan_name",
+        "organization_subscription_plan_properties",
+        "created_at",
+        "org_member",
+        "org_member_local_member_id",
+        "org_member_union_status",
+        "org_member_status",
+        "org_member_email"
+      ],
       "properties": {
         "account_id": {
           "type": "string",
@@ -1564,7 +1666,8 @@
           "type": "string"
         },
         "onboard_action_finished_ts": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "org_member": {
           "$ref": "#/definitions/account.JoinedOrgMemberPublic"
@@ -1602,11 +1705,12 @@
         "organization_subscription_plan_properties": {
           "type": "object",
           "additionalProperties": {
-            "type": "string"
+            "type": "object"
           }
         },
         "organization_verification": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "status": {
           "$ref": "#/definitions/constants.Status"
@@ -1627,77 +1731,17 @@
         }
       }
     },
-    "account.OrgManagementJoins": {
-      "type": "object",
-      "properties": {
-        "org_member_email": {
-          "type": "string"
-        },
-        "org_member_id": {
-          "type": "string"
-        },
-        "org_member_local_member_id": {
-          "type": "string"
-        },
-        "org_member_status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "org_member_union_status": {
-          "$ref": "#/definitions/constants.UnionStatus"
-        }
-      }
-    },
-    "account.OrgManagementJoinsPublic": {
-      "type": "object"
-    },
-    "account.PlanJoins": {
-      "type": "object",
-      "properties": {
-        "billing_plan_feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
-        },
-        "billing_plan_id": {
-          "type": "string"
-        },
-        "billing_plan_level": {
-          "type": "integer"
-        },
-        "billing_plan_name": {
-          "type": "string"
-        },
-        "billing_plan_price": {
-          "type": "number"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
-        },
-        "feature_set_overrides": {
-          "$ref": "#/definitions/billing_plan.MergeableFeatureSet"
-        }
-      }
-    },
-    "account.PlanJoinsPublic": {
-      "type": "object",
-      "properties": {
-        "billing_plan_id": {
-          "type": "string"
-        },
-        "billing_plan_level": {
-          "type": "integer"
-        },
-        "billing_plan_name": {
-          "type": "string"
-        },
-        "billing_plan_price": {
-          "type": "number"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
-        }
-      }
-    },
     "account.Properties": {
       "type": "object",
+      "title": "AccountProperties",
+      "required": [
+        "invite_key",
+        "invite_ts",
+        "last_seen",
+        "external_user_info",
+        "verify_email_key",
+        "nj_dl_classification"
+      ],
       "properties": {
         "external_user_info": {
           "type": "object"
@@ -1706,10 +1750,12 @@
           "type": "string"
         },
         "invite_ts": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "last_seen": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "nj_dl_classification": {
           "$ref": "#/definitions/constants.NJDLClassification"
@@ -1720,724 +1766,36 @@
       }
     },
     "account.PropertiesPublic": {
-      "type": "object"
-    },
-    "account.SharedAddressUpdate": {
       "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "previous_id": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "update_type": {
-          "$ref": "#/definitions/account.SharedAddressUpdateType"
-        }
-      }
-    },
-    "account.SharedAddressUpdatePublic": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "previous_id": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "update_type": {
-          "$ref": "#/definitions/account.SharedAddressUpdateType"
-        }
-      }
-    },
-    "account.SharedAddressUpdateType": {
-      "type": "integer",
-      "enum": [
-        1,
-        2,
-        3
-      ],
-      "x-enum-varnames": [
-        "UPDATE_TYPE_NEW",
-        "UPDATE_TYPE_UPDATE",
-        "UPDATE_TYPE_DELETE"
-      ]
+      "title": "AccountPropertiesPublic"
     },
     "account.SignupProperties": {
       "type": "object",
+      "title": "AccountSignupProperties",
+      "required": [
+        "is_oauth"
+      ],
       "properties": {
         "is_oauth": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
     "account.SignupPropertiesPublic": {
-      "type": "object"
-    },
-    "account.Structure": {
       "type": "object",
-      "properties": {
-        "billing_plan_feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
-        },
-        "billing_plan_id": {
-          "type": "string"
-        },
-        "billing_plan_level": {
-          "type": "integer"
-        },
-        "billing_plan_name": {
-          "type": "string"
-        },
-        "billing_plan_price": {
-          "type": "number"
-        },
-        "config_key": {
-          "$ref": "#/definitions/constants.GlobalConfigKey"
-        },
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_name": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "email": {
-          "type": "string"
-        },
-        "email_verified_at_ts": {
-          "type": "integer"
-        },
-        "external_id": {
-          "type": "string"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
-        },
-        "feature_set_overrides": {
-          "$ref": "#/definitions/billing_plan.MergeableFeatureSet"
-        },
-        "first_name": {
-          "type": "string"
-        },
-        "flags": {
-          "$ref": "#/definitions/account.Flags"
-        },
-        "hashed_password": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "is_super_user_session": {
-          "type": "integer"
-        },
-        "last_login_ts": {
-          "type": "integer"
-        },
-        "last_name": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "nested_settings": {
-          "$ref": "#/definitions/account.NestedSettings"
-        },
-        "organization_id": {
-          "type": "string"
-        },
-        "organization_name": {
-          "type": "string"
-        },
-        "organization_type": {
-          "$ref": "#/definitions/constants.OrganizationType"
-        },
-        "password_updated_at_ts": {
-          "type": "integer"
-        },
-        "phone": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/account.Properties"
-        },
-        "questions": {
-          "type": "object"
-        },
-        "role": {
-          "$ref": "#/definitions/constants.Role"
-        },
-        "signup_properties": {
-          "$ref": "#/definitions/account.SignupProperties"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/account.IconTagJoin"
-          }
-        },
-        "test_user_type": {
-          "type": "integer"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_name": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.Verification"
-        }
-      }
-    },
-    "account.StructurePublic": {
-      "type": "object",
-      "properties": {
-        "billing_plan_id": {
-          "type": "string"
-        },
-        "billing_plan_level": {
-          "type": "integer"
-        },
-        "billing_plan_name": {
-          "type": "string"
-        },
-        "billing_plan_price": {
-          "type": "number"
-        },
-        "config_key": {
-          "$ref": "#/definitions/constants.GlobalConfigKey"
-        },
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "email": {
-          "type": "string"
-        },
-        "external_id": {
-          "type": "string"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
-        },
-        "first_name": {
-          "type": "string"
-        },
-        "flags": {
-          "$ref": "#/definitions/account.FlagsPublic"
-        },
-        "id": {
-          "type": "string"
-        },
-        "is_super_user_session": {
-          "type": "integer"
-        },
-        "last_name": {
-          "type": "string"
-        },
-        "nested_settings": {
-          "$ref": "#/definitions/account.NestedSettingsPublic"
-        },
-        "organization_id": {
-          "type": "string"
-        },
-        "organization_type": {
-          "$ref": "#/definitions/constants.OrganizationType"
-        },
-        "phone": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/account.PropertiesPublic"
-        },
-        "questions": {
-          "type": "object"
-        },
-        "role": {
-          "$ref": "#/definitions/constants.Role"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/account.IconTagJoinPublic"
-          }
-        },
-        "test_user_type": {
-          "type": "integer"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.VerificationPublic"
-        }
-      }
-    },
-    "account.initializable": {
-      "type": "object"
-    },
-    "address.Address": {
-      "type": "object",
-      "properties": {
-        "account_id": {
-          "type": "string"
-        },
-        "applied_changes_from_id": {
-          "type": "string"
-        },
-        "auto_confirmed": {
-          "type": "integer"
-        },
-        "city": {
-          "type": "string"
-        },
-        "is_locked": {
-          "type": "integer"
-        },
-        "is_primary": {
-          "type": "integer"
-        },
-        "is_shared": {
-          "type": "integer"
-        },
-        "last_recommendation_id": {
-          "type": "string"
-        },
-        "locked_parent_id": {
-          "type": "string"
-        },
-        "manual_confirmed": {
-          "type": "integer"
-        },
-        "normalization": {
-          "$ref": "#/definitions/address.Normalization"
-        },
-        "normalized_full_key": {
-          "type": "string"
-        },
-        "normalized_lookup_key": {
-          "type": "string"
-        },
-        "origin_id": {
-          "type": "string"
-        },
-        "origin_related_address_id": {
-          "type": "string"
-        },
-        "postal_code": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/address.Properties"
-        },
-        "raw_verification": {
-          "type": "object"
-        },
-        "related_address_id": {
-          "type": "string"
-        },
-        "sent_count": {
-          "type": "integer"
-        },
-        "shared_with_me": {
-          "type": "integer"
-        },
-        "state": {
-          "type": "string"
-        },
-        "street": {
-          "type": "string"
-        },
-        "street_2": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.Verification"
-        }
-      }
-    },
-    "address.AddressJoined": {
-      "type": "object",
-      "properties": {
-        "account_family_id": {
-          "type": "string"
-        },
-        "account_id": {
-          "type": "string"
-        },
-        "applied_changes_from_id": {
-          "type": "string"
-        },
-        "auto_confirmed": {
-          "type": "integer"
-        },
-        "city": {
-          "type": "string"
-        },
-        "is_locked": {
-          "type": "integer"
-        },
-        "is_primary": {
-          "type": "integer"
-        },
-        "is_shared": {
-          "type": "integer"
-        },
-        "last_recommendation_id": {
-          "type": "string"
-        },
-        "locked_parent_id": {
-          "type": "string"
-        },
-        "manual_confirmed": {
-          "type": "integer"
-        },
-        "normalization": {
-          "$ref": "#/definitions/address.Normalization"
-        },
-        "normalized_full_key": {
-          "type": "string"
-        },
-        "normalized_lookup_key": {
-          "type": "string"
-        },
-        "origin_id": {
-          "type": "string"
-        },
-        "origin_related_address_id": {
-          "type": "string"
-        },
-        "postal_code": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/address.Properties"
-        },
-        "raw_verification": {
-          "type": "object"
-        },
-        "related_address_account_id": {
-          "type": "string"
-        },
-        "related_address_account_name": {
-          "type": "string"
-        },
-        "related_address_id": {
-          "type": "string"
-        },
-        "sent_count": {
-          "type": "integer"
-        },
-        "shared_with_me": {
-          "type": "integer"
-        },
-        "state": {
-          "type": "string"
-        },
-        "street": {
-          "type": "string"
-        },
-        "street_2": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.Verification"
-        }
-      }
-    },
-    "address.AddressJoinedPublic": {
-      "type": "object",
-      "properties": {
-        "account_family_id": {
-          "type": "string"
-        },
-        "account_id": {
-          "type": "string"
-        },
-        "applied_changes_from_id": {
-          "type": "string"
-        },
-        "auto_confirmed": {
-          "type": "integer"
-        },
-        "city": {
-          "type": "string"
-        },
-        "is_primary": {
-          "type": "integer"
-        },
-        "is_shared": {
-          "type": "integer"
-        },
-        "last_recommendation_id": {
-          "type": "string"
-        },
-        "locked_parent_id": {
-          "type": "string"
-        },
-        "manual_confirmed": {
-          "type": "integer"
-        },
-        "origin_id": {
-          "type": "string"
-        },
-        "origin_related_address_id": {
-          "type": "string"
-        },
-        "postal_code": {
-          "type": "string"
-        },
-        "related_address_account_id": {
-          "type": "string"
-        },
-        "related_address_account_name": {
-          "type": "string"
-        },
-        "related_address_id": {
-          "type": "string"
-        },
-        "sent_count": {
-          "type": "integer"
-        },
-        "state": {
-          "type": "string"
-        },
-        "street": {
-          "type": "string"
-        },
-        "street_2": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.VerificationPublic"
-        }
-      }
-    },
-    "address.AddressPublic": {
-      "type": "object",
-      "properties": {
-        "account_id": {
-          "type": "string"
-        },
-        "applied_changes_from_id": {
-          "type": "string"
-        },
-        "auto_confirmed": {
-          "type": "integer"
-        },
-        "city": {
-          "type": "string"
-        },
-        "is_primary": {
-          "type": "integer"
-        },
-        "is_shared": {
-          "type": "integer"
-        },
-        "last_recommendation_id": {
-          "type": "string"
-        },
-        "locked_parent_id": {
-          "type": "string"
-        },
-        "manual_confirmed": {
-          "type": "integer"
-        },
-        "origin_id": {
-          "type": "string"
-        },
-        "origin_related_address_id": {
-          "type": "string"
-        },
-        "postal_code": {
-          "type": "string"
-        },
-        "related_address_id": {
-          "type": "string"
-        },
-        "sent_count": {
-          "type": "integer"
-        },
-        "state": {
-          "type": "string"
-        },
-        "street": {
-          "type": "string"
-        },
-        "street_2": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.VerificationPublic"
-        }
-      }
-    },
-    "address.DBColumns": {
-      "type": "object",
-      "properties": {
-        "account_id": {
-          "type": "string"
-        },
-        "applied_changes_from_id": {
-          "type": "string"
-        },
-        "auto_confirmed": {
-          "type": "integer"
-        },
-        "city": {
-          "type": "string"
-        },
-        "is_locked": {
-          "type": "integer"
-        },
-        "is_primary": {
-          "type": "integer"
-        },
-        "is_shared": {
-          "type": "integer"
-        },
-        "locked_parent_id": {
-          "type": "string"
-        },
-        "manual_confirmed": {
-          "type": "integer"
-        },
-        "normalization": {
-          "$ref": "#/definitions/address.Normalization"
-        },
-        "normalized_full_key": {
-          "type": "string"
-        },
-        "normalized_lookup_key": {
-          "type": "string"
-        },
-        "origin_id": {
-          "type": "string"
-        },
-        "origin_related_address_id": {
-          "type": "string"
-        },
-        "postal_code": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/address.Properties"
-        },
-        "raw_verification": {
-          "type": "object"
-        },
-        "related_address_id": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "street": {
-          "type": "string"
-        },
-        "street_2": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.Verification"
-        }
-      }
-    },
-    "address.DBColumnsPublic": {
-      "type": "object",
-      "properties": {
-        "account_id": {
-          "type": "string"
-        },
-        "applied_changes_from_id": {
-          "type": "string"
-        },
-        "auto_confirmed": {
-          "type": "integer"
-        },
-        "city": {
-          "type": "string"
-        },
-        "is_primary": {
-          "type": "integer"
-        },
-        "is_shared": {
-          "type": "integer"
-        },
-        "locked_parent_id": {
-          "type": "string"
-        },
-        "manual_confirmed": {
-          "type": "integer"
-        },
-        "origin_id": {
-          "type": "string"
-        },
-        "origin_related_address_id": {
-          "type": "string"
-        },
-        "postal_code": {
-          "type": "string"
-        },
-        "related_address_id": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "street": {
-          "type": "string"
-        },
-        "street_2": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.VerificationPublic"
-        }
-      }
+      "title": "AccountSignupPropertiesPublic"
     },
     "address.FieldVerification": {
       "type": "object",
+      "title": "AddressFieldVerification",
+      "required": [
+        "value",
+        "google_value",
+        "confirmation_level",
+        "is_different",
+        "is_unconfirmed"
+      ],
       "properties": {
         "confirmation_level": {
           "type": "string"
@@ -2446,10 +1804,12 @@
           "type": "string"
         },
         "is_different": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "is_unconfirmed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "value": {
           "type": "string"
@@ -2458,6 +1818,14 @@
     },
     "address.FieldVerificationPublic": {
       "type": "object",
+      "title": "AddressFieldVerificationPublic",
+      "required": [
+        "value",
+        "google_value",
+        "confirmation_level",
+        "is_different",
+        "is_unconfirmed"
+      ],
       "properties": {
         "confirmation_level": {
           "type": "string"
@@ -2466,286 +1834,43 @@
           "type": "string"
         },
         "is_different": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "is_unconfirmed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "value": {
           "type": "string"
         }
       }
     },
-    "address.JoinData": {
-      "type": "object",
-      "properties": {
-        "account_family_id": {
-          "type": "string"
-        },
-        "related_address_account_id": {
-          "type": "string"
-        },
-        "related_address_account_name": {
-          "type": "string"
-        }
-      }
-    },
-    "address.JoinDataPublic": {
-      "type": "object",
-      "properties": {
-        "account_family_id": {
-          "type": "string"
-        },
-        "related_address_account_id": {
-          "type": "string"
-        },
-        "related_address_account_name": {
-          "type": "string"
-        }
-      }
-    },
-    "address.ManualFields": {
-      "type": "object",
-      "properties": {
-        "last_recommendation_id": {
-          "type": "string"
-        },
-        "sent_count": {
-          "type": "integer"
-        },
-        "shared_with_me": {
-          "type": "integer"
-        }
-      }
-    },
-    "address.ManualFieldsPublic": {
-      "type": "object",
-      "properties": {
-        "last_recommendation_id": {
-          "type": "string"
-        },
-        "sent_count": {
-          "type": "integer"
-        }
-      }
-    },
-    "address.Normalization": {
-      "type": "object",
-      "properties": {
-        "aws_address_number": {
-          "type": "string"
-        },
-        "aws_country": {
-          "type": "string"
-        },
-        "aws_label": {
-          "type": "string"
-        },
-        "aws_municipality": {
-          "type": "string"
-        },
-        "aws_neighborhood": {
-          "type": "string"
-        },
-        "aws_place_id": {
-          "type": "string"
-        },
-        "aws_postal_code": {
-          "type": "string"
-        },
-        "aws_postal_code_5": {
-          "type": "string"
-        },
-        "aws_region": {
-          "type": "string"
-        },
-        "aws_street": {
-          "type": "string"
-        },
-        "aws_subregion": {
-          "type": "string"
-        },
-        "query_string": {
-          "type": "string"
-        },
-        "secondary": {
-          "$ref": "#/definitions/address.Normalization"
-        }
-      }
-    },
-    "address.NormalizationPublic": {
-      "type": "object"
-    },
-    "address.Properties": {
-      "type": "object",
-      "properties": {
-        "ignore_match": {
-          "type": "integer"
-        }
-      }
-    },
-    "address.PropertiesPublic": {
-      "type": "object"
-    },
-    "address.Structure": {
-      "type": "object",
-      "properties": {
-        "account_family_id": {
-          "type": "string"
-        },
-        "account_id": {
-          "type": "string"
-        },
-        "applied_changes_from_id": {
-          "type": "string"
-        },
-        "auto_confirmed": {
-          "type": "integer"
-        },
-        "city": {
-          "type": "string"
-        },
-        "is_locked": {
-          "type": "integer"
-        },
-        "is_primary": {
-          "type": "integer"
-        },
-        "is_shared": {
-          "type": "integer"
-        },
-        "last_recommendation_id": {
-          "type": "string"
-        },
-        "locked_parent_id": {
-          "type": "string"
-        },
-        "manual_confirmed": {
-          "type": "integer"
-        },
-        "normalization": {
-          "$ref": "#/definitions/address.Normalization"
-        },
-        "normalized_full_key": {
-          "type": "string"
-        },
-        "normalized_lookup_key": {
-          "type": "string"
-        },
-        "origin_id": {
-          "type": "string"
-        },
-        "origin_related_address_id": {
-          "type": "string"
-        },
-        "postal_code": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/address.Properties"
-        },
-        "raw_verification": {
-          "type": "object"
-        },
-        "related_address_account_id": {
-          "type": "string"
-        },
-        "related_address_account_name": {
-          "type": "string"
-        },
-        "related_address_id": {
-          "type": "string"
-        },
-        "sent_count": {
-          "type": "integer"
-        },
-        "shared_with_me": {
-          "type": "integer"
-        },
-        "state": {
-          "type": "string"
-        },
-        "street": {
-          "type": "string"
-        },
-        "street_2": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.Verification"
-        }
-      }
-    },
-    "address.StructurePublic": {
-      "type": "object",
-      "properties": {
-        "account_family_id": {
-          "type": "string"
-        },
-        "account_id": {
-          "type": "string"
-        },
-        "applied_changes_from_id": {
-          "type": "string"
-        },
-        "auto_confirmed": {
-          "type": "integer"
-        },
-        "city": {
-          "type": "string"
-        },
-        "is_primary": {
-          "type": "integer"
-        },
-        "is_shared": {
-          "type": "integer"
-        },
-        "last_recommendation_id": {
-          "type": "string"
-        },
-        "locked_parent_id": {
-          "type": "string"
-        },
-        "manual_confirmed": {
-          "type": "integer"
-        },
-        "origin_id": {
-          "type": "string"
-        },
-        "origin_related_address_id": {
-          "type": "string"
-        },
-        "postal_code": {
-          "type": "string"
-        },
-        "related_address_account_id": {
-          "type": "string"
-        },
-        "related_address_account_name": {
-          "type": "string"
-        },
-        "related_address_id": {
-          "type": "string"
-        },
-        "sent_count": {
-          "type": "integer"
-        },
-        "state": {
-          "type": "string"
-        },
-        "street": {
-          "type": "string"
-        },
-        "street_2": {
-          "type": "string"
-        },
-        "verification": {
-          "$ref": "#/definitions/address.VerificationPublic"
-        }
-      }
-    },
     "address.Verification": {
       "type": "object",
+      "title": "AddressVerification",
+      "required": [
+        "street",
+        "street_2",
+        "city",
+        "state",
+        "postal_code",
+        "google_formatted_address",
+        "google_street_number",
+        "google_route",
+        "google_subpremise",
+        "google_neighborhood",
+        "google_locality",
+        "google_sublocality",
+        "google_administrative_area_level_1",
+        "google_administrative_area_level_2",
+        "google_postal_code",
+        "google_postal_code_suffix",
+        "google_country",
+        "is_match",
+        "is_unconfirmed",
+        "external_id"
+      ],
       "properties": {
         "city": {
           "$ref": "#/definitions/address.FieldVerification"
@@ -2790,10 +1915,12 @@
           "$ref": "#/definitions/address.FieldVerification"
         },
         "is_match": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "is_unconfirmed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "postal_code": {
           "$ref": "#/definitions/address.FieldVerification"
@@ -2811,6 +1938,29 @@
     },
     "address.VerificationPublic": {
       "type": "object",
+      "title": "AddressVerificationPublic",
+      "required": [
+        "street",
+        "street_2",
+        "city",
+        "state",
+        "postal_code",
+        "google_formatted_address",
+        "google_street_number",
+        "google_route",
+        "google_subpremise",
+        "google_neighborhood",
+        "google_locality",
+        "google_sublocality",
+        "google_administrative_area_level_1",
+        "google_administrative_area_level_2",
+        "google_postal_code",
+        "google_postal_code_suffix",
+        "google_country",
+        "is_match",
+        "is_unconfirmed",
+        "external_id"
+      ],
       "properties": {
         "city": {
           "$ref": "#/definitions/address.FieldVerificationPublic"
@@ -2855,10 +2005,12 @@
           "$ref": "#/definitions/address.FieldVerificationPublic"
         },
         "is_match": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "is_unconfirmed": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "postal_code": {
           "$ref": "#/definitions/address.FieldVerificationPublic"
@@ -2874,11 +2026,13 @@
         }
       }
     },
-    "address.initializable": {
-      "type": "object"
-    },
     "api.APIResponse": {
       "type": "object",
+      "title": "APIResponse",
+      "required": [
+        "account",
+        "billing_plan"
+      ],
       "properties": {
         "account": {
           "$ref": "#/definitions/account.Account"
@@ -2889,10 +2043,15 @@
       }
     },
     "api.APIResponsePublic": {
-      "type": "object"
+      "type": "object",
+      "title": "APIResponsePublic"
     },
     "api.TestUserInput": {
       "type": "object",
+      "title": "ApiTestUserInput",
+      "required": [
+        "organization_id"
+      ],
       "properties": {
         "organization_id": {
           "type": "string",
@@ -2901,136 +2060,38 @@
       }
     },
     "api.TestUserInputPublic": {
-      "type": "object"
-    },
-    "base.Structure": {
       "type": "object",
-      "properties": {
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "id": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        }
-      }
-    },
-    "base.StructurePublic": {
-      "type": "object",
-      "properties": {
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "id": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.BillingPlan": {
-      "type": "object",
-      "properties": {
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "description": {
-          "type": "string"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
-        },
-        "fees": {
-          "$ref": "#/definitions/billing_plan.Fees"
-        },
-        "id": {
-          "type": "string"
-        },
-        "internal_name": {
-          "type": "string"
-        },
-        "is_default": {
-          "type": "integer"
-        },
-        "level": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/billing_plan.Properties"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "stripe_product_id": {
-          "type": "string"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        }
-      }
+      "title": "ApiTestUserInputPublic"
     },
     "billing_plan.BillingPlanJoined": {
       "type": "object",
+      "title": "BillingPlanJoined",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "name",
+        "description",
+        "internal_name",
+        "feature_set",
+        "properties",
+        "stripe_product_id",
+        "level",
+        "is_default",
+        "fees",
+        "created_by_name",
+        "updated_by_name"
+      ],
       "properties": {
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "created_by_name": {
           "type": "string"
@@ -3054,7 +2115,8 @@
           "$ref": "#/definitions/billing_plan.Fees"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "internal_name": {
           "type": "string"
@@ -3078,7 +2140,8 @@
           "type": "string"
         },
         "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "updated_by_name": {
           "type": "string"
@@ -3093,9 +2156,29 @@
     },
     "billing_plan.BillingPlanJoinedPublic": {
       "type": "object",
+      "title": "BillingPlanJoinedPublic",
+      "required": [
+        "id",
+        "urn",
+        "created_by_urn",
+        "updated_by_urn",
+        "status",
+        "deleted",
+        "disabled",
+        "updated_at",
+        "created_at",
+        "name",
+        "description",
+        "feature_set",
+        "properties",
+        "stripe_product_id",
+        "level",
+        "is_default"
+      ],
       "properties": {
         "created_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "created_by_urn": {
           "type": "string"
@@ -3113,7 +2196,8 @@
           "$ref": "#/definitions/billing_plan.FeatureSetPublic"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "format": "uuid"
         },
         "is_default": {
           "type": "integer"
@@ -3134,172 +2218,8 @@
           "type": "string"
         },
         "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.BillingPlanPublic": {
-      "type": "object",
-      "properties": {
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "description": {
-          "type": "string"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
-        },
-        "id": {
-          "type": "string"
-        },
-        "is_default": {
-          "type": "integer"
-        },
-        "level": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/billing_plan.PropertiesPublic"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "stripe_product_id": {
-          "type": "string"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.DBColumns": {
-      "type": "object",
-      "properties": {
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "description": {
-          "type": "string"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
-        },
-        "fees": {
-          "$ref": "#/definitions/billing_plan.Fees"
-        },
-        "id": {
-          "type": "string"
-        },
-        "internal_name": {
-          "type": "string"
-        },
-        "is_default": {
-          "type": "integer"
-        },
-        "level": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/billing_plan.Properties"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "stripe_product_id": {
-          "type": "string"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.DBColumnsPublic": {
-      "type": "object",
-      "properties": {
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "description": {
-          "type": "string"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
-        },
-        "id": {
-          "type": "string"
-        },
-        "is_default": {
-          "type": "integer"
-        },
-        "level": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/billing_plan.PropertiesPublic"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "stripe_product_id": {
-          "type": "string"
-        },
-        "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "updated_by_urn": {
           "type": "string"
@@ -3311,28 +2231,50 @@
     },
     "billing_plan.FeatureSet": {
       "type": "object",
+      "title": "BillingPlanFeatureSet",
+      "required": [
+        "custom_branding",
+        "advanced_analytics",
+        "priority_support"
+      ],
       "properties": {
         "advanced_analytics": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "custom_branding": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "priority_support": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
     "billing_plan.FeatureSetPublic": {
       "type": "object",
+      "title": "BillingPlanFeatureSetPublic",
+      "required": [
+        "advanced_analytics"
+      ],
       "properties": {
         "advanced_analytics": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
     "billing_plan.Fees": {
       "type": "object",
+      "title": "BillingPlanFees",
+      "required": [
+        "setup_rate",
+        "monthly_rate",
+        "sms_rate",
+        "mms_rate",
+        "voice_rate"
+      ],
       "properties": {
         "mms_rate": {
           "type": "number"
@@ -3352,185 +2294,23 @@
       }
     },
     "billing_plan.FeesPublic": {
-      "type": "object"
-    },
-    "billing_plan.JoinData": {
       "type": "object",
-      "properties": {
-        "created_by_name": {
-          "type": "string"
-        },
-        "updated_by_name": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.JoinDataPublic": {
-      "type": "object"
-    },
-    "billing_plan.MergeableFeatureSet": {
-      "type": "object"
-    },
-    "billing_plan.MergeableFeatureSetPublic": {
-      "type": "object"
-    },
-    "billing_plan.Properties": {
-      "type": "object",
-      "properties": {
-        "default_discount_code": {
-          "type": "string"
-        },
-        "pricing_text": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.PropertiesPublic": {
-      "type": "object",
-      "properties": {
-        "pricing_text": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.Structure": {
-      "type": "object",
-      "properties": {
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_name": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "description": {
-          "type": "string"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSet"
-        },
-        "fees": {
-          "$ref": "#/definitions/billing_plan.Fees"
-        },
-        "id": {
-          "type": "string"
-        },
-        "internal_name": {
-          "type": "string"
-        },
-        "is_default": {
-          "type": "integer"
-        },
-        "level": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/billing_plan.Properties"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "stripe_product_id": {
-          "type": "string"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_name": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.StructurePublic": {
-      "type": "object",
-      "properties": {
-        "created_at": {
-          "type": "string"
-        },
-        "created_by_urn": {
-          "type": "string"
-        },
-        "deleted": {
-          "type": "integer"
-        },
-        "description": {
-          "type": "string"
-        },
-        "disabled": {
-          "type": "integer"
-        },
-        "feature_set": {
-          "$ref": "#/definitions/billing_plan.FeatureSetPublic"
-        },
-        "id": {
-          "type": "string"
-        },
-        "is_default": {
-          "type": "integer"
-        },
-        "level": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "properties": {
-          "$ref": "#/definitions/billing_plan.PropertiesPublic"
-        },
-        "status": {
-          "$ref": "#/definitions/constants.Status"
-        },
-        "stripe_product_id": {
-          "type": "string"
-        },
-        "updated_at": {
-          "type": "string"
-        },
-        "updated_by_urn": {
-          "type": "string"
-        },
-        "urn": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.initializable": {
-      "type": "object"
-    },
-    "caller.Caller": {
-      "type": "object"
-    },
-    "caller.callerRegistry": {
-      "type": "object"
-    },
-    "caller.callerRegistryPublic": {
-      "type": "object"
-    },
-    "constants.ExternalID": {
-      "type": "object"
+      "title": "BillingPlanFeesPublic"
     },
     "constants.GlobalConfigKey": {
       "type": "string",
+      "title": "ConstantsGlobalConfigKey",
       "enum": [
         "allow_self_signed_certs",
         "api_rate_limit_enabled"
+      ],
+      "x-enum-comments": {
+        "GCK_ALLOW_SELF_SIGNED_CERTS": "Allow self-signed SSL certificates",
+        "GCK_API_RATE_LIMIT_ENABLED": "Enable API rate limiting"
+      },
+      "x-enum-descriptions": [
+        "Allow self-signed SSL certificates",
+        "Enable API rate limiting"
       ],
       "x-enum-varnames": [
         "GCK_ALLOW_SELF_SIGNED_CERTS",
@@ -3539,12 +2319,27 @@
     },
     "constants.NJDLClassification": {
       "type": "integer",
+      "title": "ConstantsNJDLClassification",
       "enum": [
         1,
         2,
         3,
         4,
         5
+      ],
+      "x-enum-comments": {
+        "NJ_DL_CHILD_PROTECTIVE_INVESTIGATOR": "Child Protective Investigator",
+        "NJ_DL_FAMILY_MEMBER": "Family Member",
+        "NJ_DL_JUDICIAL_OFFICER": "Judicial Officer",
+        "NJ_DL_LAW_ENFORCEMENT_OFFICER": "Law Enforcement Officer",
+        "NJ_DL_PROSECUTOR": "Prosecutor"
+      },
+      "x-enum-descriptions": [
+        "Law Enforcement Officer",
+        "Child Protective Investigator",
+        "Judicial Officer",
+        "Prosecutor",
+        "Family Member"
       ],
       "x-enum-varnames": [
         "NJ_DL_LAW_ENFORCEMENT_OFFICER",
@@ -3556,6 +2351,7 @@
     },
     "constants.OrganizationType": {
       "type": "integer",
+      "title": "ConstantsOrganizationType",
       "enum": [
         1,
         2,
@@ -3575,6 +2371,7 @@
     },
     "constants.Role": {
       "type": "integer",
+      "title": "ConstantsRole",
       "enum": [
         -1,
         0,
@@ -3582,6 +2379,22 @@
         40,
         50,
         100
+      ],
+      "x-enum-comments": {
+        "ROLE_ADMIN": "System Admin",
+        "ROLE_ANY_AUTHORIZED": "Any Authorized",
+        "ROLE_ORG_ADMIN": "Org Admin",
+        "ROLE_ORG_OWNER": "Org Owner",
+        "ROLE_UNAUTHORIZED": "Unauthorized",
+        "ROLE_USER": "User"
+      },
+      "x-enum-descriptions": [
+        "Unauthorized",
+        "Any Authorized",
+        "User",
+        "Org Admin",
+        "Org Owner",
+        "System Admin"
       ],
       "x-enum-varnames": [
         "ROLE_UNAUTHORIZED",
@@ -3594,6 +2407,7 @@
     },
     "constants.Status": {
       "type": "integer",
+      "title": "ConstantsStatus",
       "enum": [
         100,
         200,
@@ -3607,6 +2421,7 @@
     },
     "constants.StyleType": {
       "type": "integer",
+      "title": "ConstantsStyleType",
       "enum": [
         1,
         2,
@@ -3644,11 +2459,9 @@
         "STYLE_TYPE_CUSTOM"
       ]
     },
-    "constants.TagType": {
-      "type": "object"
-    },
     "constants.UnionStatus": {
       "type": "integer",
+      "title": "ConstantsUnionStatus",
       "enum": [
         0,
         1,
@@ -3658,6 +2471,19 @@
         5,
         6,
         7
+      ],
+      "x-enum-comments": {
+        "UNION_STATUS_ASSOCIATE": "Smaller custom ones"
+      },
+      "x-enum-descriptions": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "Smaller custom ones",
+        "",
+        ""
       ],
       "x-enum-varnames": [
         "UNION_STATUS_UNKNOWN",
@@ -3670,42 +2496,15 @@
         "UNION_STATUS_TERM"
       ]
     },
-    "embedded_tag_test.BaseModelLike": {
-      "type": "object"
-    },
-    "embedded_tag_test.BaseModelLikePublic": {
-      "type": "object"
-    },
-    "embedded_tag_test.TestModel": {
-      "type": "object",
-      "properties": {
-        "-": {
-          "type": "string"
-        },
-        "both": {
-          "type": "string"
-        },
-        "public_field": {
-          "type": "string"
-        },
-        "valid_column": {
-          "type": "string"
-        },
-        "valid_json": {
-          "type": "string"
-        }
-      }
-    },
-    "embedded_tag_test.TestModelPublic": {
-      "type": "object",
-      "properties": {
-        "public_field": {
-          "type": "string"
-        }
-      }
-    },
     "org_member.MetaData": {
       "type": "object",
+      "title": "OrgMemberMetaData",
+      "required": [
+        "pending_removal",
+        "pending_local_id",
+        "unknown_local",
+        "pending_plan_id"
+      ],
       "properties": {
         "pending_local_id": {
           "type": "string",
@@ -3716,15 +2515,24 @@
           "format": "uuid"
         },
         "pending_removal": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "unknown_local": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
     "org_member.MetaDataPublic": {
       "type": "object",
+      "title": "OrgMemberMetaDataPublic",
+      "required": [
+        "pending_removal",
+        "pending_local_id",
+        "unknown_local",
+        "pending_plan_id"
+      ],
       "properties": {
         "pending_local_id": {
           "type": "string",
@@ -3735,27 +2543,21 @@
           "format": "uuid"
         },
         "pending_removal": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         },
         "unknown_local": {
-          "type": "integer"
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
-    "relationship.Relationship": {
-      "type": "object"
-    },
-    "relationship.RelationshipPublic": {
-      "type": "object"
-    },
-    "relationship.relationshipRegistry": {
-      "type": "object"
-    },
-    "relationship.relationshipRegistryPublic": {
-      "type": "object"
-    },
     "response.ErrorResponse": {
       "type": "object",
+      "title": "ResponseErrorResponse",
+      "required": [
+        "error"
+      ],
       "properties": {
         "error": {
           "type": "string"
@@ -3763,10 +2565,15 @@
       }
     },
     "response.ErrorResponsePublic": {
-      "type": "object"
+      "type": "object",
+      "title": "ResponseErrorResponsePublic"
     },
     "response.SuccessResponse": {
       "type": "object",
+      "title": "ResponseSuccessResponse",
+      "required": [
+        "data"
+      ],
       "properties": {
         "data": {
           "type": "object"
@@ -3774,7 +2581,8 @@
       }
     },
     "response.SuccessResponsePublic": {
-      "type": "object"
+      "type": "object",
+      "title": "ResponseSuccessResponsePublic"
     }
   }
 }

@@ -172,8 +172,9 @@ func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isP
 		qualifiedType = packageName + "." + dataType
 	}
 
-	// If @Public annotation is present, check if type has @NoPublic before appending suffix
-	if isPublic && !s.hasNoPublicAnnotation(qualifiedType) {
+	// If @Public annotation is present, only append Public suffix for struct types.
+	// Enums and other non-struct types are identical regardless of public context.
+	if isPublic && !s.hasNoPublicAnnotation(qualifiedType) && s.isStructType(qualifiedType) {
 		qualifiedType = qualifiedType + "Public"
 	}
 
@@ -268,6 +269,22 @@ func (s *Service) parseHeader(op *operation, line string) error {
 	}
 
 	return nil
+}
+
+// isStructType checks if a qualified type name refers to a struct type via the registry.
+// Returns true if the type is a struct or if the registry is unavailable (safe default).
+func (s *Service) isStructType(qualifiedTypeName string) bool {
+	if s.registry == nil {
+		return true // safe default when registry unavailable
+	}
+
+	typeDef := s.registry.FindTypeSpec(qualifiedTypeName, nil)
+	if typeDef == nil {
+		return true // unknown type, assume struct (safe default)
+	}
+
+	_, isStruct := typeDef.TypeSpec.Type.(*ast.StructType)
+	return isStruct
 }
 
 // hasNoPublicAnnotation checks if a type has @NoPublic annotation

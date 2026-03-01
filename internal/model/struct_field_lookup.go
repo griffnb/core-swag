@@ -801,88 +801,79 @@ func buildSchemasRecursive(
 		}
 
 		// Need to lookup the nested type's fields using the correct package path
-		nestedBuilder := parser.LookupStructFields(baseModule, nestedPkgPath, baseNestedType)
-		if nestedBuilder == nil {
-			// Could not find as a struct - check if it's an enum type
+		// Strip "Public" suffix for lookup — enum/non-struct types never have Public variants
+		cleanNestedType := baseNestedType
+		if strings.HasSuffix(cleanNestedType, "Public") {
+			cleanNestedType = strings.TrimSuffix(cleanNestedType, "Public")
+		}
+
+		nestedBuilder := parser.LookupStructFields(baseModule, nestedPkgPath, cleanNestedType)
+
+		// Empty builder means the type exists but is not a struct (e.g., enum, type alias)
+		isNonStruct := nestedBuilder == nil || len(nestedBuilder.Fields) == 0
+		if isNonStruct {
 			console.Logger.Debug(
-				"$Yellow{Could not lookup nested type %s as struct in package %s, checking if it's an enum}\n",
-				baseNestedType,
+				"$Yellow{Nested type %s is not a struct in package %s, checking if it's an enum}\n",
+				cleanNestedType,
 				nestedPkgPath,
 			)
 
-			// Try to get enum values for this type
+			// Try to get enum values for this type using the clean name (no Public suffix)
 			enumLookup := &ParserEnumLookup{Parser: parser, BaseModule: baseModule, PkgPath: nestedPkgPath}
-			fullNestedTypeName := nestedTypeName // Already has package prefix
-			enums, err := enumLookup.GetEnumsForType(fullNestedTypeName, nil)
+			cleanFullName := nestedPackageName + "." + cleanNestedType
+			enums, err := enumLookup.GetEnumsForType(cleanFullName, nil)
 
 			if err == nil && len(enums) > 0 {
-				console.Logger.Debug("$Green{Found enum type %s with %d values, creating enum definitions}\n", fullNestedTypeName, len(enums))
+				console.Logger.Debug("$Green{Found enum type %s with %d values, creating enum definition}\n", cleanFullName, len(enums))
 
-				// Create enum schema for both base and Public variants
-				// Determine the base type from the first enum value
+				// Create ONLY the base enum schema — enums never have Public variants
 				baseEnumSchema := &spec.Schema{
 					SchemaProps: spec.SchemaProps{
-						Title: toPascalCase(nestedPackageName) + baseNestedType,
+						Title: toPascalCase(nestedPackageName) + cleanNestedType,
 					},
 				}
 
-				if len(enums) > 0 {
-					switch enums[0].Value.(type) {
-					case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-						baseEnumSchema.Type = []string{"integer"}
-					case string:
-						baseEnumSchema.Type = []string{"string"}
-					case float32, float64:
-						baseEnumSchema.Type = []string{"number"}
-					default:
-						baseEnumSchema.Type = []string{"integer"} // default fallback
-					}
+				switch enums[0].Value.(type) {
+				case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+					baseEnumSchema.Type = []string{"integer"}
+				case string:
+					baseEnumSchema.Type = []string{"string"}
+				case float32, float64:
+					baseEnumSchema.Type = []string{"number"}
+				default:
+					baseEnumSchema.Type = []string{"integer"}
 				}
 
-				// Apply enum values
 				applyEnumsToSchema(baseEnumSchema, enums)
 
-				// Store base schema
-				baseSchemaKey := nestedPackageName + "." + baseNestedType
+				baseSchemaKey := nestedPackageName + "." + cleanNestedType
 				allSchemas[baseSchemaKey] = baseEnumSchema
 				console.Logger.Debug("Created enum schema: %s\n", baseSchemaKey)
 
-				// Create Public variant (same as base for enums)
-				publicEnumSchema := &spec.Schema{
-					SchemaProps: spec.SchemaProps{
-						Title: toPascalCase(nestedPackageName) + baseNestedType + "Public",
-					},
-				}
-				publicEnumSchema.Type = baseEnumSchema.Type
-				applyEnumsToSchema(publicEnumSchema, enums)
-
-				publicSchemaKey := nestedPackageName + "." + baseNestedType + "Public"
-				allSchemas[publicSchemaKey] = publicEnumSchema
-				console.Logger.Debug("Created enum schema: %s\n", publicSchemaKey)
-
-				// Mark as processed
-				processed[baseNestedType] = true
-				processed[baseNestedType+"Public"] = true
+				// Mark both base and Public as processed to prevent Public variant creation
+				processed[cleanNestedType] = true
+				processed[cleanNestedType+"Public"] = true
+				processed[nestedPackageName+"."+cleanNestedType] = true
+				processed[nestedPackageName+"."+cleanNestedType+"Public"] = true
 			} else {
 				console.Logger.Debug(
 					"$Yellow{Warning: Could not lookup nested type %s in package %s as struct or enum}\n",
-					baseNestedType,
+					cleanNestedType,
 					nestedPkgPath,
 				)
 			}
 			continue
 		}
 
-		// Generate both public and non-public variants for nested types
-		// Use the nested package name when storing schemas
-		err = buildSchemasRecursive(nestedBuilder, baseNestedType, false, allSchemas, processed, parser, baseModule, nestedPkgPath, nestedPackageName)
+		// Generate both public and non-public variants for nested struct types
+		err = buildSchemasRecursive(nestedBuilder, cleanNestedType, false, allSchemas, processed, parser, baseModule, nestedPkgPath, nestedPackageName)
 		if err != nil {
 			return err
 		}
 
 		err = buildSchemasRecursive(
 			nestedBuilder,
-			baseNestedType+"Public",
+			cleanNestedType+"Public",
 			true,
 			allSchemas,
 			processed,

@@ -100,7 +100,11 @@ func (s *Service) buildSchemaForRef(refName, source string, processed map[string
 		return nil
 	}
 
-	// Non-struct type (enum, type alias) — use SchemaBuilder
+	// Non-struct type (enum, type alias) — use SchemaBuilder.
+	// Non-struct types never have Public variants, so mark the Public key as processed
+	// to prevent dangling refs from stale route annotations.
+	processed[baseName+"Public"] = true
+
 	if s.config.Debug != nil {
 		s.config.Debug.Printf("Orchestrator: Building non-struct schema for %s (type=%T)",
 			baseName, typeDef.TypeSpec.Type)

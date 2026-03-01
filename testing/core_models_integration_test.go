@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/griffnb/core-swag/internal/loader"
@@ -376,6 +377,62 @@ func TestCoreModelsIntegration(t *testing.T) {
 		require.NotNil(t, apiAccountResponse200.Schema, "Response schema should not be nil")
 
 		t.Logf("/api/account/{id} 200 response schema: %+v", apiAccountResponse200.Schema)
+	})
+
+	// Test that enum definitions NEVER have Public variants
+	t.Run("Enum definitions should NEVER have Public variants", func(t *testing.T) {
+		// Enums are identical regardless of public context
+		for name := range swagger.Definitions {
+			if strings.HasSuffix(name, "Public") {
+				def := swagger.Definitions[name]
+				// If it has enum values, it should NOT have a Public variant name
+				assert.Empty(t, def.Enum,
+					"Definition %s has Public suffix but contains enum values - enums should never have Public variants", name)
+			}
+		}
+		// Specifically check known enum types don't have Public variants
+		assert.NotContains(t, swagger.Definitions, "constants.StatusPublic")
+		assert.NotContains(t, swagger.Definitions, "constants.RolePublic")
+		assert.NotContains(t, swagger.Definitions, "constants.OrganizationTypePublic")
+		assert.NotContains(t, swagger.Definitions, "constants.GlobalConfigKeyPublic")
+		assert.NotContains(t, swagger.Definitions, "constants.NJDLClassificationPublic")
+	})
+
+	// Test that enum definitions have proper type, not object
+	t.Run("Enum definitions should have proper enum type not object", func(t *testing.T) {
+		// constants.Status should be integer type with enum values, NOT type:"object"
+		statusDef := swagger.Definitions["constants.Status"]
+		assert.NotContains(t, statusDef.Type, "object",
+			"constants.Status should NOT be type:object")
+		assert.Contains(t, statusDef.Type, "integer",
+			"constants.Status should be type:integer")
+		assert.NotEmpty(t, statusDef.Enum,
+			"constants.Status should have enum values")
+	})
+
+	// Test that Public struct variants reference base enum names (no Public suffix)
+	t.Run("Public struct variants should reference base enum names without Public suffix", func(t *testing.T) {
+		// AccountPublic has role field (public:"view") which is IntConstantField[constants.Role]
+		// The $ref should be constants.Role, NOT constants.RolePublic
+		accountPublic := swagger.Definitions["account.AccountPublic"]
+		require.NotNil(t, accountPublic)
+
+		roleSchema, hasRole := accountPublic.Properties["role"]
+		require.True(t, hasRole, "AccountPublic should have role field")
+		assert.Equal(t, "#/definitions/constants.Role", roleSchema.Ref.String(),
+			"Public struct should reference base enum name, not constants.RolePublic")
+
+		// Same for status field from base.Structure
+		statusSchema, hasStatus := accountPublic.Properties["status"]
+		require.True(t, hasStatus, "AccountPublic should have status field")
+		assert.Equal(t, "#/definitions/constants.Status", statusSchema.Ref.String(),
+			"Public struct should reference base enum name, not constants.StatusPublic")
+
+		// Same for config_key
+		configSchema, hasConfig := accountPublic.Properties["config_key"]
+		require.True(t, hasConfig, "AccountPublic should have config_key field")
+		assert.Equal(t, "#/definitions/constants.GlobalConfigKey", configSchema.Ref.String(),
+			"Public struct should reference base enum name, not constants.GlobalConfigKeyPublic")
 	})
 
 	// Write actual output to a file for comparison
