@@ -159,6 +159,11 @@ func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isP
 		return &routedomain.Schema{Type: primitiveType}
 	}
 
+	// Wildcard types default to object, not a $ref
+	if dataType == "any" || dataType == "interface{}" || dataType == "object" {
+		return &routedomain.Schema{Type: "object"}
+	}
+
 	// It's a custom type - create a reference
 	// If dataType already contains a dot (package.Type), use it as-is
 	// Otherwise, qualify it with the packageName

@@ -184,25 +184,29 @@ func convertSpecSchemaToDomain(s *spec.Schema) *domain.Schema {
 	return domainSchema
 }
 
-// isPrimitiveType checks if a type is a Go/OpenAPI primitive
+// isPrimitiveType checks if a type is a Go/OpenAPI primitive or a wildcard type
+// that should not be treated as a model reference.
 func isPrimitiveType(typeName string) bool {
 	primitives := map[string]bool{
-		"int":     true,
-		"int8":    true,
-		"int16":   true,
-		"int32":   true,
-		"int64":   true,
-		"uint":    true,
-		"uint8":   true,
-		"uint16":  true,
-		"uint32":  true,
-		"uint64":  true,
-		"float32": true,
-		"float64": true,
-		"bool":    true,
-		"string":  true,
-		"byte":    true,
-		"rune":    true,
+		"int":           true,
+		"int8":          true,
+		"int16":         true,
+		"int32":         true,
+		"int64":         true,
+		"uint":          true,
+		"uint8":         true,
+		"uint16":        true,
+		"uint32":        true,
+		"uint64":        true,
+		"float32":       true,
+		"float64":       true,
+		"bool":          true,
+		"string":        true,
+		"byte":          true,
+		"rune":          true,
+		"any":           true,
+		"interface{}":   true,
+		"object":        true,
 	}
 	return primitives[typeName]
 }
