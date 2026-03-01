@@ -63,19 +63,24 @@ func (s *Service) parseParam(op *operation, line string) error {
 	// For body parameters with model types, use Schema instead of Type
 	// Body parameters need proper schema references for complex types
 	if paramType == "body" && isModelType(dataType) {
+		// Qualify unqualified type names with the controller's package name
+		qualifiedType := dataType
+		if op.packageName != "" && !strings.Contains(dataType, ".") {
+			qualifiedType = op.packageName + "." + dataType
+		}
 		// Build schema for model type
 		if isArray {
 			// Array of models
 			param.Schema = &domain.Schema{
 				Type: "array",
 				Items: &domain.Schema{
-					Ref: "#/definitions/" + dataType,
+					Ref: "#/definitions/" + qualifiedType,
 				},
 			}
 		} else {
 			// Single model
 			param.Schema = &domain.Schema{
-				Ref: "#/definitions/" + dataType,
+				Ref: "#/definitions/" + qualifiedType,
 			}
 		}
 	} else {

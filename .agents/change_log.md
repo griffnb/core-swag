@@ -1,5 +1,23 @@
 # Core-Swag Change Log
 
+## 2026-03-01: Fix Naming/Reference Resolution — Use Fully Qualified Names
+
+**Problem:** Unqualified type names caused ambiguous redirect warnings and incorrect `$ref` targets. When `StructField[T]` had a same-package type parameter, `processStructField` set `TypeString` to the bare name (e.g., `Properties`) instead of `phone.Properties`. Also, `@Param body` annotations didn't qualify types with the controller's package name.
+
+**What was done:**
+- Set `c.basePackage = pkg` in `LookupStructFields` so the base package is available during processing
+- Modified `processStructField` else branch to qualify same-package types with `c.basePackage.Name` prefix and fall through to subfield extraction (instead of returning early with unqualified name)
+- Qualified body param types in `parseParam` with `op.packageName` (matching how `parseResponse` already does it)
+- Removed `addUnqualifiedRedirects()`, `findUnqualifiedType()`, `findTypeByShortName()` from schema_builder.go
+- Simplified `buildSchemaForRef` to direct qualified lookup only
+
+**Files changed:**
+- `internal/model/struct_field_lookup.go` — set basePackage, qualify same-package types
+- `internal/orchestrator/schema_builder.go` — removed redirect system and fallback lookups
+- `internal/parser/route/parameter.go` — qualify unqualified body param types
+
+**Verification:** All tests pass. Project 1: 3509 definitions (up from 3439), 0 redirects, 0 unqualified names. Project 2: 222 definitions, 0 redirects. `RequeueData` now resolves as `serp_jobs.RequeueData`.
+
 ## 2026-03-01: Task 11 — Removed Deprecated Legacy Code from Orchestrator
 
 **What was done:**
