@@ -1,5 +1,25 @@
 # Core-Swag Change Log
 
+## 2026-03-02: Fix enum definitions not created for non-sibling packages
+
+**Problem:**
+In real projects, 59+ `$ref`s point to `constants.*` types (e.g., `#/definitions/constants.Status`) but none of those definitions were created in the swagger output. The core_models integration test passed because `constants` and `account` packages were siblings under `testdata/core_models/`. In real projects, `constants` lives at `internal/constants` while models are at `internal/models/account` — not siblings.
+
+**Root cause:**
+A "sibling-replace" algorithm in two places constructed package paths by replacing the last path segment. For `internal/models/account` + `constants`, it guessed `internal/models/constants` instead of the correct `internal/constants`.
+
+**What was done:**
+- Created `internal/model/package_resolve.go`: New `resolvePackagePath(parentPkgPath, shortName)` function that tries sibling-replace first, then searches `globalPackageCache` and `enumPackageCache` for packages whose `.Name` matches, preferring the longest common prefix with the parent path.
+- `internal/model/struct_field_lookup.go`: Replaced 12-line sibling-replace block (lines 795-806) with `resolvePackagePath` call.
+- `internal/model/enum_lookup.go`: Replaced sibling-replace (lines 111-113) with `resolvePackagePath` call.
+- Created `internal/model/package_resolve_test.go`: 7 test cases covering sibling found, non-sibling resolution, multiple matches with prefix disambiguation, graceful degradation, enum cache fallback, and `commonPrefixLength` edge cases.
+
+**Verification:**
+- All model package unit tests pass
+- Integration test (`TestCoreModelsIntegration`) passes with no regressions
+- `make test-project-1`: 85 `constants.*` definitions now created (was 0)
+- `make test-project-2`: 21 `constants.*` definitions now created (was 0)
+
 ## 2026-03-01: Fix enum types incorrectly treated as structs with Public variants
 
 **Problem:**
@@ -11,13 +31,19 @@ Enum/constant types (e.g., `constants.Status`) were appearing in swagger output 
 
 **What was done:**
 - `internal/model/struct_field_lookup.go`: Changed nil check to `nestedBuilder == nil || len(nestedBuilder.Fields) == 0` to detect non-struct types. Strip "Public" suffix before enum lookup. Only create base enum schemas (no Public variant). Mark both base+Public as processed to block re-creation.
+- `internal/model/struct_field.go`: Added `isGenericTypeArgStruct()` and `isUnderlyingStruct()` helpers that use actual `go/types` info to check if a type's underlying Go type is a struct. In `ToSpecSchema`, check the `StructField.Type` to determine if public suffix should be applied — both for generic wrappers (IntConstantField[T]) and direct type usage (constants.Status).
 - `internal/parser/route/response.go`: Added `isStructType()` helper using registry. Only append "Public" suffix for struct types.
 - `internal/parser/route/allof.go`: Same struct check for allof override fields.
 - `internal/orchestrator/schema_builder.go`: Mark non-struct Public variants as processed to prevent dangling refs.
-- `testing/core_models_integration_test.go`: Added 3 integration tests for enum Public variant prevention.
+- `testing/core_models_integration_test.go`: Added integration tests for enum Public variant prevention (including direct enum types and OrgAccount pattern).
 - `internal/model/struct_builder_test.go`: Added unit test `TestBuildSpecSchema_EnumFieldInPublicMode_NoPublicSuffix`.
 
-**Result:** Zero enum Public variants, zero DoublePublic definitions, proper enum types with correct values in both test data and real projects.
+**Approach evolution:**
+1. First tried string matching on wrapper type names ("StructField[" vs "IntConstantField[") — rejected as fragile.
+2. Then tried adding `IsStructType` to `TypeEnumLookup` interface — rejected as wrong abstraction (enum lookup shouldn't know about struct types).
+3. Final approach: Use actual `go/types` type info from `StructField.Type` to check the underlying Go type. `isGenericTypeArgStruct()` extracts the type argument from generics and checks if it's a struct. `isUnderlyingStruct()` checks direct type usage. Both are clean, type-safe, and don't rely on string matching.
+
+**Result:** Zero enum Public variants, zero DoublePublic definitions, proper enum types with correct values in both test data and real project (make test-project-1).
 
 ## 2026-03-01: Remove internal/legacy_files package
 

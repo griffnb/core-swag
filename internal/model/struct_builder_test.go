@@ -983,9 +983,12 @@ func TestForceRequired(t *testing.T) {
 		requiredCount(2)
 }
 
-// TestBuildSpecSchema_EnumFieldInPublicMode_NoPublicSuffix verifies that enum fields
-// do NOT get a Public suffix when building in public mode, while struct fields do.
-func TestBuildSpecSchema_EnumFieldInPublicMode_NoPublicSuffix(t *testing.T) {
+// TestBuildSpecSchema_EnumFieldInPublicMode_EnumLookupPath verifies that when enum lookup
+// finds enum values, the $ref uses the base name (no Public suffix) because enum lookup
+// returns early before the Public suffix code runs.
+// NOTE: The full type-checking fix (isUnderlyingStruct) is tested by integration tests
+// in testing/core_models_integration_test.go which use real types with go/packages.
+func TestBuildSpecSchema_EnumFieldInPublicMode_EnumLookupPath(t *testing.T) {
 	enumLookup := newTestEnumLookup()
 	enumLookup.addEnum("constants.Status", []EnumValue{
 		{Key: "STATUS_ACTIVE", Value: 100},
@@ -1021,25 +1024,24 @@ func TestBuildSpecSchema_EnumFieldInPublicMode_NoPublicSuffix(t *testing.T) {
 	schema, nestedTypes, err := builder.BuildSpecSchema("Account", true, false, enumLookup)
 	require.NoError(t, err)
 
-	// Enum fields should reference base name (no Public suffix)
+	// Enum fields reference base name because enum lookup intercepts before Public suffix
 	statusProp := schema.Properties["status"]
 	assert.Equal(t, "#/definitions/constants.Status", statusProp.Ref.String(),
-		"Enum ref should NOT have Public suffix in public mode")
+		"Enum ref should NOT have Public suffix")
 
 	roleProp := schema.Properties["role"]
 	assert.Equal(t, "#/definitions/constants.Role", roleProp.Ref.String(),
-		"Enum ref should NOT have Public suffix in public mode")
+		"Enum ref should NOT have Public suffix")
 
-	// Struct fields SHOULD have Public suffix
+	// Struct fields SHOULD have Public suffix (no Type info, so effectivePublic stays true)
 	profileProp := schema.Properties["profile"]
 	assert.Equal(t, "#/definitions/account.ProfilePublic", profileProp.Ref.String(),
 		"Struct ref SHOULD have Public suffix in public mode")
 
-	// Enum types should be in nestedTypes WITHOUT Public suffix
+	// Enum types in nestedTypes WITHOUT Public suffix
 	assert.Contains(t, nestedTypes, "constants.Status")
 	assert.Contains(t, nestedTypes, "constants.Role")
 	assert.NotContains(t, nestedTypes, "constants.StatusPublic")
 	assert.NotContains(t, nestedTypes, "constants.RolePublic")
-	// Struct types SHOULD have Public suffix
 	assert.Contains(t, nestedTypes, "account.ProfilePublic")
 }

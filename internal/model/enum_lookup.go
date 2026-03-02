@@ -105,14 +105,10 @@ func (p *ParserEnumLookup) GetEnumsForType(typeName string, file *ast.File) ([]E
 			// Full path - use as-is
 			targetPkgPath = pkgPart
 		} else {
-			// Short package name - resolve relative to current package path
-			// e.g., if we're in "github.com/.../account" and see "constants",
-			// resolve to "github.com/.../constants"
+			// Short package name - resolve using cache-aware resolver
 			if p.PkgPath != "" && strings.Contains(p.PkgPath, "/") {
-				lastSlash := strings.LastIndex(p.PkgPath, "/")
-				targetPkgPath = p.PkgPath[:lastSlash+1] + pkgPart
+				targetPkgPath = resolvePackagePath(p.PkgPath, pkgPart)
 			} else {
-				// Fallback: use short name as-is (might fail)
 				targetPkgPath = pkgPart
 			}
 		}
@@ -269,3 +265,4 @@ func (p *ParserEnumLookup) GetEnumsForType(typeName string, file *ast.File) ([]E
 
 	return dedupedEnums, nil
 }
+

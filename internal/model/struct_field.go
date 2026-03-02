@@ -147,7 +147,10 @@ func (this *StructField) ToSpecSchema(
 	}
 
 	var extractedType string
-	if strings.Contains(typeStr, "StructField[") || strings.Contains(typeStr, "IntConstantField[") || strings.Contains(typeStr, "StringField[") || strings.Contains(typeStr, "Field[") {
+	isGeneric := strings.Contains(typeStr, "StructField[") || strings.Contains(typeStr, "IntConstantField[") ||
+		strings.Contains(typeStr, "StringField[") ||
+		strings.Contains(typeStr, "Field[")
+	if isGeneric {
 		// Extract type parameter using bracket parsing
 		extractedType, err = extractGenericTypeParameter(typeStr)
 		if err != nil {
@@ -157,8 +160,25 @@ func (this *StructField) ToSpecSchema(
 		extractedType = typeStr
 	}
 
+	// Check the actual Go type to determine if this is a struct type.
+	// Only struct types get Public suffix — enums and type aliases of primitives do not.
+	effectivePublic := public
+	if public && this.Type != nil {
+		if isGeneric {
+			// For generic wrappers like IntConstantField[T], check the type argument
+			if !isGenericTypeArgStruct(this.Type) {
+				effectivePublic = false
+			}
+		} else {
+			// For direct types like constants.Status, check the type itself
+			if !isUnderlyingStruct(this.Type) {
+				effectivePublic = false
+			}
+		}
+	}
+
 	// Build schema for the extracted type
-	schema, nestedTypes, err = buildSchemaForType(extractedType, public, forceRequired, this.TypeString, enumLookup)
+	schema, nestedTypes, err = buildSchemaForType(extractedType, effectivePublic, forceRequired, this.TypeString, enumLookup)
 	if err != nil {
 		return "", nil, false, nil, fmt.Errorf("failed to build schema for type %s: %w", extractedType, err)
 	}
@@ -196,6 +216,59 @@ func normalizeTypeName(typeStr string) string {
 // Handles nested brackets like StructField[map[string][]User]
 func extractTypeParameter(typeStr string) (string, error) {
 	return extractGenericTypeParameter(typeStr)
+}
+
+// isGenericTypeArgStruct checks whether the first type argument of a generic type
+// is a struct. Returns true if the type has no type arguments (not a generic),
+// or if the argument's underlying Go type is a struct.
+// Returns false if the argument's underlying type is a primitive (e.g., int, string),
+// meaning it's an enum or type alias that should not get a Public suffix.
+func isGenericTypeArgStruct(t types.Type) bool {
+	if t == nil {
+		return true
+	}
+
+	// Unwrap pointer
+	if ptr, ok := t.(*types.Pointer); ok {
+		return isGenericTypeArgStruct(ptr.Elem())
+	}
+
+	named, ok := t.(*types.Named)
+	if !ok {
+		return true
+	}
+
+	// Check if this is a generic instantiation with type arguments
+	typeArgs := named.TypeArgs()
+	if typeArgs == nil || typeArgs.Len() == 0 {
+		return true
+	}
+
+	// Get the first type argument and check its underlying type
+	arg := typeArgs.At(0)
+	_, isStruct := arg.Underlying().(*types.Struct)
+	return isStruct
+}
+
+// isUnderlyingStruct checks whether a type's underlying Go type is a struct.
+// Unwraps pointers and named types. Returns true for unknown types (safe default).
+func isUnderlyingStruct(t types.Type) bool {
+	if t == nil {
+		return true
+	}
+
+	// Unwrap pointer
+	if ptr, ok := t.(*types.Pointer); ok {
+		return isUnderlyingStruct(ptr.Elem())
+	}
+
+	named, ok := t.(*types.Named)
+	if !ok {
+		return true
+	}
+
+	_, isStruct := named.Underlying().(*types.Struct)
+	return isStruct
 }
 
 // extractGenericTypeParameter extracts the type parameter from any generic type
@@ -413,7 +486,7 @@ func buildSchemaForType(
 			bracketDepth--
 		}
 	}
-	
+
 	// If brackets are unbalanced, return a generic object schema instead of a bad reference
 	if bracketDepth != 0 {
 		console.Logger.Debug("Skipping reference creation for malformed type name with unbalanced brackets: %s\n", typeName)
@@ -424,7 +497,6 @@ func buildSchemaForType(
 	// Resolve definition name: short for unique types, full-path for NotUnique.
 	refName := resolveRefName(typeName, fullTypeStr)
 
-	// Add Public suffix if in public mode
 	if public {
 		refName = refName + "Public"
 	}

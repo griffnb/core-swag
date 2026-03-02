@@ -398,16 +398,47 @@ func TestCoreModelsIntegration(t *testing.T) {
 		assert.NotContains(t, swagger.Definitions, "constants.NJDLClassificationPublic")
 	})
 
-	// Test that enum definitions have proper type, not object
-	t.Run("Enum definitions should have proper enum type not object", func(t *testing.T) {
-		// constants.Status should be integer type with enum values, NOT type:"object"
-		statusDef := swagger.Definitions["constants.Status"]
-		assert.NotContains(t, statusDef.Type, "object",
-			"constants.Status should NOT be type:object")
-		assert.Contains(t, statusDef.Type, "integer",
-			"constants.Status should be type:integer")
-		assert.NotEmpty(t, statusDef.Enum,
-			"constants.Status should have enum values")
+	// Test that ALL enum definitions have proper type (integer/string), not object
+	t.Run("All enum definitions should have proper type not object", func(t *testing.T) {
+		intEnums := map[string]bool{
+			"constants.Status":              true,
+			"constants.Role":                true,
+			"constants.OrganizationType":    true,
+			"constants.NJDLClassification":  true,
+			"constants.UnionStatus":         true,
+			"constants.StyleType":           true,
+		}
+		stringEnums := map[string]bool{
+			"constants.GlobalConfigKey": true,
+		}
+
+		for name := range intEnums {
+			def, exists := swagger.Definitions[name]
+			if !exists {
+				t.Logf("SKIP: %s definition not present (may not be referenced by routes)", name)
+				continue
+			}
+			assert.NotContains(t, def.Type, "object",
+				"%s should NOT be type:object — it's an integer enum", name)
+			assert.Contains(t, def.Type, "integer",
+				"%s should be type:integer", name)
+			assert.NotEmpty(t, def.Enum,
+				"%s should have enum values", name)
+		}
+
+		for name := range stringEnums {
+			def, exists := swagger.Definitions[name]
+			if !exists {
+				t.Logf("SKIP: %s definition not present (may not be referenced by routes)", name)
+				continue
+			}
+			assert.NotContains(t, def.Type, "object",
+				"%s should NOT be type:object — it's a string enum", name)
+			assert.Contains(t, def.Type, "string",
+				"%s should be type:string", name)
+			assert.NotEmpty(t, def.Enum,
+				"%s should have enum values", name)
+		}
 	})
 
 	// Test that Public struct variants reference base enum names (no Public suffix)
@@ -433,6 +464,94 @@ func TestCoreModelsIntegration(t *testing.T) {
 		require.True(t, hasConfig, "AccountPublic should have config_key field")
 		assert.Equal(t, "#/definitions/constants.GlobalConfigKey", configSchema.Ref.String(),
 			"Public struct should reference base enum name, not constants.GlobalConfigKeyPublic")
+
+		// OrgAccountPublic has direct enum types (not wrapped in IntConstantField)
+		orgAccountPublic := swagger.Definitions["account.OrgAccountPublic"]
+		require.NotNil(t, orgAccountPublic, "OrgAccountPublic should exist")
+
+		// status is constants.Status directly (not wrapped in a generic)
+		orgStatus, hasOrgStatus := orgAccountPublic.Properties["status"]
+		require.True(t, hasOrgStatus, "OrgAccountPublic should have status field")
+		assert.Equal(t, "#/definitions/constants.Status", orgStatus.Ref.String(),
+			"Direct enum type should reference base name, not constants.StatusPublic")
+
+		// org_member_union_status is constants.UnionStatus directly
+		orgUnionStatus, hasOrgUnionStatus := orgAccountPublic.Properties["org_member_union_status"]
+		require.True(t, hasOrgUnionStatus, "OrgAccountPublic should have org_member_union_status field")
+		assert.Equal(t, "#/definitions/constants.UnionStatus", orgUnionStatus.Ref.String(),
+			"Direct enum type should reference base name, not constants.UnionStatusPublic")
+	})
+
+	// Test OrgAccount direct enum types — these use `constants.Status` directly
+	// (not wrapped in IntConstantField), exercising isUnderlyingStruct type checking
+	t.Run("OrgAccount direct enum fields should be proper enums not objects", func(t *testing.T) {
+		orgAccount := swagger.Definitions["account.OrgAccount"]
+		require.NotNil(t, orgAccount, "account.OrgAccount should exist")
+
+		// status is `constants.Status` (direct, not generic-wrapped)
+		statusProp, hasStatus := orgAccount.Properties["status"]
+		require.True(t, hasStatus, "OrgAccount should have status field")
+		assert.Equal(t, "#/definitions/constants.Status", statusProp.Ref.String(),
+			"Direct enum type constants.Status should be a $ref, not inlined as object")
+
+		// org_member_union_status is `constants.UnionStatus` (direct)
+		unionStatusProp, hasUnionStatus := orgAccount.Properties["org_member_union_status"]
+		require.True(t, hasUnionStatus, "OrgAccount should have org_member_union_status field")
+		assert.Equal(t, "#/definitions/constants.UnionStatus", unionStatusProp.Ref.String(),
+			"Direct enum type constants.UnionStatus should be a $ref, not inlined as object")
+
+		// org_member_status is `constants.Status` (direct)
+		orgMemberStatus, hasOrgMemberStatus := orgAccount.Properties["org_member_status"]
+		require.True(t, hasOrgMemberStatus, "OrgAccount should have org_member_status field")
+		assert.Equal(t, "#/definitions/constants.Status", orgMemberStatus.Ref.String(),
+			"Direct enum type constants.Status on org_member_status should be a $ref")
+	})
+
+	// Test OrgAccountPublic — direct enum types should NOT get Public suffix
+	t.Run("OrgAccountPublic direct enum fields should reference base enum names", func(t *testing.T) {
+		orgAccountPublic := swagger.Definitions["account.OrgAccountPublic"]
+		require.NotNil(t, orgAccountPublic, "account.OrgAccountPublic should exist")
+
+		// All these are direct enum types — isUnderlyingStruct returns false,
+		// so effectivePublic is set to false preventing "Public" suffix
+		statusProp, hasStatus := orgAccountPublic.Properties["status"]
+		require.True(t, hasStatus, "OrgAccountPublic should have status field")
+		assert.Equal(t, "#/definitions/constants.Status", statusProp.Ref.String(),
+			"Direct enum in Public struct should NOT get Public suffix")
+
+		unionStatusProp, hasUnionStatus := orgAccountPublic.Properties["org_member_union_status"]
+		require.True(t, hasUnionStatus, "OrgAccountPublic should have org_member_union_status field")
+		assert.Equal(t, "#/definitions/constants.UnionStatus", unionStatusProp.Ref.String(),
+			"Direct enum in Public struct should NOT get Public suffix")
+
+		orgMemberStatus, hasOrgMemberStatus := orgAccountPublic.Properties["org_member_status"]
+		require.True(t, hasOrgMemberStatus, "OrgAccountPublic should have org_member_status field")
+		assert.Equal(t, "#/definitions/constants.Status", orgMemberStatus.Ref.String(),
+			"Direct enum in Public struct should NOT get Public suffix")
+
+		// org_member is a struct, so it SHOULD get Public suffix
+		orgMemberProp, hasOrgMember := orgAccountPublic.Properties["org_member"]
+		require.True(t, hasOrgMember, "OrgAccountPublic should have org_member field")
+		assert.Equal(t, "#/definitions/account.JoinedOrgMemberPublic", orgMemberProp.Ref.String(),
+			"Struct ref in Public variant should get Public suffix")
+	})
+
+	// Test JoinedOrgMember — nested struct with direct enum types
+	t.Run("JoinedOrgMemberPublic direct enum fields should reference base enum names", func(t *testing.T) {
+		jomPublic := swagger.Definitions["account.JoinedOrgMemberPublic"]
+		require.NotNil(t, jomPublic, "account.JoinedOrgMemberPublic should exist")
+
+		// union_status is `constants.UnionStatus` (direct)
+		unionStatus, hasUS := jomPublic.Properties["union_status"]
+		require.True(t, hasUS, "JoinedOrgMemberPublic should have union_status field")
+		assert.Equal(t, "#/definitions/constants.UnionStatus", unionStatus.Ref.String(),
+			"Direct enum in nested Public struct should NOT get Public suffix")
+
+		// status is `constants.Status` (direct)
+		status, hasS := jomPublic.Properties["status"]
+		require.True(t, hasS, "JoinedOrgMemberPublic should have status field")
+		assert.Equal(t, "#/definitions/constants.Status", status.Ref.String(),
+			"Direct enum in nested Public struct should NOT get Public suffix")
 	})
 
 	// Write actual output to a file for comparison

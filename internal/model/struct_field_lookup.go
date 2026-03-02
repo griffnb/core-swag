@@ -19,7 +19,6 @@ import (
 var (
 	globalPackageCache = make(map[string]*packages.Package)
 	globalCacheMutex   sync.RWMutex
-	debugMode          = false // Set to true to enable debug logging
 )
 
 // cacheHits and cacheMisses track how often LookupStructFields resolves a
@@ -84,7 +83,6 @@ type CoreStructParser struct {
 	packageCache  map[string]*packages.Package // Cache loaded packages
 	typeCache     map[string]*StructBuilder    // Cache processed types
 	cacheMutex    sync.RWMutex                 // Protect caches
-	packageLoader sync.Once                    // Load packages only once
 	sharedFileSet *token.FileSet               // Shared FileSet for fallback packages.Load calls
 }
 
@@ -122,7 +120,7 @@ func toPascalCase(s string) string {
 	return strings.Join(parts, "")
 }
 
-func (c *CoreStructParser) LookupStructFields(baseModule, importPath, typeName string) *StructBuilder {
+func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *StructBuilder {
 	// Check type cache first
 	cacheKey := importPath + ":" + typeName
 	c.cacheMutex.RLock()
@@ -354,7 +352,7 @@ func (c *CoreStructParser) processStructField(f *StructField, packageMap map[str
 func (c *CoreStructParser) ExtractFieldsRecursive(
 	pkg *packages.Package,
 	typeName string,
-	packageMap map[string]*packages.Package,
+	_ map[string]*packages.Package,
 	visited map[string]bool,
 ) []*StructField {
 	// Create a unique cache key with package path
@@ -543,17 +541,24 @@ func shouldTreatAsSwaggerPrimitive(named *types.Named) bool {
 
 	// Types that are structs in Go but should be primitives in Swagger
 	primitiveTypes := map[string][]string{
-		"time":                              {"Time"},
-		"github.com/shopspring/decimal":     {"Decimal"},
-		"gopkg.in/guregu/null.v4":           {"String", "Int", "Float", "Bool", "Time"},
-		"database/sql":                      {"NullString", "NullInt64", "NullFloat64", "NullBool", "NullTime"},
-		"github.com/griffnb/core/lib/types": {"UUID"},
-		"github.com/google/uuid":            {"UUID"},
+		"time":                          {"Time"},
+		"github.com/shopspring/decimal": {"Decimal"},
+		"gopkg.in/guregu/null.v4":       {"String", "Int", "Float", "Bool", "Time"},
+		"database/sql":                  {"NullString", "NullInt64", "NullFloat64", "NullBool", "NullTime"},
 	}
+
+	globalNames := []string{"UUID"}
 
 	if typeNames, ok := primitiveTypes[pkgPath]; ok {
 		for _, name := range typeNames {
 			if typeName == name {
+				return true
+			}
+		}
+	} else {
+		// Check global names for any package (e.g., if multiple packages define a UUID type, we want to treat all of them as primitives)
+		for _, globalName := range globalNames {
+			if typeName == globalName {
 				return true
 			}
 		}
@@ -789,23 +794,13 @@ func buildSchemasRecursive(
 		// Otherwise, construct the path by replacing the last segment
 		nestedPkgPath := pkgPath
 		if nestedPackageName != packageName {
-			// Different package - need to construct the full path
-			// e.g., if pkgPath is "github.com/griffnb/core-swag/testing/testdata/core_models/account"
-			// and nestedPackageName is "billing_plan"
-			// then nestedPkgPath should be "github.com/griffnb/core-swag/testing/testdata/core_models/billing_plan"
-			if idx := strings.LastIndex(pkgPath, "/"); idx >= 0 {
-				nestedPkgPath = pkgPath[:idx+1] + nestedPackageName
-			} else {
-				nestedPkgPath = nestedPackageName
-			}
+			nestedPkgPath = resolvePackagePath(pkgPath, nestedPackageName)
 		}
 
 		// Need to lookup the nested type's fields using the correct package path
 		// Strip "Public" suffix for lookup — enum/non-struct types never have Public variants
 		cleanNestedType := baseNestedType
-		if strings.HasSuffix(cleanNestedType, "Public") {
-			cleanNestedType = strings.TrimSuffix(cleanNestedType, "Public")
-		}
+		cleanNestedType = strings.TrimSuffix(cleanNestedType, "Public")
 
 		nestedBuilder := parser.LookupStructFields(baseModule, nestedPkgPath, cleanNestedType)
 
@@ -866,7 +861,17 @@ func buildSchemasRecursive(
 		}
 
 		// Generate both public and non-public variants for nested struct types
-		err = buildSchemasRecursive(nestedBuilder, cleanNestedType, false, allSchemas, processed, parser, baseModule, nestedPkgPath, nestedPackageName)
+		err = buildSchemasRecursive(
+			nestedBuilder,
+			cleanNestedType,
+			false,
+			allSchemas,
+			processed,
+			parser,
+			baseModule,
+			nestedPkgPath,
+			nestedPackageName,
+		)
 		if err != nil {
 			return err
 		}
