@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-openapi/spec"
+	"github.com/griffnb/core-swag/internal/domain"
 	"github.com/griffnb/core-swag/internal/model"
 )
 
@@ -14,15 +15,15 @@ import (
 // BuildAllSchemas which generates both public and non-public variants and
 // resolves transitive nested dependencies. For non-struct types (enums, aliases)
 // it uses the SchemaBuilder.
-func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]string) error {
+func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]RefInfo) error {
 	if s.swagger.Definitions == nil {
 		s.swagger.Definitions = make(spec.Definitions)
 	}
 
 	processed := make(map[string]bool)
 
-	for refName, source := range referencedTypes {
-		if err := s.buildSchemaForRef(refName, source, processed); err != nil {
+	for refName, info := range referencedTypes {
+		if err := s.buildSchemaForRef(refName, info, processed); err != nil {
 			return err
 		}
 	}
@@ -38,7 +39,7 @@ func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]string) er
 }
 
 // buildSchemaForRef resolves a $ref name and builds its schema.
-func (s *Service) buildSchemaForRef(refName, source string, processed map[string]bool) error {
+func (s *Service) buildSchemaForRef(refName string, info RefInfo, processed map[string]bool) error {
 	if processed[refName] {
 		return nil
 	}
@@ -53,13 +54,25 @@ func (s *Service) buildSchemaForRef(refName, source string, processed map[string
 		return nil
 	}
 
-	// Direct qualified lookup — all refs should now use package.Type format
-	typeDef := s.registry.FindTypeSpecByName(baseName)
+	// Try full-path lookup first (unambiguous, bypasses NotUnique collision)
+	var typeDef *domain.TypeSpecDef
+	if info.TypePath != "" {
+		lookupPath := info.TypePath
+		if strings.HasSuffix(lookupPath, "Public") {
+			lookupPath = strings.TrimSuffix(lookupPath, "Public")
+		}
+		typeDef = s.registry.FindTypeSpecByFullPath(lookupPath)
+	}
+
+	// Fall back to short name lookup
+	if typeDef == nil {
+		typeDef = s.registry.FindTypeSpecByName(baseName)
+	}
 
 	if typeDef == nil {
 		if s.config.Debug != nil {
-			if source != "" {
-				s.config.Debug.Printf("Orchestrator: Skipping unknown ref %s (not in registry) referenced by %s", refName, source)
+			if info.Source != "" {
+				s.config.Debug.Printf("Orchestrator: Skipping unknown ref %s (not in registry) referenced by %s", refName, info.Source)
 			} else {
 				s.config.Debug.Printf("Orchestrator: Skipping unknown ref %s (not in registry)", refName)
 			}

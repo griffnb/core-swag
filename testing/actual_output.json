@@ -1229,7 +1229,10 @@
           "format": "int64"
         },
         "shared_address_update": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/account.SharedAddressUpdate"
+          }
         },
         "show_new_data_brokers": {
           "type": "integer",
@@ -1315,7 +1318,10 @@
           "format": "int64"
         },
         "shared_address_update": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/account.SharedAddressUpdatePublic"
+          }
         },
         "show_new_data_brokers": {
           "type": "integer",
@@ -1768,6 +1774,64 @@
     "account.PropertiesPublic": {
       "type": "object",
       "title": "AccountPropertiesPublic"
+    },
+    "account.SharedAddressUpdate": {
+      "type": "object",
+      "title": "AccountSharedAddressUpdate",
+      "required": [
+        "update_type",
+        "id",
+        "previous_id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "previous_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "update_type": {
+          "$ref": "#/definitions/account.SharedAddressUpdateType"
+        }
+      }
+    },
+    "account.SharedAddressUpdatePublic": {
+      "type": "object",
+      "title": "AccountSharedAddressUpdatePublic",
+      "required": [
+        "update_type",
+        "id",
+        "previous_id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "previous_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "update_type": {
+          "$ref": "#/definitions/account.SharedAddressUpdateType"
+        }
+      }
+    },
+    "account.SharedAddressUpdateType": {
+      "type": "integer",
+      "title": "AccountSharedAddressUpdateType",
+      "enum": [
+        1,
+        2,
+        3
+      ],
+      "x-enum-varnames": [
+        "UPDATE_TYPE_NEW",
+        "UPDATE_TYPE_UPDATE",
+        "UPDATE_TYPE_DELETE"
+      ]
     },
     "account.SignupProperties": {
       "type": "object",

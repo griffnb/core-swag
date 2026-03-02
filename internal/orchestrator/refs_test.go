@@ -7,7 +7,7 @@ import (
 )
 
 // hasRef checks whether a ref name exists in the collected refs map.
-func hasRef(refs map[string]string, key string) bool {
+func hasRef(refs map[string]RefInfo, key string) bool {
 	_, ok := refs[key]
 	return ok
 }
@@ -364,8 +364,8 @@ func TestCollectReferencedTypes_SourceInfo(t *testing.T) {
 
 	refs := CollectReferencedTypes(routes)
 
-	source := refs["user.CreateInput"]
-	if source == "" {
+	info := refs["user.CreateInput"]
+	if info.Source == "" {
 		t.Fatal("expected user.CreateInput in refs")
 	}
 	if !hasRef(refs, "user.CreateInput") {
@@ -373,8 +373,8 @@ func TestCollectReferencedTypes_SourceInfo(t *testing.T) {
 	}
 	// Verify source contains route info
 	for _, expected := range []string{"POST", "/api/v1/users", "CreateUser", "users_controller.go", "42"} {
-		if !contains(source, expected) {
-			t.Errorf("expected source to contain %q, got %q", expected, source)
+		if !contains(info.Source, expected) {
+			t.Errorf("expected source to contain %q, got %q", expected, info.Source)
 		}
 	}
 }

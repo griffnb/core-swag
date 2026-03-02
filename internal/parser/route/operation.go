@@ -2,6 +2,7 @@ package route
 
 import (
 	"fmt"
+	"go/ast"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -25,8 +26,9 @@ type operation struct {
 	consumes     []string
 	produces     []string
 	isPublic     bool
-	filePath     string // Source file path for x-path extension
-	lineNumber   int    // Function line number for x-line extension
+	filePath     string    // Source file path for x-path extension
+	lineNumber   int       // Function line number for x-line extension
+	astFile      *ast.File // AST file for import resolution
 }
 
 // routerPath represents a single @router annotation

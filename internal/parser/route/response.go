@@ -47,7 +47,7 @@ func (s *Service) parseResponseWithSchema(op *operation, matches []string) error
 	}
 
 	// Build the schema with package context and @Public support
-	schema := s.buildSchemaWithPackageAndPublic(schemaType, dataType, op.packageName, op.isPublic)
+	schema := s.buildSchemaWithPackageAndPublic(schemaType, dataType, op.packageName, op.isPublic, op.astFile)
 
 	// Parse status codes (can be comma-separated)
 	for _, codeStr := range strings.Split(statusCodes, ",") {
@@ -114,27 +114,28 @@ func (s *Service) buildSchema(schemaType, dataType string) *routedomain.Schema {
 
 // buildSchemaWithPackage builds a schema with package qualification for custom types
 func (s *Service) buildSchemaWithPackage(schemaType, dataType, packageName string) *routedomain.Schema {
-	return s.buildSchemaWithPackageAndPublic(schemaType, dataType, packageName, false)
+	return s.buildSchemaWithPackageAndPublic(schemaType, dataType, packageName, false, nil)
 }
 
-// buildSchemaWithPackageAndPublic builds a schema with package qualification and @Public support
-func (s *Service) buildSchemaWithPackageAndPublic(schemaType, dataType, packageName string, isPublic bool) *routedomain.Schema {
+// buildSchemaWithPackageAndPublic builds a schema with package qualification and @Public support.
+// file is used for import resolution to produce fully qualified TypePath values.
+func (s *Service) buildSchemaWithPackageAndPublic(schemaType, dataType, packageName string, isPublic bool, file *ast.File) *routedomain.Schema {
 	schema := &routedomain.Schema{}
 
 	// Check for AllOf combined type syntax: Response{data=Account}
 	if strings.Contains(dataType, "{") {
 		// Use AllOf composition
-		return s.buildAllOfResponseSchema(dataType, packageName, isPublic)
+		return s.buildAllOfResponseSchema(dataType, packageName, isPublic, file)
 	}
 
 	if schemaType == "array" {
 		schema.Type = "array"
 		// For array items, apply @Public flag
-		itemSchema := s.buildSchemaForTypeWithPublic(dataType, packageName, isPublic)
+		itemSchema := s.buildSchemaForTypeWithPublic(dataType, packageName, isPublic, file)
 		schema.Items = itemSchema
 	} else {
 		// Build schema for the type with @Public flag
-		return s.buildSchemaForTypeWithPublic(dataType, packageName, isPublic)
+		return s.buildSchemaForTypeWithPublic(dataType, packageName, isPublic, file)
 	}
 
 	return schema
@@ -147,11 +148,12 @@ func (s *Service) buildSchemaForType(dataType string) *routedomain.Schema {
 
 // buildSchemaForTypeWithPackage builds a schema for a single type with package qualification
 func (s *Service) buildSchemaForTypeWithPackage(dataType, packageName string) *routedomain.Schema {
-	return s.buildSchemaForTypeWithPublic(dataType, packageName, false)
+	return s.buildSchemaForTypeWithPublic(dataType, packageName, false, nil)
 }
 
-// buildSchemaForTypeWithPublic builds a schema for a single type with optional Public suffix
-func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isPublic bool) *routedomain.Schema {
+// buildSchemaForTypeWithPublic builds a schema for a single type with optional Public suffix.
+// file is used for import resolution to produce fully qualified TypePath values.
+func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isPublic bool, file *ast.File) *routedomain.Schema {
 	// Check if it's a primitive type
 	primitiveType := convertTypeToSchemaType(dataType)
 	if primitiveType != "object" {
@@ -172,14 +174,21 @@ func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isP
 		qualifiedType = packageName + "." + dataType
 	}
 
+	// Resolve full import path for unambiguous registry lookup.
+	// Do this before appending Public suffix since the registry stores base types.
+	typePath := s.resolveTypePath(qualifiedType, file)
+
 	// If @Public annotation is present, only append Public suffix for struct types.
 	// Enums and other non-struct types are identical regardless of public context.
 	if isPublic && !s.hasNoPublicAnnotation(qualifiedType) && s.isStructType(qualifiedType) {
 		qualifiedType = qualifiedType + "Public"
+		if typePath != "" {
+			typePath += "Public"
+		}
 	}
 
 	ref := "#/definitions/" + qualifiedType
-	return &routedomain.Schema{Ref: ref}
+	return &routedomain.Schema{Ref: ref, TypePath: typePath}
 }
 
 // convertTypeToSchemaType converts a data type to a schema type.
@@ -269,6 +278,38 @@ func (s *Service) parseHeader(op *operation, line string) error {
 	}
 
 	return nil
+}
+
+// resolveTypePathsInSchema recursively walks a domain schema tree and resolves TypePath
+// for any schema that has a $ref but no TypePath yet.
+func (s *Service) resolveTypePathsInSchema(schema *routedomain.Schema, file *ast.File) {
+	if schema == nil {
+		return
+	}
+	if schema.Ref != "" && schema.TypePath == "" {
+		typeName := strings.TrimPrefix(schema.Ref, "#/definitions/")
+		// Strip Public suffix for lookup since registry stores base types
+		lookupName := typeName
+		isPublicRef := strings.HasSuffix(lookupName, "Public")
+		if isPublicRef {
+			lookupName = strings.TrimSuffix(lookupName, "Public")
+		}
+		if tp := s.resolveTypePath(lookupName, file); tp != "" {
+			if isPublicRef {
+				schema.TypePath = tp + "Public"
+			} else {
+				schema.TypePath = tp
+			}
+		}
+	}
+	s.resolveTypePathsInSchema(schema.Items, file)
+	s.resolveTypePathsInSchema(schema.AdditionalProperties, file)
+	for _, prop := range schema.Properties {
+		s.resolveTypePathsInSchema(prop, file)
+	}
+	for _, allOf := range schema.AllOf {
+		s.resolveTypePathsInSchema(allOf, file)
+	}
 }
 
 // isStructType checks if a qualified type name refers to a struct type via the registry.

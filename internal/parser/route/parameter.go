@@ -72,19 +72,23 @@ func (s *Service) parseParam(op *operation, line string) error {
 			if op.packageName != "" && !strings.Contains(dataType, ".") {
 				qualifiedType = op.packageName + "." + dataType
 			}
+			// Resolve full import path for unambiguous registry lookup
+			typePath := s.resolveTypePath(qualifiedType, op.astFile)
 			// Build schema for model type
 			if isArray {
 				// Array of models
 				param.Schema = &domain.Schema{
 					Type: "array",
 					Items: &domain.Schema{
-						Ref: "#/definitions/" + qualifiedType,
+						Ref:      "#/definitions/" + qualifiedType,
+						TypePath: typePath,
 					},
 				}
 			} else {
 				// Single model
 				param.Schema = &domain.Schema{
-					Ref: "#/definitions/" + qualifiedType,
+					Ref:      "#/definitions/" + qualifiedType,
+					TypePath: typePath,
 				}
 			}
 		}

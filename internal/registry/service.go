@@ -22,6 +22,7 @@ type Service struct {
 	packages          map[string]*domain.PackageDefinitions
 	uniqueDefinitions map[string]*domain.TypeSpecDef
 	parseDependency   domain.ParseFlag
+	packagePrefixes   []string
 	debug             Debugger
 }
 
@@ -42,6 +43,14 @@ func (s *Service) SetParseDependency(flag domain.ParseFlag) {
 // SetDebugger sets the debugger.
 func (s *Service) SetDebugger(debug Debugger) {
 	s.debug = debug
+}
+
+// SetPackagePrefixes sets the project package prefixes used for disambiguating
+// NotUnique types. When a short name lookup fails (e.g., "address.Address"),
+// the registry searches NotUnique entries and prefers the one whose PkgPath
+// matches a project prefix over external dependencies.
+func (s *Service) SetPackagePrefixes(prefixes []string) {
+	s.packagePrefixes = prefixes
 }
 
 // ParseFile parses a source file.
@@ -145,9 +154,61 @@ func (s *Service) AddPackages(pkgs []*packages.Package) {
 }
 
 // FindTypeSpecByName looks up a type definition by its qualified name
-// (e.g., "account.Account"). Returns nil if not found.
+// (e.g., "account.Account"). When a direct lookup fails (typically because
+// the type was marked NotUnique due to a name collision with an external
+// dependency), it falls back to searching all NotUnique entries whose
+// SimpleTypeName matches, preferring project-local types.
 func (s *Service) FindTypeSpecByName(name string) *domain.TypeSpecDef {
-	return s.uniqueDefinitions[name]
+	if def := s.uniqueDefinitions[name]; def != nil {
+		return def
+	}
+
+	// Fallback: search for NotUnique types whose short name matches.
+	// This handles collisions where e.g. "address.Address" exists in both
+	// the project and an external dependency like chargebee-go.
+	var candidate *domain.TypeSpecDef
+	for _, def := range s.uniqueDefinitions {
+		if def == nil || !def.NotUnique {
+			continue
+		}
+		if def.SimpleTypeName() != name {
+			continue
+		}
+		// Prefer the type whose PkgPath matches a project package prefix.
+		if s.isProjectLocal(def) {
+			return def
+		}
+		// Keep as fallback if no project-local match is found.
+		if candidate == nil {
+			candidate = def
+		}
+	}
+	return candidate
+}
+
+// isProjectLocal returns true if the type's PkgPath starts with any of the
+// configured project package prefixes.
+func (s *Service) isProjectLocal(def *domain.TypeSpecDef) bool {
+	for _, prefix := range s.packagePrefixes {
+		if strings.HasPrefix(def.PkgPath, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// FindTypeSpecByFullPath looks up a type by its full import path + type name
+// (e.g., "github.com/org/repo/internal/models/address.Address").
+// This bypasses the uniqueDefinitions collision issue by looking up directly
+// in the packages map.
+func (s *Service) FindTypeSpecByFullPath(fullPath string) *domain.TypeSpecDef {
+	lastDot := strings.LastIndex(fullPath, ".")
+	if lastDot < 0 {
+		return nil
+	}
+	pkgPath := fullPath[:lastDot]
+	typeName := fullPath[lastDot+1:]
+	return s.findTypeSpec(pkgPath, typeName)
 }
 
 // AddTypeSpecForTest directly inserts a type definition into the registry.

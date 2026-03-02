@@ -104,6 +104,7 @@ func New(config *Config) *Service {
 	// Create registry service
 	registryService := registry.NewService()
 	registryService.SetParseDependency(config.ParseDependency)
+	registryService.SetPackagePrefixes(config.PackagePrefix)
 	if config.Debug != nil {
 		registryService.SetDebugger(config.Debug)
 	}

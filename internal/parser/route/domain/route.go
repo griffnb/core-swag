@@ -141,6 +141,10 @@ type Schema struct {
 	// Ref is a reference to another schema ($ref)
 	Ref string
 
+	// TypePath is the fully qualified import path for registry lookup
+	// (e.g., "github.com/.../address.Address"). Empty when unresolved.
+	TypePath string
+
 	// Items for array schemas
 	Items *Schema
 

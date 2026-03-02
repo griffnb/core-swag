@@ -1,5 +1,27 @@
 # Core-Swag Change Log
 
+## 2026-03-02: Fix route $ref lookups using fully qualified package paths
+
+**Problem:**
+Route annotations reference types by short names (e.g., `@Success 200 {object} Address`). When the registry has a name collision (e.g., project's `address.Address` vs chargebee-go's `address.Address`), the short name key is deleted and replaced with full-path keys. The route's short-name lookup then fails with "Skipping unknown ref".
+
+**Solution:**
+Resolve imports at route parse time. The route parser now uses `FindTypeSpec()` with the AST file's imports to resolve type names to full import paths. This `TypePath` is stored on `routedomain.Schema` and propagated through `CollectReferencedTypes` as `RefInfo`. The orchestrator's `buildSchemaForRef` tries `FindTypeSpecByFullPath` first (unambiguous, bypasses NotUnique collision), falling back to `FindTypeSpecByName`.
+
+**Files changed:**
+- `internal/parser/route/domain/route.go` — Added `TypePath` field to Schema
+- `internal/parser/route/operation.go` — Added `astFile *ast.File` to operation struct
+- `internal/parser/route/service.go` — Set astFile on operation, added `resolveTypePath()`
+- `internal/parser/route/response.go` — Threaded `*ast.File` through build methods, set TypePath, added `resolveTypePathsInSchema`
+- `internal/parser/route/parameter.go` — Set TypePath on body param schema refs
+- `internal/parser/route/allof.go` — Threaded `*ast.File` through, resolve TypePath after allOf conversion
+- `internal/orchestrator/refs.go` — Added `RefInfo` struct, collect TypePath alongside source
+- `internal/orchestrator/schema_builder.go` — Use TypePath for `FindTypeSpecByFullPath` before falling back
+- `internal/orchestrator/refs_test.go` — Updated for RefInfo type
+- `internal/registry/service.go` — Added `FindTypeSpecByFullPath()` method
+
+**Result:** test-project-1 has zero "Skipping unknown ref" messages. test-project-2 only has expected unknowns (inline `object{...}` syntax, `[]interface{}` — not real struct types).
+
 ## 2026-03-02: Fix StructField[map[string]any] producing bogus $ref
 
 **Problem:**

@@ -48,6 +48,20 @@ func (s *Service) SetRegistry(registry TypeRegistry) {
 	s.registry = registry
 }
 
+// resolveTypePath resolves a qualified type name (e.g., "address.Address") to its
+// full import path (e.g., "github.com/.../address.Address") using the file's imports.
+// Returns empty string if resolution fails (caller falls back to short name).
+func (s *Service) resolveTypePath(qualifiedType string, file *ast.File) string {
+	if s.registry == nil || file == nil {
+		return ""
+	}
+	typeDef := s.registry.FindTypeSpec(qualifiedType, file)
+	if typeDef == nil {
+		return ""
+	}
+	return typeDef.FullPath()
+}
+
 // ParseRoutes extracts all routes from an AST file.
 // filePath is the source file path and fset is used to resolve line numbers.
 // Both are optional — if provided, routes will include x-path and x-line metadata.
@@ -73,6 +87,7 @@ func (s *Service) ParseRoutes(astFile *ast.File, filePath string, fset *token.Fi
 		if operation == nil {
 			continue
 		}
+		operation.astFile = astFile
 
 		// Convert operation to routes (one operation can have multiple routes)
 		operationRoutes := s.operationToRoutes(operation)

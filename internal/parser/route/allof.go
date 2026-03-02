@@ -1,6 +1,7 @@
 package route
 
 import (
+	"go/ast"
 	"strings"
 
 	"github.com/go-openapi/spec"
@@ -9,18 +10,19 @@ import (
 )
 
 // buildAllOfResponseSchema handles combined type syntax like Response{data=Account}
-// It uses Phase 1.3 AllOf composition functions
-func (s *Service) buildAllOfResponseSchema(dataType, packageName string, isPublic bool) *domain.Schema {
+// It uses Phase 1.3 AllOf composition functions.
+// file is used for import resolution to produce fully qualified TypePath values.
+func (s *Service) buildAllOfResponseSchema(dataType, packageName string, isPublic bool, file *ast.File) *domain.Schema {
 	// Parse combined type syntax
 	baseType, overrides, err := schema.ParseCombinedType(dataType)
 	if err != nil {
 		// If parsing fails, fall back to regular schema building
-		return s.buildSchemaForTypeWithPublic(dataType, packageName, isPublic)
+		return s.buildSchemaForTypeWithPublic(dataType, packageName, isPublic, file)
 	}
 
 	// If no overrides, just return regular schema
 	if len(overrides) == 0 {
-		return s.buildSchemaForTypeWithPublic(baseType, packageName, isPublic)
+		return s.buildSchemaForTypeWithPublic(baseType, packageName, isPublic, file)
 	}
 
 	// Build base schema (qualified with package if needed)
@@ -120,7 +122,12 @@ func (s *Service) buildAllOfResponseSchema(dataType, packageName string, isPubli
 	allOfSchema := schema.BuildAllOfSchema(baseSchema, overrideSchemas)
 
 	// Convert spec.Schema to domain.Schema
-	return convertSpecSchemaToDomain(allOfSchema)
+	result := convertSpecSchemaToDomain(allOfSchema)
+
+	// Resolve TypePath on all nested $ref schemas for unambiguous registry lookups
+	s.resolveTypePathsInSchema(result, file)
+
+	return result
 }
 
 // convertSpecSchemaToDomain converts a spec.Schema to domain.Schema

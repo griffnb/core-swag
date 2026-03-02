@@ -7,13 +7,20 @@ import (
 	routedomain "github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
+// RefInfo holds both the human-readable source location and the resolved full
+// import path for a $ref type. TypePath enables unambiguous registry lookups
+// when short names collide (e.g., project vs dependency both define "address.Address").
+type RefInfo struct {
+	Source   string // human-readable source location
+	TypePath string // full import path (empty if unresolved)
+}
+
 // CollectReferencedTypes walks all routes and returns the unique set of type names
 // referenced in $ref strings from parameters, responses, and nested schemas.
 // The returned map keys are type names with the "#/definitions/" prefix stripped.
-// Values are source locations describing where the ref was first encountered
-// (e.g., "POST /users (controllers.go:42)").
-func CollectReferencedTypes(routes []*routedomain.Route) map[string]string {
-	refs := make(map[string]string)
+// Values contain source locations and resolved full import paths.
+func CollectReferencedTypes(routes []*routedomain.Route) map[string]RefInfo {
+	refs := make(map[string]RefInfo)
 	for _, route := range routes {
 		if route == nil {
 			continue
@@ -53,7 +60,7 @@ func routeSource(r *routedomain.Route) string {
 }
 
 // collectRefsFromRoute extracts all $ref type names from a single route.
-func collectRefsFromRoute(r *routedomain.Route, refs map[string]string, source string) {
+func collectRefsFromRoute(r *routedomain.Route, refs map[string]RefInfo, source string) {
 	for i := range r.Parameters {
 		if r.Parameters[i].Schema != nil {
 			collectRefsFromSchema(r.Parameters[i].Schema, refs, source)
@@ -67,7 +74,7 @@ func collectRefsFromRoute(r *routedomain.Route, refs map[string]string, source s
 }
 
 // collectRefsFromSchema recursively walks a schema tree and collects all $ref type names.
-func collectRefsFromSchema(s *routedomain.Schema, refs map[string]string, source string) {
+func collectRefsFromSchema(s *routedomain.Schema, refs map[string]RefInfo, source string) {
 	if s == nil {
 		return
 	}
@@ -75,7 +82,10 @@ func collectRefsFromSchema(s *routedomain.Schema, refs map[string]string, source
 		typeName := strings.TrimPrefix(s.Ref, "#/definitions/")
 		if typeName != "" {
 			if _, exists := refs[typeName]; !exists {
-				refs[typeName] = source
+				refs[typeName] = RefInfo{
+					Source:   source,
+					TypePath: s.TypePath,
+				}
 			}
 		}
 	}
