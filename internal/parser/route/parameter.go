@@ -171,9 +171,8 @@ func parseParamAttributes(param *domain.Parameter, attrs string) error {
 					enums = append(enums, float64(numInt)) // JSON uses float64 for numbers
 					continue
 				}
-				// Try as float
-				var numFloat float64
-				if _, err := fmt.Sscanf(e, "%f", &numFloat); err == nil {
+				// Try as float (reject infinity/NaN which are invalid in JSON)
+				if numFloat, err := parseFiniteFloat(e); err == nil {
 					enums = append(enums, numFloat)
 					continue
 				}
@@ -208,7 +207,7 @@ func parseParamAttributes(param *domain.Parameter, attrs string) error {
 			var numInt int
 			if _, err := fmt.Sscanf(attrValue, "%d", &numInt); err == nil {
 				param.Default = float64(numInt) // JSON uses float64
-			} else if numFloat, err := parseFloat(attrValue); err == nil {
+			} else if numFloat, err := parseFiniteFloat(attrValue); err == nil {
 				// Try as float
 				param.Default = numFloat
 			} else if attrValue == "true" {

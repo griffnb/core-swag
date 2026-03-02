@@ -2297,34 +2297,6 @@
       "type": "object",
       "title": "BillingPlanFeesPublic"
     },
-    "billing_plan.Properties": {
-      "type": "object",
-      "title": "BillingPlanProperties",
-      "required": [
-        "pricing_text",
-        "default_discount_code"
-      ],
-      "properties": {
-        "default_discount_code": {
-          "type": "string"
-        },
-        "pricing_text": {
-          "type": "string"
-        }
-      }
-    },
-    "billing_plan.PropertiesPublic": {
-      "type": "object",
-      "title": "BillingPlanPropertiesPublic",
-      "required": [
-        "pricing_text"
-      ],
-      "properties": {
-        "pricing_text": {
-          "type": "string"
-        }
-      }
-    },
     "constants.GlobalConfigKey": {
       "type": "string",
       "title": "ConstantsGlobalConfigKey",

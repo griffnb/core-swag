@@ -109,11 +109,15 @@ func ParameterToSpec(param domain.Parameter) spec.Parameter {
 		}
 
 		if param.Default != nil {
-			specParam.Default = param.Default
+			if f, ok := param.Default.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
+				log.Printf("WARNING: Parameter %s has infinite/NaN default value: %v", param.Name, f)
+			} else {
+				specParam.Default = param.Default
+			}
 		}
 
 		if len(param.Enum) > 0 {
-			specParam.Enum = param.Enum
+			specParam.Enum = sanitizeEnumValues(param.Name, param.Enum)
 		}
 
 		if param.Minimum != nil {
@@ -253,4 +257,17 @@ func SchemaToSpec(schema *domain.Schema) *spec.Schema {
 	}
 
 	return specSchema
+}
+
+// sanitizeEnumValues filters out infinity/NaN float64 values from enum slices
+func sanitizeEnumValues(paramName string, enums []interface{}) []interface{} {
+	sanitized := make([]interface{}, 0, len(enums))
+	for _, v := range enums {
+		if f, ok := v.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
+			log.Printf("WARNING: Parameter %s has infinite/NaN enum value: %v — skipping", paramName, f)
+			continue
+		}
+		sanitized = append(sanitized, v)
+	}
+	return sanitized
 }
