@@ -1,5 +1,33 @@
 # Core-Swag Change Log
 
+## 2026-03-02: Fix real project schema generation (4 interconnected bugs)
+
+**Problem:**
+`TestRealProjectIntegration` (atlas-go) produced 594 definitions with 0 properties and 0 constants. The example output had 485 defs with properties and 85 constants. Four interconnected bugs caused this:
+
+**Root causes and fixes:**
+
+1. **`SeedGlobalPackageCache` cache poisoning** (`struct_field_lookup.go`): When seeding the cache, packages were walked depth-first. If a controller was visited before a model it imports, the model got cached with the syntax-less import version. The `visited` map then prevented the direct (syntax-bearing) version from being cached.
+   - **Fix:** Two-pass seeding: Pass 1 caches all directly loaded packages (with Syntax). Pass 2 walks transitive imports, only caching packages not already present.
+
+2. **`LookupStructFields` used syntax-less cached packages** (`struct_field_lookup.go`): Packages cached without AST syntax (from transitive deps) were treated as valid cache hits, resulting in 0 fields extracted.
+   - **Fix:** Check `len(pkg.Syntax) == 0` on cached packages; treat as cache miss if no syntax.
+
+3. **`normalizeTypeName` broke generic types** (`struct_field.go`): For `*github.com/.../fields.IntConstantField[github.com/.../constants.Role]`, it found the last `/` inside the brackets, producing `constants.Role]` instead of `fields.IntConstantField[constants.Role]`. This caused `IsFieldsWrapper()` to return false, skipping the `IntConstantField` enum detection path entirely.
+   - **Fix:** Handle generics by normalizing base type and type parameters separately (recursive).
+
+4. **Nested types lost full import paths** (`struct_field.go`, `struct_field_lookup.go`): `BuildSchema()` and `getPrimitiveSchemaForFieldType()` passed short ref names into `nestedTypes`, discarding the full import path. `buildSchemasRecursive()` then used sibling-path guessing which fails for non-sibling packages.
+   - **Fix:** Propagate `fullTypeStr` in `nestedTypes`. Parse three formats in `buildSchemasRecursive`: full import paths, short qualified, and unqualified.
+
+5. **`TestRealProjectIntegration` config** (`core_models_integration_test.go`): Test didn't set `ParseGoPackages: true`, so `LoadWithGoPackages` was never called, cache seeding was skipped, and fallback `packages.Load` calls couldn't resolve cross-module packages.
+   - **Fix:** Set `ParseGoPackages: true` and use absolute path for `mainAPIFile`.
+
+**Verification:**
+- `TestCoreModelsIntegration`: All 17 subtests pass
+- `TestRealProjectIntegration`: 2555 definitions, 1254 with properties, 52 constants definitions, 59 constants references
+- `go test ./...`: All packages pass
+- `make test-project-2`: 175 schemas built successfully
+
 ## 2026-03-02: Fix enum definitions not created for non-sibling packages
 
 **Problem:**

@@ -327,7 +327,12 @@ func (this *StructField) BuildSchema(
 			}
 			refName := resolveRefName(typeStr, fullTypeStr)
 			schema := spec.RefSchema("#/definitions/" + refName)
-			nestedTypes = append(nestedTypes, refName)
+			// Propagate full import path for correct cross-package resolution
+			if strings.Contains(fullTypeStr, "/") {
+				nestedTypes = append(nestedTypes, fullTypeStr)
+			} else {
+				nestedTypes = append(nestedTypes, refName)
+			}
 			return schema, nestedTypes, nil
 		}
 		if debug {
@@ -362,7 +367,16 @@ func (this *StructField) BuildSchema(
 	}
 
 	schema := spec.RefSchema("#/definitions/" + refName)
-	nestedTypes = append(nestedTypes, refName)
+	// Propagate full import path for correct cross-package resolution
+	if strings.Contains(fullTypeStr, "/") {
+		nestedRef := fullTypeStr
+		if public {
+			nestedRef += "Public"
+		}
+		nestedTypes = append(nestedTypes, nestedRef)
+	} else {
+		nestedTypes = append(nestedTypes, refName)
+	}
 	if debug {
 		console.Logger.Debug("Created Ref Schema for type: $Bold{$Red{%s}} Ref: $Bold{#/definitions/%s}\n", typeStr, refName)
 	}
@@ -513,13 +527,28 @@ func normalizeTypeName(typeStr string) string {
 		typeStr = strings.TrimPrefix(typeStr, "*")
 	}
 
-	// If it contains a slash, it's a full module path - extract package.Type
 	if strings.Contains(typeStr, "/") {
-		// Find the last two segments: package/TypeName
-		lastSlash := strings.LastIndex(typeStr, "/")
-		if lastSlash >= 0 {
-			// Get everything after the last slash (e.g., "constants.UnionStatus")
-			typeStr = typeStr[lastSlash+1:]
+		// For generic types like "github.com/.../fields.IntConstantField[github.com/.../constants.Role]",
+		// normalize the base type and each type parameter separately.
+		if bracketIdx := strings.Index(typeStr, "["); bracketIdx >= 0 {
+			basePart := typeStr[:bracketIdx]
+			paramPart := typeStr[bracketIdx:] // "[github.com/.../constants.Role]"
+
+			// Normalize base
+			if lastSlash := strings.LastIndex(basePart, "/"); lastSlash >= 0 {
+				basePart = basePart[lastSlash+1:]
+			}
+
+			// Normalize type parameters inside brackets
+			inner := paramPart[1 : len(paramPart)-1] // strip [ and ]
+			inner = normalizeTypeName(inner)
+			typeStr = basePart + "[" + inner + "]"
+		} else {
+			// Non-generic: find the last slash and take everything after it
+			lastSlash := strings.LastIndex(typeStr, "/")
+			if lastSlash >= 0 {
+				typeStr = typeStr[lastSlash+1:]
+			}
 		}
 	}
 
@@ -660,6 +689,10 @@ func getPrimitiveSchemaForFieldType(typeStr string, originalTypeStr string, enum
 				if err == nil && len(enums) > 0 {
 					refName := resolveRefName(normalizedEnum, enumType)
 					schema := spec.RefSchema("#/definitions/" + refName)
+					// Propagate full import path for correct cross-package resolution
+					if strings.Contains(enumType, "/") {
+						return schema, []string{enumType}, nil
+					}
 					return schema, []string{refName}, nil
 				}
 			}
@@ -675,6 +708,10 @@ func getPrimitiveSchemaForFieldType(typeStr string, originalTypeStr string, enum
 				if err == nil && len(enums) > 0 {
 					refName := resolveRefName(normalizedEnum, enumType)
 					schema := spec.RefSchema("#/definitions/" + refName)
+					// Propagate full import path for correct cross-package resolution
+					if strings.Contains(enumType, "/") {
+						return schema, []string{enumType}, nil
+					}
 					return schema, []string{refName}, nil
 				}
 			}

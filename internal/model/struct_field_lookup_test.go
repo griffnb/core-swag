@@ -1,6 +1,7 @@
 package model
 
 import (
+	"go/ast"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -68,7 +69,7 @@ func TestSeedGlobalPackageCache_SkipsNilPackage(t *testing.T) {
 	assert.Equal(t, pkgA, globalPackageCache["example.com/a"])
 }
 
-func TestSeedGlobalPackageCache_DoesNotOverwriteExisting(t *testing.T) {
+func TestSeedGlobalPackageCache_DirectPackagesOverwriteExisting(t *testing.T) {
 	resetGlobalPackageCache()
 
 	original := &packages.Package{PkgPath: "example.com/a", Name: "original"}
@@ -79,13 +80,15 @@ func TestSeedGlobalPackageCache_DoesNotOverwriteExisting(t *testing.T) {
 	globalPackageCache["example.com/a"] = original
 	globalCacheMutex.Unlock()
 
+	// Direct packages (pass 1) always overwrite — they come from the initial
+	// packages.Load with full syntax and should take priority.
 	SeedGlobalPackageCache([]*packages.Package{replacement})
 
 	globalCacheMutex.RLock()
 	defer globalCacheMutex.RUnlock()
 
-	assert.Equal(t, "original", globalPackageCache["example.com/a"].Name,
-		"seed should not overwrite an existing cache entry")
+	assert.Equal(t, "replacement", globalPackageCache["example.com/a"].Name,
+		"direct packages should overwrite existing cache entries")
 }
 
 func TestSeedGlobalPackageCache_WalksImportsRecursively(t *testing.T) {
@@ -163,8 +166,13 @@ func TestGlobalCacheStats_IncrementPattern(t *testing.T) {
 	ResetGlobalCacheStats()
 
 	// Seed a package into the global cache so the next LookupStructFields
-	// lookup will follow the cache-hit path.
-	seeded := &packages.Package{PkgPath: "example.com/seeded", Name: "seeded"}
+	// lookup will follow the cache-hit path. The package must have Syntax
+	// to be treated as a valid cache hit (syntax-less packages are reloaded).
+	seeded := &packages.Package{
+		PkgPath: "example.com/seeded",
+		Name:    "seeded",
+		Syntax:  []*ast.File{{}},
+	}
 	SeedGlobalPackageCache([]*packages.Package{seeded})
 
 	parser := &CoreStructParser{}

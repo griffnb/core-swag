@@ -15,13 +15,14 @@ import (
 )
 
 func TestRealProjectIntegration(t *testing.T) {
-	mainAPIFile := "main.go"
+	mainAPIFile := "/Users/griffnb/projects/Crowdshield/atlas-go/cmd/server/main.go"
 
 	// Create orchestrator with config
 	config := &orchestrator.Config{
 		ParseDependency: loader.ParseFlag(1),
 		ParseGoList:     true,
-		ParseInternal:   true, // Include internal packages for this test
+		ParseGoPackages: true, // Required for cross-module package resolution
+		ParseInternal:   true,
 	}
 	service := orchestrator.New(config)
 
@@ -38,6 +39,270 @@ func TestRealProjectIntegration(t *testing.T) {
 
 	err = os.WriteFile("real_actual_output.json", actualJSON, 0o644)
 	require.NoError(t, err, "Failed to write swagger JSON to file")
+
+	t.Run("account.Account definition should match expected schema", func(t *testing.T) {
+		def, exists := swagger.Definitions["account.Account"]
+		require.True(t, exists, "account.Account definition must exist")
+
+		// Serialize to JSON for stable comparison
+		actualJSON, err := json.Marshal(def)
+		require.NoError(t, err)
+
+		var actual map[string]interface{}
+		require.NoError(t, json.Unmarshal(actualJSON, &actual))
+
+		expectedJSON := `{
+  "type": "object",
+  "title": "Account",
+  "required": [
+    "id",
+    "urn",
+    "created_by_urn",
+    "updated_by_urn",
+    "status",
+    "deleted",
+    "disabled",
+    "updated_at",
+    "created_at",
+    "role",
+    "org_role",
+    "family_id",
+    "organization_id",
+    "union_id",
+    "union_local_id",
+    "union_status",
+    "organization_verification",
+    "relation_to_primary",
+    "first_name",
+    "middle_name",
+    "last_name",
+    "suffix",
+    "email",
+    "atlasmail_email",
+    "dob",
+    "is_minor",
+    "two_fa_enabled",
+    "is_sms_consented",
+    "properties",
+    "signup_properties",
+    "hashed_password",
+    "password_updated_at_ts",
+    "last_login_ts",
+    "onboard_standard_finished_ts",
+    "onboard_dynamic_finished_ts",
+    "onboard_gate_finished_ts",
+    "onboard_terms_finished_ts",
+    "onboard_dsrs_finished_ts",
+    "onboard_action_finished_ts",
+    "force_flow_type",
+    "test_user_type",
+    "v1_migration_status",
+    "review_status",
+    "flags",
+    "is_super_user_session",
+    "alerts"
+  ],
+  "properties": {
+    "alerts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/account.Alert"
+      }
+    },
+    "atlasmail_email": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by_urn": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "integer"
+    },
+    "disabled": {
+      "type": "integer"
+    },
+    "dob": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "email": {
+      "type": "string"
+    },
+    "family_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "first_name": {
+      "type": "string"
+    },
+    "flags": {
+      "$ref": "#/definitions/account.Flags"
+    },
+    "force_flow_type": {
+      "$ref": "#/definitions/constants.QuestionFlowType"
+    },
+    "hashed_password": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "is_minor": {
+      "type": "integer"
+    },
+    "is_sms_consented": {
+      "type": "integer"
+    },
+    "is_super_user_session": {
+      "type": "integer"
+    },
+    "last_login_ts": {
+      "type": "integer"
+    },
+    "last_name": {
+      "type": "string"
+    },
+    "middle_name": {
+      "type": "string"
+    },
+    "onboard_action_finished_ts": {
+      "type": "integer"
+    },
+    "onboard_dsrs_finished_ts": {
+      "type": "integer"
+    },
+    "onboard_dynamic_finished_ts": {
+      "type": "integer"
+    },
+    "onboard_gate_finished_ts": {
+      "type": "integer"
+    },
+    "onboard_standard_finished_ts": {
+      "type": "integer"
+    },
+    "onboard_terms_finished_ts": {
+      "type": "integer"
+    },
+    "org_role": {
+      "$ref": "#/definitions/constants.OrgRole"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "organization_verification": {
+      "type": "integer"
+    },
+    "password_updated_at_ts": {
+      "type": "integer"
+    },
+    "properties": {
+      "$ref": "#/definitions/account.Properties"
+    },
+    "relation_to_primary": {
+      "$ref": "#/definitions/constants.RelationToPrimary"
+    },
+    "review_status": {
+      "$ref": "#/definitions/constants.ReviewStatus"
+    },
+    "role": {
+      "$ref": "#/definitions/constants.Role"
+    },
+    "signup_properties": {
+      "$ref": "#/definitions/account.SignupProperties"
+    },
+    "status": {
+      "$ref": "#/definitions/constants.Status"
+    },
+    "suffix": {
+      "type": "string"
+    },
+    "test_user_type": {
+      "$ref": "#/definitions/constants.TestUserType"
+    },
+    "two_fa_enabled": {
+      "type": "integer"
+    },
+    "union_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "union_local_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "union_status": {
+      "$ref": "#/definitions/constants.UnionStatus"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_by_urn": {
+      "type": "string"
+    },
+    "urn": {
+      "type": "string"
+    },
+    "v1_migration_status": {
+      "$ref": "#/definitions/constants.V1MigrationStatus"
+    }
+  }
+}`
+
+		var expected map[string]interface{}
+		require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
+
+		// Compare properties individually for clear failure messages
+		expectedProps := expected["properties"].(map[string]interface{})
+		actualProps := actual["properties"].(map[string]interface{})
+
+		// Check no missing or extra properties
+		var missingProps, extraProps []string
+		for k := range expectedProps {
+			if _, ok := actualProps[k]; !ok {
+				missingProps = append(missingProps, k)
+			}
+		}
+		for k := range actualProps {
+			if _, ok := expectedProps[k]; !ok {
+				extraProps = append(extraProps, k)
+			}
+		}
+		sort.Strings(missingProps)
+		sort.Strings(extraProps)
+		assert.Empty(t, missingProps, "missing properties in account.Account")
+		assert.Empty(t, extraProps, "unexpected properties in account.Account")
+
+		// Check each property matches exactly
+		for propName, expectedVal := range expectedProps {
+			actualVal, ok := actualProps[propName]
+			if !ok {
+				continue // already reported above
+			}
+			expJSON, _ := json.Marshal(expectedVal)
+			actJSON, _ := json.Marshal(actualVal)
+			assert.JSONEq(t, string(expJSON), string(actJSON),
+				"property %q schema mismatch", propName)
+		}
+
+		// Check required fields match exactly
+		expectedReq := expected["required"]
+		actualReq := actual["required"]
+		expReqJSON, _ := json.Marshal(expectedReq)
+		actReqJSON, _ := json.Marshal(actualReq)
+		assert.JSONEq(t, string(expReqJSON), string(actReqJSON),
+			"required fields mismatch")
+
+		// Check title and type
+		assert.Equal(t, expected["title"], actual["title"], "title mismatch")
+		assert.Equal(t, expected["type"], actual["type"], "type mismatch")
+	})
 }
 
 func TestCoreModelsIntegration(t *testing.T) {

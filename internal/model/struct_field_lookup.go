@@ -49,6 +49,22 @@ func SeedGlobalPackageCache(pkgs []*packages.Package) {
 
 	visited := make(map[string]bool)
 
+	globalCacheMutex.Lock()
+	defer globalCacheMutex.Unlock()
+
+	// Pass 1: Cache all directly loaded packages first — these have full
+	// syntax from the initial packages.Load call. This ensures they take
+	// priority over syntax-less versions found through transitive imports.
+	for _, pkg := range pkgs {
+		if pkg == nil {
+			continue
+		}
+		globalPackageCache[pkg.PkgPath] = pkg
+		visited[pkg.PkgPath] = true
+	}
+
+	// Pass 2: Walk transitive imports, caching only packages not already cached
+	// with a better (syntax-bearing) version.
 	var walk func(pkg *packages.Package)
 	walk = func(pkg *packages.Package) {
 		if pkg == nil {
@@ -68,11 +84,13 @@ func SeedGlobalPackageCache(pkgs []*packages.Package) {
 		}
 	}
 
-	globalCacheMutex.Lock()
-	defer globalCacheMutex.Unlock()
-
 	for _, pkg := range pkgs {
-		walk(pkg)
+		if pkg == nil {
+			continue
+		}
+		for _, imp := range pkg.Imports {
+			walk(imp)
+		}
 	}
 }
 
@@ -143,10 +161,17 @@ func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *S
 	}
 	c.cacheMutex.Unlock()
 
-	// Check global cache first
+	// Check global cache first — but only use it if the package has AST syntax.
+	// Packages cached from transitive deps (via SeedGlobalPackageCache) may lack
+	// Syntax even though they have TypesInfo, making field extraction impossible.
 	globalCacheMutex.RLock()
 	pkg, pkgCached := globalPackageCache[importPath]
 	globalCacheMutex.RUnlock()
+
+	if pkgCached && len(pkg.Syntax) == 0 {
+		console.Logger.Debug("Cached package %s has no syntax, reloading\n", importPath)
+		pkgCached = false
+	}
 
 	var packageMap map[string]*packages.Package
 
@@ -250,6 +275,15 @@ func (c *CoreStructParser) processStructField(f *StructField, packageMap map[str
 	}
 	subTypeName, err := f.GenericTypeArg()
 	if err != nil {
+		builder.Fields = append(builder.Fields, f)
+		return
+	}
+
+	// If the inner type is not a struct (map, slice, primitive, any/interface{}),
+	// skip struct expansion and let BuildSchema handle it directly.
+	probe := &StructField{TypeString: subTypeName}
+	if strings.HasPrefix(subTypeName, "map[") || probe.IsPrimitive() || probe.IsAny() {
+		f.TypeString = subTypeName
 		builder.Fields = append(builder.Fields, f)
 		return
 	}
@@ -741,34 +775,43 @@ func buildSchemasRecursive(
 
 	// Recursively process nested types
 	for _, nestedTypeName := range nestedTypes {
-		// Parse package name and type name from nested type
-		// e.g., "account.Properties" -> package="account", type="Properties"
-		// e.g., "billing_plan.FeatureSet" -> package="billing_plan", type="FeatureSet"
-		var nestedPackageName, baseNestedType string
-		if strings.Contains(nestedTypeName, ".") {
+		// Parse package name and type name from nested type.
+		// Supports three forms:
+		// 1. Full import path: "github.com/.../constants.RolePublic"
+		// 2. Short qualified: "account.Properties", "billing_plan.FeatureSet"
+		// 3. Unqualified: "Properties"
+		var nestedPackageName, baseNestedType, nestedPkgPath string
+
+		if strings.Contains(nestedTypeName, "/") {
+			// Full import path — extract package path, package name, and type name
+			lastDot := strings.LastIndex(nestedTypeName, ".")
+			if lastDot >= 0 {
+				nestedPkgPath = nestedTypeName[:lastDot]
+				baseNestedType = nestedTypeName[lastDot+1:]
+				if lastSlash := strings.LastIndex(nestedPkgPath, "/"); lastSlash >= 0 {
+					nestedPackageName = nestedPkgPath[lastSlash+1:]
+				} else {
+					nestedPackageName = nestedPkgPath
+				}
+			}
+		} else if strings.Contains(nestedTypeName, ".") {
+			// Short qualified name — existing sibling-path logic
 			parts := strings.Split(nestedTypeName, ".")
 			nestedPackageName = parts[0]
 			baseNestedType = parts[len(parts)-1]
+			nestedPkgPath = pkgPath
+			if nestedPackageName != packageName {
+				if idx := strings.LastIndex(pkgPath, "/"); idx >= 0 {
+					nestedPkgPath = pkgPath[:idx+1] + nestedPackageName
+				} else {
+					nestedPkgPath = nestedPackageName
+				}
+			}
 		} else {
-			// No package prefix, use current package
+			// Unqualified — same package
 			nestedPackageName = packageName
 			baseNestedType = nestedTypeName
-		}
-
-		// Determine the full package path for the nested type
-		// If it's from the same package, use the current pkgPath
-		// Otherwise, construct the path by replacing the last segment
-		nestedPkgPath := pkgPath
-		if nestedPackageName != packageName {
-			// Different package - need to construct the full path
-			// e.g., if pkgPath is "github.com/griffnb/core-swag/testing/testdata/core_models/account"
-			// and nestedPackageName is "billing_plan"
-			// then nestedPkgPath should be "github.com/griffnb/core-swag/testing/testdata/core_models/billing_plan"
-			if idx := strings.LastIndex(pkgPath, "/"); idx >= 0 {
-				nestedPkgPath = pkgPath[:idx+1] + nestedPackageName
-			} else {
-				nestedPkgPath = nestedPackageName
-			}
+			nestedPkgPath = pkgPath
 		}
 
 		// Need to lookup the nested type's fields using the correct package path
