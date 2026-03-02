@@ -227,7 +227,7 @@ func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *S
 		console.Logger.Debug("Field: %s, Type: %s, Tag: %s\n", f.Name, f.Type, f.Tag)
 
 		// Check if it's a special StructField type that needs expansion
-		if f.Type != nil && strings.Contains(f.Type.String(), "fields.StructField") {
+		if f.IsGeneric() && strings.Contains(f.EffectiveTypeString(), "fields.StructField") {
 			c.processStructField(f, packageMap, builder)
 		} else {
 			builder.Fields = append(builder.Fields, f)
@@ -244,13 +244,15 @@ func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *S
 
 // processStructField handles the expansion of StructField[T] types
 func (c *CoreStructParser) processStructField(f *StructField, packageMap map[string]*packages.Package, builder *StructBuilder) {
-	parts := strings.Split(f.Type.String(), ".StructField[")
-	if len(parts) != 2 {
+	if !f.IsGeneric() {
 		builder.Fields = append(builder.Fields, f)
 		return
 	}
-
-	subTypeName := strings.TrimSuffix(parts[1], "]")
+	subTypeName, err := f.GenericTypeArg()
+	if err != nil {
+		builder.Fields = append(builder.Fields, f)
+		return
+	}
 
 	// Handle array and pointer prefixes - keep them in originalTypeName but strip for type lookup
 	arrayPrefix := ""
@@ -529,44 +531,6 @@ func (c *CoreStructParser) ExtractFieldsRecursive(
 	return fields
 }
 
-// shouldTreatAsSwaggerPrimitive checks if a named type should be treated as a primitive in Swagger
-// even though it might be a struct in Go (like time.Time or decimal.Decimal)
-func shouldTreatAsSwaggerPrimitive(named *types.Named) bool {
-	if named.Obj().Pkg() == nil {
-		return false
-	}
-
-	pkgPath := named.Obj().Pkg().Path()
-	typeName := named.Obj().Name()
-
-	// Types that are structs in Go but should be primitives in Swagger
-	primitiveTypes := map[string][]string{
-		"time":                          {"Time"},
-		"github.com/shopspring/decimal": {"Decimal"},
-		"gopkg.in/guregu/null.v4":       {"String", "Int", "Float", "Bool", "Time"},
-		"database/sql":                  {"NullString", "NullInt64", "NullFloat64", "NullBool", "NullTime"},
-	}
-
-	globalNames := []string{"UUID"}
-
-	if typeNames, ok := primitiveTypes[pkgPath]; ok {
-		for _, name := range typeNames {
-			if typeName == name {
-				return true
-			}
-		}
-	} else {
-		// Check global names for any package (e.g., if multiple packages define a UUID type, we want to treat all of them as primitives)
-		for _, globalName := range globalNames {
-			if typeName == globalName {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 func (c *CoreStructParser) checkNamed(fieldType types.Type) ([]*StructField, *types.Named, bool) {
 	named, ok := fieldType.(*types.Named)
 	if ok {
@@ -581,7 +545,8 @@ func (c *CoreStructParser) checkNamed(fieldType types.Type) ([]*StructField, *ty
 			return nil, nil, false
 		}
 		// Skip types that should be treated as primitives in Swagger
-		if shouldTreatAsSwaggerPrimitive(named) {
+		tempField := &StructField{Type: fieldType}
+		if tempField.IsSwaggerPrimitive() {
 			return nil, nil, false
 		}
 		if _, ok := named.Underlying().(*types.Struct); ok {
@@ -650,6 +615,7 @@ func (c *CoreStructParser) checkMap(fieldType types.Type) ([]*StructField, strin
 	mapType, isMap := fieldType.(*types.Map)
 	if isMap {
 		var mapPart string
+		// TODO this is a weird hack that probably sholdnt exist
 		if strings.Contains(fieldType.String(), "*github.com") {
 			mapPart = strings.Split(fieldType.String(), "*github.com")[0]
 		} else {
@@ -794,7 +760,15 @@ func buildSchemasRecursive(
 		// Otherwise, construct the path by replacing the last segment
 		nestedPkgPath := pkgPath
 		if nestedPackageName != packageName {
-			nestedPkgPath = resolvePackagePath(pkgPath, nestedPackageName)
+			// Different package - need to construct the full path
+			// e.g., if pkgPath is "github.com/griffnb/core-swag/testing/testdata/core_models/account"
+			// and nestedPackageName is "billing_plan"
+			// then nestedPkgPath should be "github.com/griffnb/core-swag/testing/testdata/core_models/billing_plan"
+			if idx := strings.LastIndex(pkgPath, "/"); idx >= 0 {
+				nestedPkgPath = pkgPath[:idx+1] + nestedPackageName
+			} else {
+				nestedPkgPath = nestedPackageName
+			}
 		}
 
 		// Need to lookup the nested type's fields using the correct package path

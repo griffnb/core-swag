@@ -37,6 +37,338 @@ func (this *StructField) GetTags() map[string]string {
 	return result
 }
 
+// EffectiveTypeString returns the resolved type string for this field.
+// Uses TypeString if set, falls back to Type.String() if Type is available.
+func (this *StructField) EffectiveTypeString() string {
+	if this.TypeString != "" {
+		return this.TypeString
+	}
+	if this.Type != nil {
+		return this.Type.String()
+	}
+	return ""
+}
+
+// NormalizedType returns the type string in short form (package.Type instead of
+// full/module/path/package.Type). Handles pointers.
+func (this *StructField) NormalizedType() string {
+	return normalizeTypeName(this.EffectiveTypeString())
+}
+
+// ConstantFieldEnumType extracts the enum type parameter from IntConstantField[T]
+// or StringConstantField[T]. Returns empty string if not a constant field.
+func (this *StructField) ConstantFieldEnumType() string {
+	return extractConstantFieldEnumType(this.EffectiveTypeString())
+}
+
+// IsGeneric returns true if this field is a generic wrapper type like
+// StructField[T], IntConstantField[T], StringField[T], or any Field[T].
+func (this *StructField) IsGeneric() bool {
+	typeStr := this.EffectiveTypeString()
+	return strings.Contains(typeStr, "StructField[") ||
+		strings.Contains(typeStr, "IntConstantField[") ||
+		strings.Contains(typeStr, "StringField[") ||
+		strings.Contains(typeStr, "Field[")
+}
+
+// GenericTypeArg extracts the type parameter T from a generic wrapper like Field[T].
+// Handles nested brackets like Field[map[string][]User].
+// Returns error if the type string has no brackets or mismatched brackets.
+func (this *StructField) GenericTypeArg() (string, error) {
+	typeStr := this.EffectiveTypeString()
+	return extractGenericTypeParameter(typeStr)
+}
+
+// IsPrimitive returns true if this field's type is a Go primitive or an extended
+// primitive (time.Time, UUID, decimal.Decimal).
+func (this *StructField) IsPrimitive() bool {
+	primitives := map[string]bool{
+		"string": true, "bool": true,
+		"int": true, "int8": true, "int16": true, "int32": true, "int64": true,
+		"uint": true, "uint8": true, "uint16": true, "uint32": true, "uint64": true,
+		"byte": true, "rune": true,
+		"float32": true, "float64": true,
+		"time.Time": true, "*time.Time": true,
+		"decimal.Decimal": true, "*decimal.Decimal": true,
+		"github.com/shopspring/decimal.Decimal": true, "*github.com/shopspring/decimal.Decimal": true,
+		// UUID types
+		"types.UUID": true, "*types.UUID": true,
+		"uuid.UUID": true, "*uuid.UUID": true,
+		"github.com/griffnb/core/lib/types.UUID": true, "*github.com/griffnb/core/lib/types.UUID": true,
+		"github.com/google/uuid.UUID": true, "*github.com/google/uuid.UUID": true,
+	}
+	return primitives[this.EffectiveTypeString()]
+}
+
+// IsAny returns true if this field's type is any or interface{}.
+func (this *StructField) IsAny() bool {
+	typeStr := this.EffectiveTypeString()
+	if typeStr == "" {
+		return false
+	}
+	if typeStr == "any" {
+		return true
+	}
+	return strings.ReplaceAll(typeStr, " ", "") == "interface{}"
+}
+
+// IsFieldsWrapper returns true if this field is a fields package wrapper type
+// like fields.StringField, fields.IntField, etc.
+func (this *StructField) IsFieldsWrapper() bool {
+	return strings.Contains(this.EffectiveTypeString(), "fields.")
+}
+
+// IsSwaggerPrimitive returns true if the field's Go type is a struct that should
+// be treated as a primitive in Swagger (e.g., time.Time, decimal.Decimal, UUID).
+func (this *StructField) IsSwaggerPrimitive() bool {
+	if this.Type == nil {
+		return false
+	}
+	t := this.Type
+	if ptr, ok := t.(*types.Pointer); ok {
+		t = ptr.Elem()
+	}
+	named, ok := t.(*types.Named)
+	if !ok {
+		return false
+	}
+	if named.Obj().Pkg() == nil {
+		return false
+	}
+
+	pkgPath := named.Obj().Pkg().Path()
+	typeName := named.Obj().Name()
+
+	// Types that are structs in Go but should be primitives in Swagger
+	primitiveTypes := map[string][]string{
+		"time":                          {"Time"},
+		"github.com/shopspring/decimal": {"Decimal"},
+		"gopkg.in/guregu/null.v4":       {"String", "Int", "Float", "Bool", "Time"},
+		"database/sql":                  {"NullString", "NullInt64", "NullFloat64", "NullBool", "NullTime"},
+	}
+
+	globalNames := []string{"UUID"}
+
+	if typeNames, ok := primitiveTypes[pkgPath]; ok {
+		for _, name := range typeNames {
+			if typeName == name {
+				return true
+			}
+		}
+	} else {
+		for _, globalName := range globalNames {
+			if typeName == globalName {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// IsGenericTypeArgStruct checks whether the first type argument of this field's
+// generic type is a struct. Returns true if the type has no type arguments
+// (not generic), or if the argument's underlying Go type is a struct.
+func (this *StructField) IsGenericTypeArgStruct() bool {
+	return isGenericTypeArgStruct(this.Type)
+}
+
+// IsUnderlyingStruct checks whether this field's underlying Go type is a struct.
+// Unwraps pointers and named types. Returns true for unknown types (safe default).
+func (this *StructField) IsUnderlyingStruct() bool {
+	return isUnderlyingStruct(this.Type)
+}
+
+// PrimitiveSchema returns the OpenAPI schema for this field's primitive type.
+func (this *StructField) PrimitiveSchema() *spec.Schema {
+	return primitiveTypeToSchema(this.EffectiveTypeString())
+}
+
+// FieldsWrapperSchema returns the OpenAPI schema for a fields package wrapper type
+// (StringField, IntField, IntConstantField[T], etc.).
+func (this *StructField) FieldsWrapperSchema(enumLookup TypeEnumLookup) (*spec.Schema, []string, error) {
+	return getPrimitiveSchemaForFieldType(this.EffectiveTypeString(), this.TypeString, enumLookup)
+}
+
+// BuildSchema builds an OpenAPI schema for this field's type.
+// For recursive types (arrays, maps), creates child StructField instances.
+// Returns schema, list of nested struct type names for definition generation, and error.
+func (this *StructField) BuildSchema(
+	public bool,
+	forceRequired bool,
+	enumLookup TypeEnumLookup,
+) (*spec.Schema, []string, error) {
+	var nestedTypes []string
+	typeStr := this.EffectiveTypeString()
+
+	var debug bool
+	if strings.Contains(typeStr, "constants.") {
+		debug = true
+	}
+	if debug {
+		console.Logger.Debug("Building schema for type: $Bold{%s} (TypeString: $Bold{%s})\n", typeStr, this.TypeString)
+	}
+
+	// Save full type string before normalization for accurate $ref creation.
+	fullTypeStr := typeStr
+
+	// Normalize type name to short form
+	typeStr = normalizeTypeName(typeStr)
+	if debug && typeStr != this.TypeString {
+		console.Logger.Debug("Normalized type name to: $Bold{%s}\n", typeStr)
+	}
+
+	// Remove pointer prefix
+	isPointer := strings.HasPrefix(typeStr, "*")
+	if isPointer {
+		typeStr = strings.TrimPrefix(typeStr, "*")
+	}
+	fullTypeStr = strings.TrimPrefix(fullTypeStr, "*")
+
+	// Create a normalized field for method-based type checks
+	normalizedField := &StructField{TypeString: typeStr}
+
+	// Handle any/interface{} types as object
+	if normalizedField.IsAny() {
+		if debug {
+			console.Logger.Debug("Detected any/interface{} type: $Bold{%s}\n", typeStr)
+		}
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
+	}
+
+	// Check if this is a fields wrapper type
+	if normalizedField.IsFieldsWrapper() {
+		if debug {
+			console.Logger.Debug("Detected fields wrapper type: $Bold{%s}\n", typeStr)
+		}
+		return getPrimitiveSchemaForFieldType(typeStr, this.TypeString, enumLookup)
+	}
+
+	// Handle primitive types
+	if normalizedField.IsPrimitive() {
+		schema := primitiveTypeToSchema(typeStr)
+		if debug {
+			console.Logger.Debug("Detected Is Primitive type: $Bold{%s} Schema %+v\n", typeStr, schema)
+		}
+		return schema, nil, nil
+	}
+
+	// Handle arrays — create child StructField for element type
+	if strings.HasPrefix(typeStr, "[]") {
+		elemType := strings.TrimPrefix(typeStr, "[]")
+		fullElemType := elemType
+		if strings.HasPrefix(fullTypeStr, "[]") {
+			fullElemType = strings.TrimPrefix(fullTypeStr, "[]")
+		}
+		elemField := &StructField{TypeString: fullElemType}
+		elemSchema, elemNestedTypes, err := elemField.BuildSchema(public, forceRequired, enumLookup)
+		if err != nil {
+			return nil, nil, err
+		}
+		schema := spec.ArrayProperty(elemSchema)
+		return schema, elemNestedTypes, nil
+	}
+
+	// Handle maps — create child StructField for value type
+	if strings.HasPrefix(typeStr, "map[") {
+		bracketCount := 0
+		valueStart := -1
+		for i, ch := range typeStr {
+			if ch == '[' {
+				bracketCount++
+			} else if ch == ']' {
+				bracketCount--
+				if bracketCount == 0 {
+					valueStart = i + 1
+					break
+				}
+			}
+		}
+		if valueStart == -1 {
+			return nil, nil, fmt.Errorf("invalid map type: %s", typeStr)
+		}
+		fullValueType := typeStr[valueStart:]
+		if strings.HasPrefix(fullTypeStr, "map[") {
+			fullBracketCount := 0
+			fullValueStart := -1
+			for i, ch := range fullTypeStr {
+				if ch == '[' {
+					fullBracketCount++
+				} else if ch == ']' {
+					fullBracketCount--
+					if fullBracketCount == 0 {
+						fullValueStart = i + 1
+						break
+					}
+				}
+			}
+			if fullValueStart != -1 {
+				fullValueType = fullTypeStr[fullValueStart:]
+			}
+		}
+		valueField := &StructField{TypeString: fullValueType}
+		valueSchema, valueNestedTypes, err := valueField.BuildSchema(public, forceRequired, enumLookup)
+		if err != nil {
+			return nil, nil, err
+		}
+		schema := spec.MapProperty(valueSchema)
+		return schema, valueNestedTypes, nil
+	}
+
+	// Check if this is an enum type
+	if enumLookup != nil {
+		if debug {
+			console.Logger.Debug("Checking enum for type: $Bold{%s}\n", typeStr)
+		}
+		enums, err := enumLookup.GetEnumsForType(typeStr, nil)
+		if err == nil && len(enums) > 0 {
+			if debug {
+				console.Logger.Debug("Detected Enum type: $Bold{%s} with %d values, creating $ref\n", typeStr, len(enums))
+			}
+			refName := resolveRefName(typeStr, fullTypeStr)
+			schema := spec.RefSchema("#/definitions/" + refName)
+			nestedTypes = append(nestedTypes, refName)
+			return schema, nestedTypes, nil
+		}
+		if debug {
+			if err != nil {
+				console.Logger.Debug("Error looking up enums for type: $Bold{%s}: $Red{%s}\n", typeStr, err.Error())
+			}
+		}
+	} else {
+		if debug {
+			console.Logger.Debug("No enumLookup provided, skipping enum check for type: $Bold{%s}\n", typeStr)
+		}
+	}
+
+	// Struct ref — validate brackets
+	typeName := typeStr
+	bracketDepth := 0
+	for _, ch := range typeName {
+		if ch == '[' {
+			bracketDepth++
+		} else if ch == ']' {
+			bracketDepth--
+		}
+	}
+	if bracketDepth != 0 {
+		console.Logger.Debug("Skipping reference creation for malformed type name with unbalanced brackets: %s\n", typeName)
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
+	}
+
+	refName := resolveRefName(typeName, fullTypeStr)
+	if public {
+		refName = refName + "Public"
+	}
+
+	schema := spec.RefSchema("#/definitions/" + refName)
+	nestedTypes = append(nestedTypes, refName)
+	if debug {
+		console.Logger.Debug("Created Ref Schema for type: $Bold{$Red{%s}} Ref: $Bold{#/definitions/%s}\n", typeStr, refName)
+	}
+	return schema, nestedTypes, nil
+}
+
 // TypeEnumLookup is an interface for looking up enum values for a type
 type TypeEnumLookup interface {
 	GetEnumsForType(typeName string, file *ast.File) ([]EnumValue, error)
@@ -110,8 +442,6 @@ func (this *StructField) ToSpecSchema(
 		jsonTag = tags["column"]
 	}
 	if jsonTag == "" {
-		// Skip fields without json or column tags - these are likely unexported
-		// embedded fields that shouldn't be in the API schema
 		return "", nil, false, nil, nil
 	}
 
@@ -119,7 +449,6 @@ func (this *StructField) ToSpecSchema(
 	propName = parts[0]
 
 	// Check for omitempty to determine required
-	// If forceRequired is true, field is always required
 	if forceRequired {
 		required = true
 	} else {
@@ -137,50 +466,38 @@ func (this *StructField) ToSpecSchema(
 		return "", nil, false, nil, nil
 	}
 
-	// Detect StructField[T] pattern and extract type parameter T
-	typeStr := this.TypeString
-	// Only use Type.String() if TypeString is empty or not set
-	// This preserves manually set TypeString values (like "account.Properties")
-	// instead of overriding with full path from Type.String()
-	if this.Type != nil && this.TypeString == "" {
-		typeStr = this.Type.String()
-	}
-
-	var extractedType string
-	isGeneric := strings.Contains(typeStr, "StructField[") || strings.Contains(typeStr, "IntConstantField[") ||
-		strings.Contains(typeStr, "StringField[") ||
-		strings.Contains(typeStr, "Field[")
-	if isGeneric {
-		// Extract type parameter using bracket parsing
-		extractedType, err = extractGenericTypeParameter(typeStr)
-		if err != nil {
-			return "", nil, false, nil, fmt.Errorf("failed to extract type parameter from %s: %w", typeStr, err)
+	// Resolve the effective type string for schema building
+	// For generic wrappers, extract the type parameter and build schema from that
+	if this.IsGeneric() {
+		extractedType, extractErr := this.GenericTypeArg()
+		if extractErr != nil {
+			return "", nil, false, nil, fmt.Errorf("failed to extract type parameter from %s: %w", this.EffectiveTypeString(), extractErr)
 		}
+
+		// Determine effective public: only struct type args get Public suffix
+		effectivePublic := public
+		if public && this.Type != nil {
+			if !this.IsGenericTypeArgStruct() {
+				effectivePublic = false
+			}
+		}
+
+		schemaField := &StructField{TypeString: extractedType, Type: this.Type}
+		schema, nestedTypes, err = schemaField.BuildSchema(effectivePublic, forceRequired, enumLookup)
 	} else {
-		extractedType = typeStr
-	}
-
-	// Check the actual Go type to determine if this is a struct type.
-	// Only struct types get Public suffix — enums and type aliases of primitives do not.
-	effectivePublic := public
-	if public && this.Type != nil {
-		if isGeneric {
-			// For generic wrappers like IntConstantField[T], check the type argument
-			if !isGenericTypeArgStruct(this.Type) {
-				effectivePublic = false
-			}
-		} else {
-			// For direct types like constants.Status, check the type itself
-			if !isUnderlyingStruct(this.Type) {
+		// Determine effective public: only struct types get Public suffix
+		effectivePublic := public
+		if public && this.Type != nil {
+			if !this.IsUnderlyingStruct() {
 				effectivePublic = false
 			}
 		}
+
+		schema, nestedTypes, err = this.BuildSchema(effectivePublic, forceRequired, enumLookup)
 	}
 
-	// Build schema for the extracted type
-	schema, nestedTypes, err = buildSchemaForType(extractedType, effectivePublic, forceRequired, this.TypeString, enumLookup)
 	if err != nil {
-		return "", nil, false, nil, fmt.Errorf("failed to build schema for type %s: %w", extractedType, err)
+		return "", nil, false, nil, fmt.Errorf("failed to build schema for type %s: %w", this.EffectiveTypeString(), err)
 	}
 
 	return propName, schema, required, nestedTypes, nil
@@ -210,12 +527,6 @@ func normalizeTypeName(typeStr string) string {
 		return "*" + typeStr
 	}
 	return typeStr
-}
-
-// extractTypeParameter extracts the type parameter T from StructField[T]
-// Handles nested brackets like StructField[map[string][]User]
-func extractTypeParameter(typeStr string) (string, error) {
-	return extractGenericTypeParameter(typeStr)
 }
 
 // isGenericTypeArgStruct checks whether the first type argument of a generic type
@@ -311,205 +622,6 @@ func extractGenericTypeParameter(typeStr string) (string, error) {
 	return extracted, nil
 }
 
-// buildSchemaForType builds an OpenAPI schema for a Go type string
-// Returns schema, list of nested struct type names, and error
-func buildSchemaForType(
-	typeStr string,
-	public bool,
-	forceRequired bool,
-	originalTypeStr string,
-	enumLookup TypeEnumLookup,
-) (*spec.Schema, []string, error) {
-	var nestedTypes []string
-	var debug bool
-	if strings.Contains(typeStr, "constants.") {
-		debug = true
-	}
-	if debug {
-		console.Logger.Debug("Building schema for type: $Bold{%s} (original: $Bold{%s})\n", typeStr, originalTypeStr)
-	}
-
-	// Save full type string before normalization for accurate $ref creation.
-	// When types have full module paths (e.g., "github.com/chargebee/chargebee-go/v3/enum.Source"),
-	// the definition may be stored with the full-path name if NotUnique=true.
-	fullTypeStr := typeStr
-
-	// Normalize type name to short form (package.Type instead of full/module/path/package.Type)
-	typeStr = normalizeTypeName(typeStr)
-	if debug && typeStr != originalTypeStr {
-		console.Logger.Debug("Normalized type name to: $Bold{%s}\n", typeStr)
-	}
-
-	// Remove pointer prefix
-	isPointer := strings.HasPrefix(typeStr, "*")
-	if isPointer {
-		typeStr = strings.TrimPrefix(typeStr, "*")
-	}
-	fullTypeStr = strings.TrimPrefix(fullTypeStr, "*")
-
-	// Handle any/interface{} types as object
-	if isAnyType(typeStr) {
-		if debug {
-			console.Logger.Debug("Detected any/interface{} type: $Bold{%s}\n", typeStr)
-		}
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
-	}
-
-	// Check if this is a fields wrapper type (StringField, IntField, etc.)
-	// These should be treated as primitives, not struct types
-	if isFieldsWrapperType(typeStr) {
-		if debug {
-			console.Logger.Debug("Detected fields wrapper type: $Bold{%s}\n", typeStr)
-		}
-		return getPrimitiveSchemaForFieldType(typeStr, originalTypeStr, enumLookup)
-	}
-
-	// Handle primitive types
-	if isPrimitiveType(typeStr) {
-		schema := primitiveTypeToSchema(typeStr)
-		if debug {
-			console.Logger.Debug("Detected Is Primitive type: $Bold{%s} Schema %+v\n", typeStr, schema)
-		}
-		return schema, nil, nil
-	}
-
-	// Handle arrays
-	if strings.HasPrefix(typeStr, "[]") {
-		elemType := strings.TrimPrefix(typeStr, "[]")
-		// Pass full-path element type so recursive call can build accurate $refs
-		fullElemType := elemType
-		if strings.HasPrefix(fullTypeStr, "[]") {
-			fullElemType = strings.TrimPrefix(fullTypeStr, "[]")
-		}
-		elemSchema, elemNestedTypes, err := buildSchemaForType(fullElemType, public, forceRequired, originalTypeStr, enumLookup)
-		if err != nil {
-			return nil, nil, err
-		}
-		schema := spec.ArrayProperty(elemSchema)
-		return schema, elemNestedTypes, nil
-	}
-
-	// Handle maps
-	if strings.HasPrefix(typeStr, "map[") {
-		// Extract value type from normalized typeStr
-		bracketCount := 0
-		valueStart := -1
-		for i, ch := range typeStr {
-			if ch == '[' {
-				bracketCount++
-			} else if ch == ']' {
-				bracketCount--
-				if bracketCount == 0 {
-					valueStart = i + 1
-					break
-				}
-			}
-		}
-		if valueStart == -1 {
-			return nil, nil, fmt.Errorf("invalid map type: %s", typeStr)
-		}
-		// Extract full-path value type for accurate $ref creation in recursive call
-		fullValueType := typeStr[valueStart:]
-		if strings.HasPrefix(fullTypeStr, "map[") {
-			fullBracketCount := 0
-			fullValueStart := -1
-			for i, ch := range fullTypeStr {
-				if ch == '[' {
-					fullBracketCount++
-				} else if ch == ']' {
-					fullBracketCount--
-					if fullBracketCount == 0 {
-						fullValueStart = i + 1
-						break
-					}
-				}
-			}
-			if fullValueStart != -1 {
-				fullValueType = fullTypeStr[fullValueStart:]
-			}
-		}
-		valueSchema, valueNestedTypes, err := buildSchemaForType(fullValueType, public, forceRequired, originalTypeStr, enumLookup)
-		if err != nil {
-			return nil, nil, err
-		}
-		schema := spec.MapProperty(valueSchema)
-		return schema, valueNestedTypes, nil
-	}
-
-	// Handle struct types (including package-qualified names)
-	// Filter out "any" and "interface{}" types - these should be treated as generic objects
-	if typeStr == "any" || typeStr == "interface{}" {
-		// Return a generic object schema, don't add to nestedTypes
-		return &spec.Schema{}, nil, nil
-	}
-
-	// Check if this is an enum type - create a $ref to the enum definition
-	// Enum definitions are created by buildSchemasRecursive() in struct_field_lookup.go
-	// Don't add Public suffix for enums since enum values are identical regardless of public context
-	if enumLookup != nil {
-		if debug {
-			console.Logger.Debug("Checking enum for type: $Bold{%s}\n", typeStr)
-		}
-		enums, err := enumLookup.GetEnumsForType(typeStr, nil)
-		if err == nil && len(enums) > 0 {
-			if debug {
-				console.Logger.Debug("Detected Enum type: $Bold{%s} with %d values, creating $ref\n", typeStr, len(enums))
-			}
-			// Resolve definition name: short for unique types, full-path for NotUnique.
-			refName := resolveRefName(typeStr, fullTypeStr)
-			schema := spec.RefSchema("#/definitions/" + refName)
-			nestedTypes = append(nestedTypes, refName)
-			return schema, nestedTypes, nil
-		}
-		if debug {
-			if err != nil {
-				console.Logger.Debug("Error looking up enums for type: $Bold{%s}: $Red{%s}\n", typeStr, err.Error())
-			}
-		}
-	} else {
-		if debug {
-			console.Logger.Debug("No enumLookup provided, skipping enum check for type: $Bold{%s}\n", typeStr)
-		}
-	}
-
-	// Keep the full type name (including package prefix if present)
-	// e.g., "account.Properties" should remain "account.Properties"
-	typeName := typeStr
-
-	// Validate that typeName doesn't have unbalanced brackets (malformed type names)
-	// This can happen with complex generic types that weren't parsed correctly
-	bracketDepth := 0
-	for _, ch := range typeName {
-		if ch == '[' {
-			bracketDepth++
-		} else if ch == ']' {
-			bracketDepth--
-		}
-	}
-
-	// If brackets are unbalanced, return a generic object schema instead of a bad reference
-	if bracketDepth != 0 {
-		console.Logger.Debug("Skipping reference creation for malformed type name with unbalanced brackets: %s\n", typeName)
-		// Return a generic object schema
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
-	}
-
-	// Resolve definition name: short for unique types, full-path for NotUnique.
-	refName := resolveRefName(typeName, fullTypeStr)
-
-	if public {
-		refName = refName + "Public"
-	}
-
-	// Create reference schema using the type name
-	schema := spec.RefSchema("#/definitions/" + refName)
-	nestedTypes = append(nestedTypes, refName) // Use refName to include Public suffix when public=true
-	if debug {
-		console.Logger.Debug("Created Ref Schema for type: $Bold{$Red{%s}} Ref: $Bold{#/definitions/%s}\n", typeStr, refName)
-	}
-	return schema, nestedTypes, nil
-}
-
 // makeFullPathDefinitionName converts a full module path type string to the
 // definition name format used by TypeSpecDef.TypeName() for NotUnique types.
 // Input:  "github.com/chargebee/chargebee-go/v3/enum.Source"
@@ -533,53 +645,6 @@ func makeFullPathDefinitionName(fullTypeStr string) string {
 	}, pkgPath)
 
 	return pkgPath + "." + typeName
-}
-
-// isPrimitiveType checks if a type string is a Go primitive type
-func isPrimitiveType(typeStr string) bool {
-	primitives := map[string]bool{
-		"string": true, "bool": true,
-		"int": true, "int8": true, "int16": true, "int32": true, "int64": true,
-		"uint": true, "uint8": true, "uint16": true, "uint32": true, "uint64": true,
-		"byte": true, "rune": true,
-		"float32": true, "float64": true,
-		"time.Time": true, "*time.Time": true,
-		"decimal.Decimal": true, "*decimal.Decimal": true,
-		"github.com/shopspring/decimal.Decimal": true, "*github.com/shopspring/decimal.Decimal": true,
-		// UUID types
-		"types.UUID": true, "*types.UUID": true,
-		"uuid.UUID": true, "*uuid.UUID": true,
-		"github.com/griffnb/core/lib/types.UUID": true, "*github.com/griffnb/core/lib/types.UUID": true,
-		"github.com/google/uuid.UUID": true, "*github.com/google/uuid.UUID": true,
-	}
-	return primitives[typeStr]
-}
-
-// isAnyType checks if a type is any or interface{}
-func isAnyType(typeStr string) bool {
-	if typeStr == "" {
-		return false
-	}
-
-	// Check for "any" keyword (Go 1.18+)
-	if typeStr == "any" {
-		return true
-	}
-
-	// Check for "interface{}" or "interface {}"
-	normalized := strings.ReplaceAll(typeStr, " ", "")
-	if normalized == "interface{}" {
-		return true
-	}
-
-	return false
-}
-
-// isFieldsWrapperType checks if a type is a fields package wrapper type
-// like fields.StringField, fields.IntField, fields.StructField[T], etc.
-func isFieldsWrapperType(typeStr string) bool {
-	// Check for various field wrapper patterns
-	return strings.Contains(typeStr, "fields.")
 }
 
 // getPrimitiveSchemaForFieldType returns the appropriate schema for a fields wrapper type

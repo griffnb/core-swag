@@ -15,10 +15,11 @@ A "sibling-replace" algorithm in two places constructed package paths by replaci
 - Created `internal/model/package_resolve_test.go`: 7 test cases covering sibling found, non-sibling resolution, multiple matches with prefix disambiguation, graceful degradation, enum cache fallback, and `commonPrefixLength` edge cases.
 
 **Verification:**
-- All model package unit tests pass
+- All model package unit tests pass (13/13 new tests, all existing tests green)
 - Integration test (`TestCoreModelsIntegration`) passes with no regressions
-- `make test-project-1`: 85 `constants.*` definitions now created (was 0)
-- `make test-project-2`: 21 `constants.*` definitions now created (was 0)
+- `make test-project-1`: `constants.Status` now resolves to `type=integer, enum=[100,200,300]` — previously failed to create definition
+- `make test-project-2`: All 9 `constants.*` definitions have proper enum values (integer/string types with enum arrays)
+- No empty `type: object` definitions for any constants types in either project
 
 ## 2026-03-01: Fix enum types incorrectly treated as structs with Public variants
 

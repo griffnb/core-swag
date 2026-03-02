@@ -8,6 +8,79 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestEffectiveTypeString(t *testing.T) {
+	tests := []struct {
+		name  string
+		field *StructField
+		want  string
+	}{
+		{
+			name:  "uses TypeString when set",
+			field: &StructField{TypeString: "account.Properties"},
+			want:  "account.Properties",
+		},
+		{
+			name:  "empty TypeString with nil Type returns empty",
+			field: &StructField{},
+			want:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.field.EffectiveTypeString()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestIsGeneric(t *testing.T) {
+	tests := []struct {
+		name  string
+		field *StructField
+		want  bool
+	}{
+		{name: "StructField generic", field: &StructField{TypeString: "fields.StructField[*User]"}, want: true},
+		{name: "IntConstantField generic", field: &StructField{TypeString: "fields.IntConstantField[constants.Role]"}, want: true},
+		{name: "StringField generic", field: &StructField{TypeString: "fields.StringField[constants.Key]"}, want: true},
+		{name: "Field generic", field: &StructField{TypeString: "fields.Field[SomeType]"}, want: true},
+		{name: "plain string type", field: &StructField{TypeString: "string"}, want: false},
+		{name: "struct type", field: &StructField{TypeString: "account.Properties"}, want: false},
+		{name: "empty", field: &StructField{}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.field.IsGeneric())
+		})
+	}
+}
+
+func TestGenericTypeArg(t *testing.T) {
+	tests := []struct {
+		name    string
+		field   *StructField
+		want    string
+		wantErr bool
+	}{
+		{name: "simple type", field: &StructField{TypeString: "fields.StructField[User]"}, want: "User"},
+		{name: "pointer type", field: &StructField{TypeString: "fields.StructField[*User]"}, want: "User"},
+		{name: "package qualified", field: &StructField{TypeString: "fields.StructField[*billing_plan.FeatureSet]"}, want: "billing_plan.FeatureSet"},
+		{name: "map type", field: &StructField{TypeString: "fields.StructField[map[string]User]"}, want: "map[string]User"},
+		{name: "not generic", field: &StructField{TypeString: "string"}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.field.GenericTypeArg()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
 func TestToSpecSchema_PrimitiveTypes(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -209,7 +282,7 @@ func TestExtractTypeParameter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := extractTypeParameter(tt.typeStr)
+			got, err := (&StructField{TypeString: tt.typeStr}).GenericTypeArg()
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -279,7 +352,7 @@ func TestBuildSchemaForType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			schema, nestedTypes, err := buildSchemaForType(tt.typeStr, tt.public, false, "", nil)
+			schema, nestedTypes, err := (&StructField{TypeString: tt.typeStr}).BuildSchema(tt.public, false, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, schema)
 
@@ -564,6 +637,55 @@ func TestToSpecSchema_EnumWithUnderlyingType(t *testing.T) {
 	}
 }
 
+func TestPrimitiveSchema(t *testing.T) {
+	tests := []struct {
+		name       string
+		field      *StructField
+		wantType   string
+		wantFormat string
+	}{
+		{name: "string", field: &StructField{TypeString: "string"}, wantType: "string"},
+		{name: "bool", field: &StructField{TypeString: "bool"}, wantType: "boolean"},
+		{name: "int", field: &StructField{TypeString: "int"}, wantType: "integer"},
+		{name: "int64", field: &StructField{TypeString: "int64"}, wantType: "integer", wantFormat: "int64"},
+		{name: "float64", field: &StructField{TypeString: "float64"}, wantType: "number", wantFormat: "double"},
+		{name: "time.Time", field: &StructField{TypeString: "time.Time"}, wantType: "string", wantFormat: "date-time"},
+		{name: "uuid.UUID", field: &StructField{TypeString: "uuid.UUID"}, wantType: "string", wantFormat: "uuid"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema := tt.field.PrimitiveSchema()
+			assert.Equal(t, tt.wantType, schema.Type[0])
+			if tt.wantFormat != "" {
+				assert.Equal(t, tt.wantFormat, schema.Format)
+			}
+		})
+	}
+}
+
+func TestFieldsWrapperSchema(t *testing.T) {
+	tests := []struct {
+		name     string
+		field    *StructField
+		wantType string
+	}{
+		{name: "StringField", field: &StructField{TypeString: "fields.StringField"}, wantType: "string"},
+		{name: "IntField", field: &StructField{TypeString: "fields.IntField"}, wantType: "integer"},
+		{name: "BoolField", field: &StructField{TypeString: "fields.BoolField"}, wantType: "boolean"},
+		{name: "FloatField", field: &StructField{TypeString: "fields.FloatField"}, wantType: "number"},
+		{name: "UUIDField", field: &StructField{TypeString: "fields.UUIDField"}, wantType: "string"},
+		{name: "TimeField", field: &StructField{TypeString: "fields.TimeField"}, wantType: "string"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema, nested, err := tt.field.FieldsWrapperSchema(nil)
+			assert.NoError(t, err)
+			assert.Nil(t, nested)
+			assert.Equal(t, tt.wantType, schema.Type[0])
+		})
+	}
+}
+
 // mockEnumLookup implements TypeEnumLookup for testing
 type mockEnumLookup struct {
 	enums map[string][]EnumValue
@@ -574,4 +696,208 @@ func (m *mockEnumLookup) GetEnumsForType(typeName string, file *ast.File) ([]Enu
 		return enums, nil
 	}
 	return nil, fmt.Errorf("no enums for type: %s", typeName)
+}
+
+func TestNormalizedType(t *testing.T) {
+	tests := []struct {
+		name  string
+		field *StructField
+		want  string
+	}{
+		{
+			name:  "full module path",
+			field: &StructField{TypeString: "github.com/griffnb/core-swag/testing/testdata/core_models/constants.UnionStatus"},
+			want:  "constants.UnionStatus",
+		},
+		{
+			name:  "already short form",
+			field: &StructField{TypeString: "constants.UnionStatus"},
+			want:  "constants.UnionStatus",
+		},
+		{
+			name:  "pointer with full path",
+			field: &StructField{TypeString: "*github.com/griffnb/core-swag/testing/testdata/core_models/constants.UnionStatus"},
+			want:  "*constants.UnionStatus",
+		},
+		{
+			name:  "simple type",
+			field: &StructField{TypeString: "string"},
+			want:  "string",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.field.NormalizedType())
+		})
+	}
+}
+
+func TestConstantFieldEnumType(t *testing.T) {
+	tests := []struct {
+		name  string
+		field *StructField
+		want  string
+	}{
+		{
+			name:  "IntConstantField",
+			field: &StructField{TypeString: "*fields.IntConstantField[constants.Role]"},
+			want:  "constants.Role",
+		},
+		{
+			name:  "StringConstantField",
+			field: &StructField{TypeString: "*fields.StringConstantField[constants.GlobalConfigKey]"},
+			want:  "constants.GlobalConfigKey",
+		},
+		{
+			name:  "not a constant field",
+			field: &StructField{TypeString: "string"},
+			want:  "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.field.ConstantFieldEnumType())
+		})
+	}
+}
+
+func TestIsPrimitive(t *testing.T) {
+	tests := []struct {
+		name  string
+		field *StructField
+		want  bool
+	}{
+		{name: "string", field: &StructField{TypeString: "string"}, want: true},
+		{name: "int64", field: &StructField{TypeString: "int64"}, want: true},
+		{name: "time.Time", field: &StructField{TypeString: "time.Time"}, want: true},
+		{name: "*time.Time", field: &StructField{TypeString: "*time.Time"}, want: true},
+		{name: "uuid.UUID", field: &StructField{TypeString: "uuid.UUID"}, want: true},
+		{name: "decimal.Decimal", field: &StructField{TypeString: "decimal.Decimal"}, want: true},
+		{name: "struct type", field: &StructField{TypeString: "account.Properties"}, want: false},
+		{name: "empty", field: &StructField{}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.field.IsPrimitive())
+		})
+	}
+}
+
+func TestIsAny(t *testing.T) {
+	tests := []struct {
+		name  string
+		field *StructField
+		want  bool
+	}{
+		{name: "any keyword", field: &StructField{TypeString: "any"}, want: true},
+		{name: "interface{}", field: &StructField{TypeString: "interface{}"}, want: true},
+		{name: "interface with space", field: &StructField{TypeString: "interface {}"}, want: true},
+		{name: "string", field: &StructField{TypeString: "string"}, want: false},
+		{name: "empty", field: &StructField{}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.field.IsAny())
+		})
+	}
+}
+
+func TestIsFieldsWrapper(t *testing.T) {
+	tests := []struct {
+		name  string
+		field *StructField
+		want  bool
+	}{
+		{name: "StringField", field: &StructField{TypeString: "fields.StringField"}, want: true},
+		{name: "IntField", field: &StructField{TypeString: "fields.IntField"}, want: true},
+		{name: "StructField generic", field: &StructField{TypeString: "fields.StructField[User]"}, want: true},
+		{name: "plain string", field: &StructField{TypeString: "string"}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.field.IsFieldsWrapper())
+		})
+	}
+}
+
+func TestBuildSchema(t *testing.T) {
+	tests := []struct {
+		name       string
+		field      *StructField
+		public     bool
+		wantType   []string
+		wantRef    string
+		wantNested []string
+	}{
+		{
+			name:     "string",
+			field:    &StructField{TypeString: "string"},
+			wantType: []string{"string"},
+		},
+		{
+			name:     "int",
+			field:    &StructField{TypeString: "int"},
+			wantType: []string{"integer"},
+		},
+		{
+			name:       "struct without public",
+			field:      &StructField{TypeString: "User"},
+			wantRef:    "#/definitions/User",
+			wantNested: []string{"User"},
+		},
+		{
+			name:       "struct with public",
+			field:      &StructField{TypeString: "User"},
+			public:     true,
+			wantRef:    "#/definitions/UserPublic",
+			wantNested: []string{"UserPublic"},
+		},
+		{
+			name:     "array of strings",
+			field:    &StructField{TypeString: "[]string"},
+			wantType: []string{"array"},
+		},
+		{
+			name:       "array of structs",
+			field:      &StructField{TypeString: "[]User"},
+			wantType:   []string{"array"},
+			wantNested: []string{"User"},
+		},
+		{
+			name:     "any type",
+			field:    &StructField{TypeString: "any"},
+			wantType: []string{"object"},
+		},
+		{
+			name:     "interface{} type",
+			field:    &StructField{TypeString: "interface{}"},
+			wantType: []string{"object"},
+		},
+		{
+			name:     "fields.StringField wrapper",
+			field:    &StructField{TypeString: "fields.StringField"},
+			wantType: []string{"string"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema, nestedTypes, err := tt.field.BuildSchema(tt.public, false, nil)
+			assert.NoError(t, err)
+			assert.NotNil(t, schema)
+
+			if tt.wantRef != "" {
+				assert.Equal(t, tt.wantRef, schema.Ref.String())
+			} else if len(tt.wantType) > 0 {
+				assert.Equal(t, len(tt.wantType), len(schema.Type))
+				if len(tt.wantType) > 0 {
+					assert.Equal(t, tt.wantType[0], schema.Type[0])
+				}
+			}
+
+			if tt.wantNested != nil {
+				assert.Equal(t, tt.wantNested, nestedTypes)
+			}
+		})
+	}
 }
