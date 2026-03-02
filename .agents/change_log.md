@@ -1,5 +1,21 @@
 # Core-Swag Change Log
 
+## 2026-03-02: Fix StructField[map[string]any] producing bogus $ref
+
+**Problem:**
+`fields.StructField[map[string]any]` produced `$ref: "#/definitions/account.map[string]any"` instead of `"type": "object"`.
+
+**Root cause:**
+`processStructField()` in `struct_field_lookup.go` assumed the inner type T of `StructField[T]` is always a struct. When T was `map[string]any`, it fell into the same-package branch and qualified it as `account.map[string]any`, then tried (and failed) to extract struct fields. The corrupted `TypeString` later hit the struct-ref fallback in `BuildSchema()`.
+
+**Fix:**
+Added early return in `processStructField()` (after `GenericTypeArg()`) that detects non-struct inner types (`map[`, primitives, `any`/`interface{}`) and sets `f.TypeString` to the raw inner type, letting `BuildSchema()` handle it through its existing map/primitive/any detection paths.
+
+**Result:**
+`organization_subscription_plan_properties` now correctly renders as `{"type": "object", "additionalProperties": {"type": "object"}}`.
+
+---
+
 ## 2026-03-02: Fix real project schema generation (4 interconnected bugs)
 
 **Problem:**
