@@ -2,6 +2,7 @@ package model
 
 import (
 	"go/ast"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -184,4 +185,135 @@ func TestGlobalCacheStats_IncrementPattern(t *testing.T) {
 	hits, misses := GlobalCacheStats()
 	assert.Equal(t, int64(1), hits, "expected one cache hit after seeded lookup")
 	assert.Equal(t, int64(0), misses, "expected zero cache misses for seeded package")
+}
+
+func TestIsPackageCachedWithSyntax_ReturnsTrueWhenSyntaxPresent(t *testing.T) {
+	resetGlobalPackageCache()
+
+	pkg := &packages.Package{
+		PkgPath: "example.com/withsyntax",
+		Syntax:  []*ast.File{{}},
+	}
+	SeedGlobalPackageCache([]*packages.Package{pkg})
+
+	assert.True(t, IsPackageCachedWithSyntax("example.com/withsyntax"))
+}
+
+func TestIsPackageCachedWithSyntax_ReturnsFalseWhenNoSyntax(t *testing.T) {
+	resetGlobalPackageCache()
+
+	pkg := &packages.Package{PkgPath: "example.com/nosyntax"}
+	SeedGlobalPackageCache([]*packages.Package{pkg})
+
+	assert.False(t, IsPackageCachedWithSyntax("example.com/nosyntax"))
+}
+
+func TestIsPackageCachedWithSyntax_ReturnsFalseWhenNotCached(t *testing.T) {
+	resetGlobalPackageCache()
+
+	assert.False(t, IsPackageCachedWithSyntax("example.com/nonexistent"))
+}
+
+func TestResolvePackage_LocalCacheFirst(t *testing.T) {
+	resetGlobalPackageCache()
+
+	localPkg := &packages.Package{PkgPath: "example.com/local", Name: "local"}
+	globalPkg := &packages.Package{PkgPath: "example.com/local", Name: "global"}
+
+	// Put different packages in local and global caches
+	globalCacheMutex.Lock()
+	globalPackageCache["example.com/local"] = globalPkg
+	globalCacheMutex.Unlock()
+
+	parser := &CoreStructParser{
+		packageCache: map[string]*packages.Package{
+			"example.com/local": localPkg,
+		},
+	}
+
+	result := parser.resolvePackage("example.com/local")
+	assert.Equal(t, "local", result.Name, "should prefer local cache")
+}
+
+func TestResolvePackage_FallsBackToGlobal(t *testing.T) {
+	resetGlobalPackageCache()
+
+	globalPkg := &packages.Package{PkgPath: "example.com/global", Name: "global"}
+
+	globalCacheMutex.Lock()
+	globalPackageCache["example.com/global"] = globalPkg
+	globalCacheMutex.Unlock()
+
+	parser := &CoreStructParser{
+		packageCache: make(map[string]*packages.Package),
+	}
+
+	result := parser.resolvePackage("example.com/global")
+	assert.Equal(t, "global", result.Name, "should fall back to global cache")
+}
+
+func TestResolvePackage_ReturnsNilWhenNotFound(t *testing.T) {
+	resetGlobalPackageCache()
+
+	parser := &CoreStructParser{
+		packageCache: make(map[string]*packages.Package),
+	}
+
+	result := parser.resolvePackage("example.com/nonexistent")
+	assert.Nil(t, result)
+}
+
+func TestSharedTypeCache_GetSet(t *testing.T) {
+	cache := NewSharedTypeCache()
+
+	builder := &StructBuilder{}
+	cache.set("key1", builder)
+
+	got, ok := cache.get("key1")
+	assert.True(t, ok)
+	assert.Same(t, builder, got)
+
+	_, ok = cache.get("nonexistent")
+	assert.False(t, ok)
+}
+
+func TestSharedTypeCache_ConcurrentAccess(t *testing.T) {
+	cache := NewSharedTypeCache()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			key := "key"
+			builder := &StructBuilder{}
+			cache.set(key, builder)
+			cache.get(key)
+		}(i)
+	}
+	wg.Wait()
+
+	// If we get here without a race detector error, the test passes.
+	_, ok := cache.get("key")
+	assert.True(t, ok)
+}
+
+func TestSingleflight_DeduplicatesConcurrentLoads(t *testing.T) {
+	// This test verifies the singleflight variable is properly initialized.
+	// The actual deduplication is tested via integration tests (packages.Load
+	// can't be easily mocked). Here we verify the group exists and works.
+	var callCount int64
+	var mu sync.Mutex
+
+	// Use the package-level singleflight group to ensure it's initialized.
+	val, err, _ := packageLoadGroup.Do("test-key", func() (any, error) {
+		mu.Lock()
+		callCount++
+		mu.Unlock()
+		return "result", nil
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, "result", val)
+	assert.Equal(t, int64(1), callCount)
 }

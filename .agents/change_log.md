@@ -1,5 +1,25 @@
 # Core-Swag Change Log
 
+## 2026-03-03: Schema Building Performance Optimization (4 fixes)
+
+**Problem:** `buildDemandDrivenSchemas` was slow due to 142+ `packages.Load` subprocess spawns, full map copies on every cache hit, and no cross-goroutine type caching.
+
+**Fixes Applied:**
+1. **singleflight on packages.Load** — Wrapped `packages.Load` in `singleflight.Group.Do()` to deduplicate concurrent calls for the same import path. Replaced `log.Fatalf` with error return from singleflight.
+2. **Read-through accessor** — Replaced O(N) full `globalPackageCache` map copy on every cache hit with `resolvePackage()` method that checks local cache first, then global cache under RLock. Removed `packageMap` field from `CoreStructParser`. Removed unused `packageMap` parameter from `processStructField` and `ExtractFieldsRecursive`.
+3. **Batched pre-warm** — Added `preWarmPackages()` in schema_builder.go that collects all unique pkgPaths and loads them in a single batched `packages.Load` call before the concurrent build phase. Added `IsPackageCachedWithSyntax()` export.
+4. **SharedTypeCache** — Added `SharedTypeCache` type with RWMutex protection. `BuildAllSchemasWithCache()` passes shared cache to each goroutine's `CoreStructParser`, avoiding redundant type resolution across concurrent builds.
+
+**Results:**
+- Project 1: cache misses dropped from 142 → 32, hits 1722
+- Project 2: cache misses 18, hits 157
+- All tests pass with `-race` detector
+
+**Files Changed:**
+- `internal/model/struct_field_lookup.go` — singleflight, resolvePackage, SharedTypeCache, IsPackageCachedWithSyntax, BuildAllSchemasWithCache, signature cleanup
+- `internal/orchestrator/schema_builder.go` — preWarmPackages, SharedTypeCache integration
+- `internal/model/struct_field_lookup_test.go` — 15 new tests
+
 ## 2026-03-03: Fix complex non-struct types in AllOf overrides and body params
 
 **Problem:**

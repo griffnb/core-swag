@@ -4,6 +4,7 @@ package orchestrator
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"runtime"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/griffnb/core-swag/internal/domain"
 	"github.com/griffnb/core-swag/internal/model"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/tools/go/packages"
 )
 
 // structRefWork holds the resolved inputs for a struct schema build.
@@ -68,6 +70,16 @@ func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]RefInfo) e
 		}
 	}
 
+	// Phase 1.5: Pre-warm packages with Syntax in a single batched call.
+	// This replaces N sequential `go list` subprocesses with one batched call.
+	if err := preWarmPackages(structWork, s.config.Debug); err != nil {
+		// Non-fatal: concurrent builds fall back to individual loads
+		// (deduplicated by singleflight).
+		if s.config.Debug != nil {
+			s.config.Debug.Printf("Orchestrator: preWarmPackages failed (non-fatal): %v", err)
+		}
+	}
+
 	// Phase 2: Build struct schemas concurrently.
 	// BuildAllSchemas creates a fresh CoreStructParser per call and only
 	// touches mutex-protected global caches, so it is safe to parallelize.
@@ -116,6 +128,8 @@ func (s *Service) buildStructSchemasConcurrent(work []structRefWork) ([]structRe
 		results []structRefResult
 	)
 
+	sharedCache := model.NewSharedTypeCache()
+
 	var g errgroup.Group
 	g.SetLimit(runtime.NumCPU())
 	if s.config.Debug != nil {
@@ -125,7 +139,7 @@ func (s *Service) buildStructSchemasConcurrent(work []structRefWork) ([]structRe
 	for _, w := range work {
 		w := w
 		g.Go(func() error {
-			schemas, err := model.BuildAllSchemas("", w.pkgPath, w.typeName, w.goPackageName)
+			schemas, err := model.BuildAllSchemasWithCache("", w.pkgPath, w.typeName, sharedCache, w.goPackageName)
 			if err != nil {
 				if s.config.Debug != nil {
 					s.config.Debug.Printf("Orchestrator: BuildAllSchemas FAILED for %s (pkg=%s): %v",
@@ -220,4 +234,52 @@ func (s *Service) buildNonStructSchema(ref resolvedNonStructRef) {
 	} else if s.config.Debug != nil {
 		s.config.Debug.Printf("Orchestrator: BuildSchema OK for %s → %s", ref.baseName, schemaName)
 	}
+}
+
+// preWarmPackages loads all unique package paths from the work slice in a single
+// batched packages.Load call. This triggers one `go list` invocation that
+// resolves everything, dramatically faster than N individual calls.
+func preWarmPackages(work []structRefWork, debug Debugger) error {
+	// Collect unique pkgPaths that aren't already cached with Syntax.
+	seen := make(map[string]bool, len(work))
+	var paths []string
+	for _, w := range work {
+		if seen[w.pkgPath] {
+			continue
+		}
+		seen[w.pkgPath] = true
+		if model.IsPackageCachedWithSyntax(w.pkgPath) {
+			continue
+		}
+		paths = append(paths, w.pkgPath)
+	}
+
+	if len(paths) == 0 {
+		if debug != nil {
+			debug.Printf("Orchestrator: preWarmPackages: all %d packages already cached with syntax", len(work))
+		}
+		return nil
+	}
+
+	if debug != nil {
+		debug.Printf("Orchestrator: preWarmPackages: loading %d packages in single batch", len(paths))
+	}
+
+	cfg := &packages.Config{
+		Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo |
+			packages.NeedName | packages.NeedImports | packages.NeedDeps,
+		Fset: token.NewFileSet(),
+	}
+	pkgs, err := packages.Load(cfg, paths...)
+	if err != nil {
+		return fmt.Errorf("batched packages.Load: %w", err)
+	}
+
+	model.SeedGlobalPackageCache(pkgs)
+	model.SeedEnumPackageCache(pkgs)
+
+	if debug != nil {
+		debug.Printf("Orchestrator: preWarmPackages: seeded %d packages", len(pkgs))
+	}
+	return nil
 }

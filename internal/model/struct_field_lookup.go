@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/console"
+	"golang.org/x/sync/singleflight"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -19,6 +20,7 @@ import (
 var (
 	globalPackageCache = make(map[string]*packages.Package)
 	globalCacheMutex   sync.RWMutex
+	packageLoadGroup   singleflight.Group
 )
 
 // cacheHits and cacheMisses track how often LookupStructFields resolves a
@@ -31,6 +33,16 @@ var (
 // GlobalCacheStats returns the global package cache hit and miss counts.
 func GlobalCacheStats() (hits, misses int64) {
 	return atomic.LoadInt64(&cacheHits), atomic.LoadInt64(&cacheMisses)
+}
+
+// IsPackageCachedWithSyntax reports whether the global package cache contains
+// an entry for importPath that has AST Syntax populated. Used by the pre-warm
+// phase to skip packages that are already usable.
+func IsPackageCachedWithSyntax(importPath string) bool {
+	globalCacheMutex.RLock()
+	defer globalCacheMutex.RUnlock()
+	pkg, ok := globalPackageCache[importPath]
+	return ok && len(pkg.Syntax) > 0
 }
 
 // ResetGlobalCacheStats resets the cache statistics counters for test isolation.
@@ -94,14 +106,55 @@ func SeedGlobalPackageCache(pkgs []*packages.Package) {
 	}
 }
 
+// SharedTypeCache allows multiple CoreStructParser instances (running in
+// separate goroutines) to share already-resolved type results. StructBuilder
+// values are immutable after creation, so sharing cached values is safe.
+type SharedTypeCache struct {
+	types map[string]*StructBuilder
+	mu    sync.RWMutex
+}
+
+// NewSharedTypeCache creates a SharedTypeCache for use across concurrent
+// BuildAllSchemas calls.
+func NewSharedTypeCache() *SharedTypeCache {
+	return &SharedTypeCache{types: make(map[string]*StructBuilder)}
+}
+
+func (s *SharedTypeCache) get(key string) (*StructBuilder, bool) {
+	s.mu.RLock()
+	v, ok := s.types[key]
+	s.mu.RUnlock()
+	return v, ok
+}
+
+func (s *SharedTypeCache) set(key string, v *StructBuilder) {
+	s.mu.Lock()
+	s.types[key] = v
+	s.mu.Unlock()
+}
+
 type CoreStructParser struct {
 	basePackage   *packages.Package
-	packageMap    map[string]*packages.Package
 	visited       map[string]bool
 	packageCache  map[string]*packages.Package // Cache loaded packages
 	typeCache     map[string]*StructBuilder    // Cache processed types
 	cacheMutex    sync.RWMutex                 // Protect caches
 	sharedFileSet *token.FileSet               // Shared FileSet for fallback packages.Load calls
+	sharedCache   *SharedTypeCache             // Optional cross-goroutine type cache
+}
+
+// resolvePackage returns the *packages.Package for pkgPath by checking the
+// local parser cache first (no lock needed), then falling back to the global
+// cache (behind RLock). This replaces the O(N) full-map-copy that previously
+// happened on every cache hit.
+func (c *CoreStructParser) resolvePackage(pkgPath string) *packages.Package {
+	if p, ok := c.packageCache[pkgPath]; ok {
+		return p
+	}
+	globalCacheMutex.RLock()
+	p := globalPackageCache[pkgPath]
+	globalCacheMutex.RUnlock()
+	return p
 }
 
 // getOrCreateFileSet returns the shared FileSet, creating one if needed.
@@ -139,8 +192,14 @@ func toPascalCase(s string) string {
 }
 
 func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *StructBuilder {
-	// Check type cache first
+	// Check type cache first — shared cache (cross-goroutine), then local.
 	cacheKey := importPath + ":" + typeName
+	if c.sharedCache != nil {
+		if cached, ok := c.sharedCache.get(cacheKey); ok {
+			console.Logger.Debug("Using shared cached type: %s\n", cacheKey)
+			return cached
+		}
+	}
 	c.cacheMutex.RLock()
 	if cached, exists := c.typeCache[cacheKey]; exists {
 		c.cacheMutex.RUnlock()
@@ -190,65 +249,66 @@ func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *S
 		pkgCached = false
 	}
 
-	var packageMap map[string]*packages.Package
-
 	if !pkgCached {
 		atomic.AddInt64(&cacheMisses, 1)
 		console.Logger.Debug("Loading package: %s\n", importPath)
-		cfg := &packages.Config{
-			Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedName | packages.NeedImports | packages.NeedDeps,
-			Fset: c.getOrCreateFileSet(),
-		}
-		// Load the main package with all its dependencies
-		pkgs, err := packages.Load(cfg, importPath)
-		if err != nil || len(pkgs) == 0 {
-			log.Fatalf("failed to load package %s: %v", importPath, err)
-		}
-		packageMap = make(map[string]*packages.Package)
 
-		// Recursively add all packages including imports and dependencies
-		var addPackage func(*packages.Package)
-		addPackage = func(p *packages.Package) {
-			if p == nil || packageMap[p.PkgPath] != nil {
-				return
+		// Use singleflight to deduplicate concurrent packages.Load calls for the
+		// same import path. The callback loads the package, builds the recursive
+		// packageMap, and caches everything in globalPackageCache.
+		type loadResult struct {
+			packageMap map[string]*packages.Package
+		}
+		val, err, _ := packageLoadGroup.Do(importPath, func() (interface{}, error) {
+			cfg := &packages.Config{
+				Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedName | packages.NeedImports | packages.NeedDeps,
+				Fset: token.NewFileSet(),
 			}
-			packageMap[p.PkgPath] = p
-
-			// Add all imports
-			for _, imp := range p.Imports {
-				addPackage(imp)
+			pkgs, err := packages.Load(cfg, importPath)
+			if err != nil || len(pkgs) == 0 {
+				return nil, fmt.Errorf("failed to load package %s: %v", importPath, err)
 			}
+			pm := make(map[string]*packages.Package)
+			var addPackage func(*packages.Package)
+			addPackage = func(p *packages.Package) {
+				if p == nil || pm[p.PkgPath] != nil {
+					return
+				}
+				pm[p.PkgPath] = p
+				for _, imp := range p.Imports {
+					addPackage(imp)
+				}
+			}
+			for _, p := range pkgs {
+				addPackage(p)
+			}
+
+			// Cache all loaded packages in the global cache.
+			globalCacheMutex.Lock()
+			for path, p := range pm {
+				globalPackageCache[path] = p
+			}
+			globalCacheMutex.Unlock()
+
+			console.Logger.Debug("Cached %d packages from %s\n", len(pm), importPath)
+			return &loadResult{packageMap: pm}, nil
+		})
+		if err != nil {
+			log.Fatalf("%v", err)
 		}
 
-		for _, p := range pkgs {
-			addPackage(p)
-		}
-
-		// Cache all loaded packages in both local and global cache
-		globalCacheMutex.Lock()
+		// Populate local parser cache from the singleflight result.
+		result := val.(*loadResult)
 		c.cacheMutex.Lock()
-		for path, p := range packageMap {
-			globalPackageCache[path] = p
+		for path, p := range result.packageMap {
 			c.packageCache[path] = p
 		}
-		pkg = packageMap[importPath]
 		c.cacheMutex.Unlock()
-		globalCacheMutex.Unlock()
-		console.Logger.Debug("Cached %d packages from %s\n", len(packageMap), importPath)
+		pkg = result.packageMap[importPath]
 	} else {
 		atomic.AddInt64(&cacheHits, 1)
 		console.Logger.Debug("Using globally cached package: %s\n", importPath)
-		// Use cached packages from global cache
-		globalCacheMutex.RLock()
-		packageMap = make(map[string]*packages.Package)
-		for k, v := range globalPackageCache {
-			packageMap[k] = v
-		}
-		globalCacheMutex.RUnlock()
 	}
-
-	// Set the packageMap on the parser so checkNamed can use it
-	c.packageMap = packageMap
 
 	if pkg == nil || pkg.PkgPath != importPath {
 		console.Logger.Debug("Package not found or mismatch: %v\n", importPath)
@@ -262,7 +322,7 @@ func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *S
 
 	visited := make(map[string]bool)
 	c.visited = visited
-	fields := c.ExtractFieldsRecursive(pkg, typeName, packageMap, visited)
+	fields := c.ExtractFieldsRecursive(pkg, typeName, visited)
 
 	// Process all fields
 	for _, f := range fields {
@@ -270,22 +330,25 @@ func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *S
 
 		// Check if it's a special StructField type that needs expansion
 		if f.IsGeneric() && strings.Contains(f.EffectiveTypeString(), "fields.StructField") {
-			c.processStructField(f, packageMap, builder)
+			c.processStructField(f, builder)
 		} else {
 			builder.Fields = append(builder.Fields, f)
 		}
 	}
 
-	// Cache the result before returning
+	// Cache the result before returning — both local and shared.
 	c.cacheMutex.Lock()
 	c.typeCache[cacheKey] = builder
 	c.cacheMutex.Unlock()
+	if c.sharedCache != nil {
+		c.sharedCache.set(cacheKey, builder)
+	}
 
 	return builder
 }
 
 // processStructField handles the expansion of StructField[T] types
-func (c *CoreStructParser) processStructField(f *StructField, packageMap map[string]*packages.Package, builder *StructBuilder) {
+func (c *CoreStructParser) processStructField(f *StructField, builder *StructBuilder) {
 	if !f.IsGeneric() {
 		builder.Fields = append(builder.Fields, f)
 		return
@@ -384,7 +447,7 @@ func (c *CoreStructParser) processStructField(f *StructField, packageMap map[str
 	console.Logger.Debug("-----Final Sub type Package %s\n Final Sub Type Name: %s\n", subTypePackage, subTypeName)
 
 	// Find the target package
-	targetPkg := packageMap[subTypePackage]
+	targetPkg := c.resolvePackage(subTypePackage)
 	if targetPkg == nil {
 		console.Logger.Debug("WARNING: Package not found in map for %s\n", subTypePackage)
 		targetPkg = c.basePackage
@@ -401,7 +464,7 @@ func (c *CoreStructParser) processStructField(f *StructField, packageMap map[str
 
 	// Extract subfields
 	console.Logger.Debug("\n\n-------Sub Package Struct-----: \n%s\n", subTypeName)
-	subFields := c.ExtractFieldsRecursive(targetPkg, subTypeName, packageMap, make(map[string]bool))
+	subFields := c.ExtractFieldsRecursive(targetPkg, subTypeName, make(map[string]bool))
 	console.Logger.Debug("--------Extracted %d subfields for %s\n", len(subFields), subTypeName)
 
 	for _, subField := range subFields {
@@ -418,7 +481,6 @@ func (c *CoreStructParser) processStructField(f *StructField, packageMap map[str
 func (c *CoreStructParser) ExtractFieldsRecursive(
 	pkg *packages.Package,
 	typeName string,
-	_ map[string]*packages.Package,
 	visited map[string]bool,
 ) []*StructField {
 	// Create a unique cache key with package path
@@ -615,13 +677,13 @@ func (c *CoreStructParser) checkNamed(fieldType types.Type) ([]*StructField, *ty
 		}
 		if _, ok := named.Underlying().(*types.Struct); ok {
 			console.Logger.Debug("Found sub type Package %s Name %s\n", pkg.Path(), named.Obj().Name())
-			nextPackage, ok := c.packageMap[pkg.Path()]
-			if !ok {
+			nextPackage := c.resolvePackage(pkg.Path())
+			if nextPackage == nil {
 				console.Logger.Debug("Package not found for %s\n", pkg.Path())
 				return nil, nil, true
 			}
 			console.Logger.Debug("Next Package: %s\n", nextPackage.PkgPath)
-			subFields := c.ExtractFieldsRecursive(nextPackage, named.Obj().Name(), c.packageMap, c.visited)
+			subFields := c.ExtractFieldsRecursive(nextPackage, named.Obj().Name(), c.visited)
 			return subFields, named, true
 		}
 	}
@@ -700,6 +762,12 @@ func (c *CoreStructParser) checkMap(fieldType types.Type) ([]*StructField, strin
 	return nil, "", false
 }
 
+// BuildAllSchemasWithCache is like BuildAllSchemas but uses a SharedTypeCache
+// to avoid redundant type resolution across concurrent goroutines.
+func BuildAllSchemasWithCache(baseModule, pkgPath, typeName string, cache *SharedTypeCache, packageNameOverride ...string) (map[string]*spec.Schema, error) {
+	return buildAllSchemasInternal(baseModule, pkgPath, typeName, cache, packageNameOverride...)
+}
+
 // BuildAllSchemas generates both public and non-public schema variants for a type.
 // packageNameOverride, when non-empty, is used as the definition prefix instead of
 // deriving it from the last segment of pkgPath.  This is important when the Go
@@ -707,7 +775,11 @@ func (c *CoreStructParser) checkMap(fieldType types.Type) ([]*StructField, strin
 // path ".../stripe-go/v84").
 // Returns a map of schema names to schemas (includes both base and Public variants).
 func BuildAllSchemas(baseModule, pkgPath, typeName string, packageNameOverride ...string) (map[string]*spec.Schema, error) {
-	parser := &CoreStructParser{}
+	return buildAllSchemasInternal(baseModule, pkgPath, typeName, nil, packageNameOverride...)
+}
+
+func buildAllSchemasInternal(baseModule, pkgPath, typeName string, cache *SharedTypeCache, packageNameOverride ...string) (map[string]*spec.Schema, error) {
+	parser := &CoreStructParser{sharedCache: cache}
 
 	// Use override if provided, otherwise derive from pkgPath
 	packageName := pkgPath
