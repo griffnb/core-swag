@@ -872,13 +872,17 @@ func buildSchemasRecursive(
 		// Package is a prefix of type name (case-insensitive, ignoring separators)
 		// e.g., account.Account → Account, account.AccountJoined → AccountJoined
 		//       billing_plan.BillingPlanJoined → BillingPlanJoined
-		schema.Title = typeName
+		// Ensure title starts with uppercase for proper PascalCase
+		schema.Title = strings.ToUpper(typeName[:1]) + typeName[1:]
 	} else {
 		// Package and type don't align - combine them
 		// e.g., account.Properties → AccountProperties
 		// Convert package_name to PascalCase: billing_plan → BillingPlan
 		packagePascal := toPascalCase(packageName)
-		schema.Title = packagePascal + typeName
+		// Capitalize first letter of typeName so combined title is proper PascalCase
+		// e.g., "DesignTemplateCategoryItems" + "previewResponse" → "DesignTemplateCategoryItemsPreviewResponse"
+		titleTypeName := strings.ToUpper(typeName[:1]) + typeName[1:]
+		schema.Title = packagePascal + titleTypeName
 	}
 
 	allSchemas[fullSchemaName] = schema
