@@ -1,5 +1,24 @@
 # Core-Swag Change Log
 
+## 2026-03-03: Fix complex non-struct types in AllOf overrides and body params
+
+**Problem:**
+Complex non-struct types in annotation overrides (`Response{data=map[string][]any}`) and body params (`@Param data body any true`) produced bad `$ref` references instead of proper inline schemas.
+
+**Root Cause 1 — AllOf override value types not resolved recursively:**
+After extracting map value type (e.g., `map[string][]any` → value `[]any`), the code didn't handle the case where the value type itself was an array or nested type. It fell through to creating `$ref: #/definitions/[]any`.
+
+**Fix:** Replaced flat array/map/primitive handling in `buildAllOfResponseSchema` with a new recursive `resolveOverrideTypeSchema` method that handles `[]T`, `map[K]V`, primitives, wildcards, and model refs at any nesting depth. (`allof.go`)
+
+**Root Cause 2 — `any`/`interface{}` treated as model types in body params:**
+`isModelType()` didn't include `any` or `interface{}` in its primitives map, so `@Param data body any` created `$ref: #/definitions/test.any`.
+
+**Fix:** Added `any` and `interface{}` to the primitives map in `isModelType()`. (`schema.go`)
+
+**Tests:** Added 16 new test cases in `complex_types_test.go` covering both response override and body param scenarios.
+
+---
+
 ## 2026-03-03: Fix remaining missing $ref definitions (6 → 0 missing, then 4 deeper issues)
 
 **Problem:**

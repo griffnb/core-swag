@@ -18,25 +18,27 @@ func isModelType(typeName string) bool {
 
 	// Basic Go primitive types
 	primitives := map[string]bool{
-		"int":     true,
-		"int8":    true,
-		"int16":   true,
-		"int32":   true,
-		"int64":   true,
-		"uint":    true,
-		"uint8":   true,
-		"uint16":  true,
-		"uint32":  true,
-		"uint64":  true,
-		"float32": true,
-		"float64": true,
-		"bool":    true,
-		"string":  true,
-		"byte":    true,
-		"rune":    true,
-		"object":  true, // OpenAPI keyword
-		"array":   true, // OpenAPI keyword
-		"file":    true, // Special type for file uploads
+		"int":         true,
+		"int8":        true,
+		"int16":       true,
+		"int32":       true,
+		"int64":       true,
+		"uint":        true,
+		"uint8":       true,
+		"uint16":      true,
+		"uint32":      true,
+		"uint64":      true,
+		"float32":     true,
+		"float64":     true,
+		"bool":        true,
+		"string":      true,
+		"byte":        true,
+		"rune":        true,
+		"any":         true, // Go wildcard type
+		"interface{}": true, // Go wildcard type (legacy syntax)
+		"object":      true, // OpenAPI keyword
+		"array":       true, // OpenAPI keyword
+		"file":        true, // Special type for file uploads
 	}
 
 	if primitives[cleanType] {
