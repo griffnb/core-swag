@@ -166,6 +166,23 @@ func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *S
 	// Syntax even though they have TypesInfo, making field extraction impossible.
 	globalCacheMutex.RLock()
 	pkg, pkgCached := globalPackageCache[importPath]
+	// If not found by exact key, the importPath may be a relative path from the
+	// registry (e.g., "design/controllers/foo" instead of "github.com/.../design/controllers/foo").
+	// Search for a cached package whose full PkgPath ends with our relative path.
+	if !pkgCached {
+		suffix := "/" + importPath
+		for fullPath, cachedPkg := range globalPackageCache {
+			if strings.HasSuffix(fullPath, suffix) {
+				pkg = cachedPkg
+				pkgCached = true
+				importPath = fullPath // use the resolved full path going forward
+				// Update the cache key so subsequent lookups hit directly
+				cacheKey = importPath + ":" + typeName
+				console.Logger.Debug("Resolved relative path to full import: %s\n", fullPath)
+				break
+			}
+		}
+	}
 	globalCacheMutex.RUnlock()
 
 	if pkgCached && len(pkg.Syntax) == 0 {
