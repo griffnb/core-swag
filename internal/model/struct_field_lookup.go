@@ -299,10 +299,11 @@ func (c *CoreStructParser) processStructField(f *StructField, packageMap map[str
 		subTypeName = strings.TrimPrefix(subTypeName, "*")
 	}
 
-	// After stripping array/pointer prefixes, check if bare type is primitive.
-	// Catches StructField[[]string] where "string" should not be package-qualified.
+	// After stripping array/pointer prefixes, check if bare type is primitive,
+	// any, or a map type. Catches StructField[[]string] and StructField[[]map[string]any]
+	// where the inner type should not be package-qualified.
 	strippedProbe := &StructField{TypeString: subTypeName}
-	if strippedProbe.IsPrimitive() || strippedProbe.IsAny() {
+	if strippedProbe.IsPrimitive() || strippedProbe.IsAny() || strings.HasPrefix(subTypeName, "map[") {
 		f.TypeString = arrayPrefix + subTypeName
 		builder.Fields = append(builder.Fields, f)
 		return
@@ -733,11 +734,13 @@ func buildSchemasRecursive(
 	parser *CoreStructParser,
 	baseModule, pkgPath, packageName string,
 ) error {
-	// Avoid infinite recursion
-	if processed[schemaName] {
+	// Avoid infinite recursion — use fully qualified key so types with the same
+	// short name from different packages don't collide (e.g., pkg_a.Foo vs pkg_b.Foo).
+	processedKey := packageName + "." + schemaName
+	if processed[processedKey] {
 		return nil
 	}
-	processed[schemaName] = true
+	processed[processedKey] = true
 
 	// Extract base type name (remove Public suffix if present)
 	baseTypeName := schemaName
@@ -849,6 +852,35 @@ func buildSchemasRecursive(
 
 		nestedBuilder := parser.LookupStructFields(baseModule, nestedPkgPath, cleanNestedType)
 
+		// If the sibling-path resolution produced a builder with no fields but
+		// the package path was derived from a short name (no "/" in the nested
+		// type name), the sibling path may be wrong (e.g., services/alias instead
+		// of models/alias). Search the global package cache for a better match.
+		if (nestedBuilder == nil || len(nestedBuilder.Fields) == 0) &&
+			!strings.Contains(nestedTypeName, "/") &&
+			nestedPackageName != packageName {
+			var candidates []string
+			globalCacheMutex.RLock()
+			for cachedPath, cachedPkg := range globalPackageCache {
+				if cachedPath != nestedPkgPath &&
+					cachedPkg != nil &&
+					cachedPkg.Name == nestedPackageName &&
+					strings.HasSuffix(cachedPath, "/"+nestedPackageName) {
+					candidates = append(candidates, cachedPath)
+				}
+			}
+			globalCacheMutex.RUnlock()
+
+			for _, candPath := range candidates {
+				altBuilder := parser.LookupStructFields(baseModule, candPath, cleanNestedType)
+				if altBuilder != nil && len(altBuilder.Fields) > 0 {
+					nestedPkgPath = candPath
+					nestedBuilder = altBuilder
+					break
+				}
+			}
+		}
+
 		// Case 1: nil builder — external/unloadable type. Create opaque object definition.
 		if nestedBuilder == nil {
 			console.Logger.Debug(
@@ -865,8 +897,14 @@ func buildSchemasRecursive(
 			opaqueKey := nestedPackageName + "." + cleanNestedType
 			allSchemas[opaqueKey] = opaqueSchema
 
-			processed[cleanNestedType] = true
-			processed[cleanNestedType+"Public"] = true
+			// Also register under canonical name for NotUnique types (Case 1)
+			if globalNameResolver != nil && strings.Contains(nestedPkgPath, "/") {
+				canonicalName := globalNameResolver.ResolveDefinitionName(nestedPkgPath + "." + cleanNestedType)
+				if canonicalName != opaqueKey {
+					allSchemas[canonicalName] = opaqueSchema
+				}
+			}
+
 			processed[nestedPackageName+"."+cleanNestedType] = true
 			processed[nestedPackageName+"."+cleanNestedType+"Public"] = true
 			continue
@@ -934,11 +972,17 @@ func buildSchemasRecursive(
 				}
 				emptyKey := nestedPackageName + "." + cleanNestedType
 				allSchemas[emptyKey] = emptySchema
+
+				// Also register under canonical name for NotUnique types (Case 3)
+				if globalNameResolver != nil && strings.Contains(nestedPkgPath, "/") {
+					canonicalName := globalNameResolver.ResolveDefinitionName(nestedPkgPath + "." + cleanNestedType)
+					if canonicalName != emptyKey {
+						allSchemas[canonicalName] = emptySchema
+					}
+				}
 			}
 
 			// Mark both base and Public as processed to prevent Public variant creation
-			processed[cleanNestedType] = true
-			processed[cleanNestedType+"Public"] = true
 			processed[nestedPackageName+"."+cleanNestedType] = true
 			processed[nestedPackageName+"."+cleanNestedType+"Public"] = true
 			continue

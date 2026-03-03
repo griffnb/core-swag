@@ -1,100 +1,72 @@
-# Fix 4 Categories of Missing $ref Definitions
+# Fix Remaining 6 Missing $ref Definitions
 
 ## Context
 
-After fixing 74 missing definitions (global_struct, address, constants, etc.), 137 still remain. We're targeting the 4 most impactful categories (18 items), which all stem from edge cases in the struct parsing pipeline.
+After the first round of fixes (138 → 0 on integration test), 6 definitions are still missing in the full `make test-project-1` output (1797 refs, 1789 defs). Three distinct root causes.
 
-**Current state**: Missing definitions threshold = 138. Target after fixes: ~120.
+| # | Missing Definition | Category |
+|---|---|---|
+| 1 | `account_event.AccountEventPublic` | PUBLIC |
+| 2 | `alias.AliasPublic` | PUBLIC |
+| 3 | `serp_result.SerpResultJoinedPublic` | PUBLIC |
+| 4 | `tos_signature.TosSignaturePublic` | PUBLIC |
+| 5 | `github_com_chargebee_chargebee-go_v3_enum.Source` | CANONICAL |
+| 6 | `lawsuit.map%5Bstring%5Dany` | MAP |
 
 ---
 
-## Bug 1: WRONG TYPE (9 items) — `package.string` $refs
+## Bug A: MAP — `lawsuit.map[string]any` (1 item)
 
-**Examples**: `account_classification.string`, `account.string`, `lead.string`
+**Root cause**: `processStructField()` in `struct_field_lookup.go`. Field is `StructField[[]map[string]any]`:
+1. `GenericTypeArg()` extracts `[]map[string]any`
+2. Line 285: checks `strings.HasPrefix(subTypeName, "map[")` → false (starts with `[]`)
+3. Lines 293-300: strips `[]` prefix → `subTypeName = "map[string]any"`
+4. Lines 304-305: checks `IsPrimitive()` / `IsAny()` → false (it's a map)
+5. Falls through to else-branch → package-qualifies as `lawsuit.map[string]any`
 
-**Root cause**: `processStructField()` in `struct_field_lookup.go` line 291-355. For `StructField[[]string]`:
-1. `GenericTypeArg()` extracts `[]string`
-2. `IsPrimitive()` on `"[]string"` → false (only bare `"string"` is in the map)
-3. Strips `[]` prefix → `subTypeName = "string"`
-4. Falls to else-branch (line 345) → qualifies as `basePackage.Name + ".string"` → `"account_classification.string"`
-5. This gets used as a struct ref, creating a dangling `$ref`
-
-**Fix**: Insert primitive check after line 300 (after stripping `[]`/`*` prefixes):
+**Fix**: Add `strings.HasPrefix(subTypeName, "map[")` to the existing stripped probe check at line 305:
 ```go
-// After stripping array/pointer prefixes, check if bare type is primitive.
-// Catches StructField[[]string] where "string" should not be package-qualified.
-strippedProbe := &StructField{TypeString: subTypeName}
-if strippedProbe.IsPrimitive() || strippedProbe.IsAny() {
-    f.TypeString = arrayPrefix + subTypeName
-    builder.Fields = append(builder.Fields, f)
-    return
+if strippedProbe.IsPrimitive() || strippedProbe.IsAny() || strings.HasPrefix(subTypeName, "map[") {
+```
+
+**File**: `internal/model/struct_field_lookup.go` — `processStructField()`, line 305
+
+---
+
+## Bug B: PUBLIC — Missing Public variant definitions (4 items)
+
+**Root cause**: `buildSchemasRecursive()` uses the unqualified `schemaName` (e.g., `"AccountEvent"`) as the `processed` map key (lines 737-740). When two different packages each have a type with the same short name, the second type's variants get skipped because the processed key already exists from the first type.
+
+Example: If `pkg_a.Foo` and `pkg_b.Foo` are both nested types, the first processes `"Foo"` and `"FooPublic"`, marking both in the processed map. The second never builds its definitions because `processed["Foo"]` is already true.
+
+**Fix**: Use fully qualified key in the `processed` map:
+```go
+processedKey := packageName + "." + schemaName
+if processed[processedKey] {
+    return nil
 }
+processed[processedKey] = true
 ```
 
-**File**: `internal/model/struct_field_lookup.go` — `processStructField()`, after line 300
+**File**: `internal/model/struct_field_lookup.go` — `buildSchemasRecursive()`, lines 737-740
 
 ---
 
-## Bug 2: PROJECT (4 items) — Empty structs and external types
+## Bug C: CANONICAL — `github_com_chargebee_chargebee-go_v3_enum.Source` (1 item)
 
-**Affected**: `atlas_phone.MetaData` (empty struct), `data_broker_domain.MetaData` (empty struct), `ironclad.Contract` (external), `plivo.PhoneNumber` (external)
+**Root cause**: The canonical name registration code from the previous round only exists in Case 2 (enum). It's missing from Case 1 (nil builder → opaque object) and Case 3 (empty struct → opaque object). For external types that resolve to Case 1 or 3, the definition is stored under short key `"enum.Source"` but the $ref uses the NotUnique full-path key `"github_com_chargebee_chargebee-go_v3_enum.Source"`.
 
-**Root cause**: `buildSchemasRecursive()` line 828:
+**Fix**: Add canonical name registration to Case 1 and Case 3:
 ```go
-isNonStruct := nestedBuilder == nil || len(nestedBuilder.Fields) == 0
-```
-Conflates two cases: nil builder (external/unloadable) vs empty struct (0 fields). Both skip definition creation.
-
-**Fix**: Split into three cases in `buildSchemasRecursive()` lines 828-880:
-
-1. **`nestedBuilder == nil`** (external type): Create opaque `{type: "object"}` definition
-2. **`len(nestedBuilder.Fields) == 0` + is enum**: Existing enum handling (unchanged)
-3. **`len(nestedBuilder.Fields) == 0` + not enum**: Create empty `{type: "object"}` definition
-
-**File**: `internal/model/struct_field_lookup.go` — `buildSchemasRecursive()`, replace lines 828-880
-
----
-
-## Bug 3: MALFORMED (3 items) — Struct tags leaking into type names
-
-**Examples**: `data_broker_domain.FraudAlert%20json%3A%22alert_details%22...`
-
-**Root cause**: Anonymous struct field processing in `ExtractFieldsRecursive` leaks struct tag content into type names. `spec.Ref.String()` URL-encodes the spaces/colons.
-
-**Fix**: Defensive guard in `BuildSchema()` after the bracket validation (line 362), before `resolveRefName`:
-```go
-if strings.ContainsAny(typeName, " \t\"'`=:;") {
-    console.Logger.Debug("Skipping ref for malformed type name: %s\n", typeName)
-    return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
-}
-```
-
-**File**: `internal/model/struct_field.go` — `BuildSchema()`, after line 362
-
----
-
-## Bug 4: NOTUNIQUE (2 items) — $ref / definition key mismatch
-
-**Root cause**: `resolveRefName` returns full-path name for NotUnique types (e.g., `github_com_chargebee_chargebee-go_v3_enum.Source`), but `buildSchemasRecursive` stores definitions under short key (`enum.Source`) at line 749.
-
-**Fix**: After storing schema at line 777, also register under the canonical name if different:
-```go
-if globalNameResolver != nil && strings.Contains(pkgPath, "/") {
-    lookupType := strings.TrimSuffix(schemaName, "Public")
-    isPublicSchema := strings.HasSuffix(schemaName, "Public")
-    canonicalName := globalNameResolver.ResolveDefinitionName(pkgPath + "." + lookupType)
-    if isPublicSchema {
-        canonicalName += "Public"
-    }
-    if canonicalName != fullSchemaName {
-        allSchemas[canonicalName] = schema
+if globalNameResolver != nil && strings.Contains(nestedPkgPath, "/") {
+    canonicalName := globalNameResolver.ResolveDefinitionName(nestedPkgPath + "." + cleanNestedType)
+    if canonicalName != opaqueKey {
+        allSchemas[canonicalName] = opaqueSchema
     }
 }
 ```
 
-Same pattern for enum schemas (after line 864).
-
-**File**: `internal/model/struct_field_lookup.go` — `buildSchemasRecursive()`, after line 777 and after line 864
+**File**: `internal/model/struct_field_lookup.go` — `buildSchemasRecursive()`, Cases 1 and 3
 
 ---
 
@@ -102,21 +74,17 @@ Same pattern for enum schemas (after line 864).
 
 | Step | Bug | Impact | File |
 |------|-----|--------|------|
-| 1 | WRONG TYPE | 9 items | `struct_field_lookup.go` — `processStructField` |
-| 2 | MALFORMED | 3 items | `struct_field.go` — `BuildSchema` |
-| 3 | PROJECT | 4 items | `struct_field_lookup.go` — `buildSchemasRecursive` |
-| 4 | NOTUNIQUE | 2 items | `struct_field_lookup.go` — `buildSchemasRecursive` |
+| 1 | A (MAP) | 1 item | `struct_field_lookup.go` — `processStructField` line 305 |
+| 2 | B (PUBLIC) | 4 items | `struct_field_lookup.go` — `buildSchemasRecursive` lines 737-740 |
+| 3 | C (CANONICAL) | 1 item | `struct_field_lookup.go` — Cases 1 and 3 |
 
 ---
 
 ## Verification
 
-After each fix:
-1. Run `go test ./internal/model/ -v` (unit tests)
-2. Run `go test ./testing/ -run TestRealProjectIntegration -v -count=1` (integration)
-3. Verify missing count decreases, no regressions
-
 After all fixes:
-1. `make test-project-1` — full end-to-end
-2. Update `knownMissingThreshold` in integration test to new count (~120)
-3. Update change log
+1. `go build ./internal/model/` — compile
+2. `go test ./internal/model/ -v` — unit tests
+3. `make test-project-1` — full end-to-end
+4. Run missing definition analysis on swagger output — target 0 missing
+5. Update change log

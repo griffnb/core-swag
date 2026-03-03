@@ -25,28 +25,43 @@ func newRegistryNameResolver(reg *registry.Service) model.DefinitionNameResolver
 // identified by fullTypePath (e.g., "github.com/user/project/internal/constants.Role").
 //
 // Strategy:
-//  1. Extract short name (e.g., "constants.Role") and look it up in the registry.
-//     If found, TypeName() returns short for unique types, full-path for NotUnique.
-//  2. If not found by short name, compute the full-path key and try again.
-//  3. Fallback to the short name.
+//  1. Extract short name and look it up. If found and unique, return short name.
+//  2. If found but NotUnique, verify the result matches the requested package path.
+//     The short-name fallback in FindTypeSpecByName may return a different package's
+//     type when multiple packages define the same type name (e.g., "enum.Source"
+//     exists in both v3/enum and v3/models/recordedpurchase/enum).
+//  3. If not found or wrong package, compute full-path key and try that.
+//  4. Fallback: use full-path key if we know the type is NotUnique, otherwise short name.
 func (r *registryNameResolver) ResolveDefinitionName(fullTypePath string) string {
-	// Extract short name: "github.com/user/project/internal/constants.Role" → "constants.Role"
 	shortName := extractShortTypeName(fullTypePath)
+	fullPathKey := makeFullPathDefName2(fullTypePath)
 
-	// Try short-name lookup (works for unique types whose registry key is the short name)
 	typeDef := r.registry.FindTypeSpecByName(shortName)
 	if typeDef != nil {
-		return typeDef.TypeName()
+		result := typeDef.TypeName()
+		// Unique type — short name is the canonical form
+		if result == shortName {
+			return result
+		}
+		// NotUnique — verify the returned type matches the requested package path.
+		// If it does, use it. If not, fall through to exact full-path lookup.
+		if result == fullPathKey {
+			return result
+		}
 	}
 
-	// Try full-path key lookup (works for NotUnique types)
-	fullPathKey := makeFullPathDefName2(fullTypePath)
+	// Try exact full-path key lookup
 	typeDef = r.registry.FindTypeSpecByName(fullPathKey)
 	if typeDef != nil {
 		return typeDef.TypeName()
 	}
 
-	// Not in registry — use short name
+	// Not in registry by exact key — if the short-name search found a different
+	// package's type, this type is also NotUnique, so use the full-path key.
+	if typeDef := r.registry.FindTypeSpecByName(shortName); typeDef != nil {
+		return fullPathKey
+	}
+
 	return shortName
 }
 

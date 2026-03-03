@@ -1,5 +1,38 @@
 # Core-Swag Change Log
 
+## 2026-03-03: Fix remaining missing $ref definitions (6 → 0 missing, then 4 deeper issues)
+
+**Problem:**
+6 definitions still missing in full `make test-project-1` output. Initial plan identified 3 bugs (MAP, PUBLIC processed-map, CANONICAL). After implementing plan fixes, 4 still remained due to deeper root causes.
+
+### Fixes from plan (3 bugs):
+
+**Bug A — MAP (1 item):** `StructField[[]map[string]any]` produced `lawsuit.map[string]any` $ref.
+**Fix:** Added `strings.HasPrefix(subTypeName, "map[")` check in `processStructField()`.
+**File:** `internal/model/struct_field_lookup.go`
+
+**Bug B — PUBLIC processed-map (partial):** `buildSchemasRecursive()` used bare `schemaName` as `processed` map key.
+**Fix:** Changed processed key to `packageName + "." + schemaName` for fully qualified deduplication.
+**File:** `internal/model/struct_field_lookup.go`
+
+**Bug C — CANONICAL registration (partial):** Cases 1 and 3 lacked canonical name registration.
+**Fix:** Added canonical name registration to Cases 1 and 3 matching existing Case 2 pattern.
+**File:** `internal/model/struct_field_lookup.go`
+
+### Deeper root causes discovered (2 additional bugs):
+
+**Bug D — SIBLING-PATH RESOLUTION (3 Public items):** The real cause of missing Public variants. When a parent type in `controllers/` or `services/` references a nested type from `models/`, the sibling-path logic at line 841 constructs the wrong package path (e.g., `services/alias` instead of `models/alias`). `LookupStructFields` returns 0 fields for the wrong path → Case 3 (empty struct) → Public variant never generated.
+**Fix:** After `LookupStructFields` returns 0 fields for a sibling-path resolved package, search the global package cache for alternative packages with matching name and retry.
+**File:** `internal/model/struct_field_lookup.go` — after `LookupStructFields` call in nested type processing
+
+**Bug E — NAME RESOLVER WRONG PACKAGE (chargebee enum.Source):** `ResolveDefinitionName` uses `FindTypeSpecByName(shortName)` which iterates over a Go map non-deterministically. When multiple external packages define the same type name (e.g., `enum.Source` in both `v3/enum` and `v3/models/recordedpurchase/enum`), it may return the wrong package's type. The canonical name registration then stores the definition under the wrong key.
+**Fix:** After short-name lookup returns a NotUnique type, verify the result matches the requested full path. If not, compute and use the correct full-path key directly.
+**File:** `internal/orchestrator/name_resolver.go` — `ResolveDefinitionName()`
+
+**Result:** 0 missing definitions. 1795 refs = 1795 defs in `make test-project-1` output.
+
+---
+
 ## 2026-03-03: Fix 4 categories of missing $ref definitions (138 → 0 missing)
 
 **Problem:**

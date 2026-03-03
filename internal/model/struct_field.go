@@ -96,6 +96,8 @@ func (this *StructField) IsPrimitive() bool {
 		"uuid.UUID": true, "*uuid.UUID": true,
 		"github.com/griffnb/core/lib/types.UUID": true, "*github.com/griffnb/core/lib/types.UUID": true,
 		"github.com/google/uuid.UUID": true, "*github.com/google/uuid.UUID": true,
+		// json.RawMessage is []byte representing raw JSON — treat as primitive (object)
+		"json.RawMessage": true, "encoding/json.RawMessage": true,
 	}
 	return primitives[this.EffectiveTypeString()]
 }
@@ -145,6 +147,7 @@ func (this *StructField) IsSwaggerPrimitive() bool {
 		"github.com/shopspring/decimal": {"Decimal"},
 		"gopkg.in/guregu/null.v4":       {"String", "Int", "Float", "Bool", "Time"},
 		"database/sql":                  {"NullString", "NullInt64", "NullFloat64", "NullBool", "NullTime"},
+		"encoding/json":                 {"RawMessage"},
 	}
 
 	globalNames := []string{"UUID"}
@@ -872,6 +875,9 @@ func primitiveTypeToSchema(typeStr string) *spec.Schema {
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}, Format: "uuid"}}
 	case "decimal.Decimal", "*decimal.Decimal", "github.com/shopspring/decimal.Decimal", "*github.com/shopspring/decimal.Decimal":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"number"}}}
+	case "json.RawMessage", "encoding/json.RawMessage":
+		// json.RawMessage is []byte representing arbitrary JSON — any valid JSON value
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}
 	default:
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{typeStr}}}
 	}
