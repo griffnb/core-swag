@@ -40,6 +40,60 @@ func TestRealProjectIntegration(t *testing.T) {
 	err = os.WriteFile("real_actual_output.json", actualJSON, 0o644)
 	require.NoError(t, err, "Failed to write swagger JSON to file")
 
+	// Validate that ALL $ref references have corresponding definitions.
+	// This catches bugs where a type is referenced but never gets its definition created.
+	t.Run("all $ref references should have corresponding definitions", func(t *testing.T) {
+		compactJSON, err := json.Marshal(swagger)
+		require.NoError(t, err)
+		compactStr := string(compactJSON)
+
+		refs := make(map[string]bool)
+		searchStr := compactStr
+		prefix := `"$ref":"#/definitions/`
+		for {
+			idx := strings.Index(searchStr, prefix)
+			if idx < 0 {
+				break
+			}
+			searchStr = searchStr[idx+len(prefix):]
+			endIdx := strings.Index(searchStr, `"`)
+			if endIdx < 0 {
+				break
+			}
+			refName := searchStr[:endIdx]
+			refs[refName] = true
+			searchStr = searchStr[endIdx:]
+		}
+
+		var missing []string
+		for ref := range refs {
+			if _, exists := swagger.Definitions[ref]; !exists {
+				missing = append(missing, ref)
+			}
+		}
+		sort.Strings(missing)
+
+		// Log all missing for debugging
+		for _, m := range missing {
+			t.Logf("MISSING definition for $ref: %s", m)
+		}
+		t.Logf("Total $ref references: %d, Total definitions: %d, Missing definitions: %d",
+			len(refs), len(swagger.Definitions), len(missing))
+
+		// Regression guard: fail if the number of missing definitions increases.
+		// Updated 2026-03-03: All 4 bug categories fixed (WRONG TYPE, MALFORMED, PROJECT, NOTUNIQUE).
+		const knownMissingThreshold = 0
+		assert.LessOrEqual(t, len(missing), knownMissingThreshold,
+			"Missing definition count regressed! Was %d, now %d. New missing refs likely introduced.",
+			knownMissingThreshold, len(missing))
+
+		// Log improvement if missing count decreased
+		if len(missing) < knownMissingThreshold {
+			t.Logf("IMPROVEMENT: Missing definitions decreased from %d to %d. Consider updating knownMissingThreshold.",
+				knownMissingThreshold, len(missing))
+		}
+	})
+
 	t.Run("account.Account definition should match expected schema", func(t *testing.T) {
 		def, exists := swagger.Definitions["account.Account"]
 		require.True(t, exists, "account.Account definition must exist")

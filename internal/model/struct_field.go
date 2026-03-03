@@ -361,15 +361,36 @@ func (this *StructField) BuildSchema(
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
 	}
 
+	// Guard against malformed type names where struct tags leak into the type string
+	// (e.g., anonymous struct fields). These would produce URL-encoded $ref names.
+	if strings.ContainsAny(typeName, " \t\"'`=:;") {
+		console.Logger.Debug("Skipping ref for malformed type name: %s\n", typeName)
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
+	}
+
 	refName := resolveRefName(typeName, fullTypeStr)
 	if public {
 		refName = refName + "Public"
 	}
 
 	schema := spec.RefSchema("#/definitions/" + refName)
-	// Propagate full import path for correct cross-package resolution
-	if strings.Contains(fullTypeStr, "/") {
-		nestedRef := fullTypeStr
+	// Propagate full import path for correct cross-package resolution.
+	// When fullTypeStr lacks a "/" (short form like "global_struct.EventProperties"),
+	// try to recover the full import path from the go/types Type field so that
+	// buildSchemasRecursive can locate the correct package instead of guessing
+	// a sibling path. Only use the resolved path if its short form matches typeStr
+	// to avoid using wrapper types (e.g., fields.StructField) for the inner type.
+	nestedFullPath := fullTypeStr
+	if !strings.Contains(nestedFullPath, "/") && this.Type != nil {
+		if resolved := resolveFullImportPath(this.Type); resolved != "" {
+			resolvedShort := normalizeTypeName(resolved)
+			if resolvedShort == typeName {
+				nestedFullPath = resolved
+			}
+		}
+	}
+	if strings.Contains(nestedFullPath, "/") {
+		nestedRef := nestedFullPath
 		if public {
 			nestedRef += "Public"
 		}
@@ -401,6 +422,37 @@ type EnumValue struct {
 // (e.g., "github_com_chargebee_chargebee-go_v3_enum.Source").
 type DefinitionNameResolver interface {
 	ResolveDefinitionName(fullTypePath string) string
+}
+
+// resolveFullImportPath extracts the full import path from a go/types Type.
+// Returns "pkgPath.TypeName" (e.g., "github.com/.../global_struct.EventProperties")
+// or empty string if the path cannot be determined.
+// Unwraps pointers and slices to find the underlying named type.
+func resolveFullImportPath(t types.Type) string {
+	if t == nil {
+		return ""
+	}
+	// Unwrap pointer
+	if ptr, ok := t.(*types.Pointer); ok {
+		t = ptr.Elem()
+	}
+	// Unwrap slice
+	if sl, ok := t.(*types.Slice); ok {
+		t = sl.Elem()
+		// Unwrap pointer inside slice
+		if ptr, ok := t.(*types.Pointer); ok {
+			t = ptr.Elem()
+		}
+	}
+	named, ok := t.(*types.Named)
+	if !ok {
+		return ""
+	}
+	pkg := named.Obj().Pkg()
+	if pkg == nil {
+		return ""
+	}
+	return pkg.Path() + "." + named.Obj().Name()
 }
 
 // globalNameResolver is the active definition name resolver set by the
@@ -519,12 +571,18 @@ func (this *StructField) ToSpecSchema(
 
 // normalizeTypeName converts a full module path type name to short form
 // e.g., "github.com/griffnb/core-swag/testing/testdata/core_models/constants.UnionStatus" -> "constants.UnionStatus"
-// Handles full paths, short names, and pointer types
+// Handles full paths, short names, pointer types, and array prefixes
 func normalizeTypeName(typeStr string) string {
-	// Remove pointer prefix
-	isPointer := strings.HasPrefix(typeStr, "*")
-	if isPointer {
-		typeStr = strings.TrimPrefix(typeStr, "*")
+	// Strip prefix modifiers (pointer, slice) before normalization, re-add after
+	prefix := ""
+	for strings.HasPrefix(typeStr, "[]") || strings.HasPrefix(typeStr, "*") {
+		if strings.HasPrefix(typeStr, "[]") {
+			prefix += "[]"
+			typeStr = typeStr[2:]
+		} else {
+			prefix += "*"
+			typeStr = typeStr[1:]
+		}
 	}
 
 	if strings.Contains(typeStr, "/") {
@@ -552,10 +610,7 @@ func normalizeTypeName(typeStr string) string {
 		}
 	}
 
-	if isPointer {
-		return "*" + typeStr
-	}
-	return typeStr
+	return prefix + typeStr
 }
 
 // isGenericTypeArgStruct checks whether the first type argument of a generic type

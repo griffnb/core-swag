@@ -1,5 +1,40 @@
 # Core-Swag Change Log
 
+## 2026-03-03: Fix 4 categories of missing $ref definitions (138 → 0 missing)
+
+**Problem:**
+137 missing definitions remained after previous fixes. Analyzed into 4 root-cause categories.
+
+**Bug 1 — WRONG TYPE (9 items):** `StructField[[]string]` produced `account_classification.string` $refs. After stripping `[]` prefix, the bare `"string"` wasn't recognized as primitive and fell through to package-qualified else-branch.
+**Fix:** Added primitive/any check after array/pointer prefix stripping in `processStructField()`.
+
+**Bug 2 — MALFORMED (3 items):** Anonymous struct fields leaked struct tag content into type names (e.g., `data_broker_domain.FraudAlert json:"alert_details"...`), producing URL-encoded $ref names.
+**Fix:** Added defensive guard in `BuildSchema()` to skip refs for type names containing spaces, tabs, quotes, colons.
+
+**Bug 3 — PROJECT (4 items):** Empty structs and external types both returned nil/empty from `LookupStructFields`, but were conflated into a single `isNonStruct` check that skipped definition creation.
+**Fix:** Split into three cases: nil builder → opaque object, empty + enum → enum schema, empty + not enum → opaque object.
+
+**Bug 4 — NOTUNIQUE (2 items):** `resolveRefName` returned full-path name for NotUnique types but `buildSchemasRecursive` stored definitions under short key.
+**Fix:** After storing schema, also register under canonical name from `globalNameResolver` if different.
+
+**Result:** Missing definitions: 138 → 0. Threshold updated in integration test.
+
+## 2026-03-02: Fix missing definitions for cross-package nested types (global_struct.Template etc.)
+
+**Problem:**
+Types referenced via `fields.StructField[*pkg.Type]` or `*pkg.Type` from non-sibling packages had their definitions missing from swagger output. For example, `global_struct.Template` was referenced via `$ref` but no definition was created. Root cause: `processStructField` discarded the full import path when setting `TypeString`, and `getQualifiedTypeName` (used by `checkStruct`) only used the short package name. When `buildSchemasRecursive` later tried to find the package, it guessed a sibling path which was wrong for types in non-sibling packages like `internal/common/global_struct`.
+
+**What was tried:**
+1. Changed `getQualifiedTypeName` to use full paths → caused massive regressions (1254 defs lost) because it triggered NotUnique collision detection in `resolveRefName`, producing full-path `$ref` names that didn't match short definition keys.
+2. Added `resolveFullImportPath` using `this.Type` (go/types) for nested type discovery → worked but regressed 8 types because `normalizeTypeName` couldn't handle `[]` array prefixes (confused them with generic `[T]` brackets).
+
+**Solution (3 changes):**
+1. `processStructField` (struct_field_lookup.go): Preserve full import path in `TypeString` when inner type has a full path. `normalizeTypeName` handles shortening for schema building.
+2. `resolveFullImportPath` (struct_field.go): New helper extracts full import path from `go/types.Type` for direct struct fields (non-generic). Only used for nested type discovery when TypeString lacks a path, and only when the resolved short name matches to avoid using wrapper types.
+3. `normalizeTypeName` (struct_field.go): Fixed to strip `[]` and `*` prefixes before processing, preventing corruption of array types like `[]*github.com/.../account.Alert`.
+
+**Result:** 74 previously missing definitions now fixed (including all 5 `global_struct.*` types). Missing count improved from 208 to 137. 3 new items are pre-existing NotUnique collision issues just exposed. Added regression test `TestRealProjectIntegration/all_$ref_references_should_have_corresponding_definitions`.
+
 ## 2026-03-02: Fix route $ref lookups using fully qualified package paths
 
 **Problem:**

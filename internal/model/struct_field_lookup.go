@@ -299,6 +299,15 @@ func (c *CoreStructParser) processStructField(f *StructField, packageMap map[str
 		subTypeName = strings.TrimPrefix(subTypeName, "*")
 	}
 
+	// After stripping array/pointer prefixes, check if bare type is primitive.
+	// Catches StructField[[]string] where "string" should not be package-qualified.
+	strippedProbe := &StructField{TypeString: subTypeName}
+	if strippedProbe.IsPrimitive() || strippedProbe.IsAny() {
+		f.TypeString = arrayPrefix + subTypeName
+		builder.Fields = append(builder.Fields, f)
+		return
+	}
+
 	// Store the original full type name with package path
 	originalTypeName := subTypeName
 	var subTypePackage string
@@ -320,8 +329,11 @@ func (c *CoreStructParser) processStructField(f *StructField, packageMap map[str
 
 		packageName := dotParts[0]
 		typeName := dotParts[len(dotParts)-1]
-		originalTypeName = arrayPrefix + fmt.Sprintf("%s.%s", packageName, typeName)
 		fullPackagePath := strings.Join(pathParts[:len(pathParts)-1], "/") + "/" + packageName
+		// Preserve full import path so BuildSchema can propagate it for correct
+		// cross-package resolution in buildSchemasRecursive. normalizeTypeName
+		// will shorten it to "package.Type" form when building the $ref name.
+		originalTypeName = arrayPrefix + fullPackagePath + "." + typeName
 
 		subTypePackage = fullPackagePath
 		subTypeName = typeName
@@ -773,6 +785,22 @@ func buildSchemasRecursive(
 
 	allSchemas[fullSchemaName] = schema
 
+	// Also register under the canonical name if globalNameResolver produces a
+	// different key. This handles NotUnique types where $ref uses the full-path
+	// name (e.g., "github_com_chargebee_chargebee-go_v3_enum.Source") but the
+	// definition was stored under the short key ("enum.Source").
+	if globalNameResolver != nil && strings.Contains(pkgPath, "/") {
+		lookupType := strings.TrimSuffix(schemaName, "Public")
+		isPublicSchema := strings.HasSuffix(schemaName, "Public")
+		canonicalName := globalNameResolver.ResolveDefinitionName(pkgPath + "." + lookupType)
+		if isPublicSchema {
+			canonicalName += "Public"
+		}
+		if canonicalName != fullSchemaName {
+			allSchemas[canonicalName] = schema
+		}
+	}
+
 	// Recursively process nested types
 	for _, nestedTypeName := range nestedTypes {
 		// Parse package name and type name from nested type.
@@ -821,9 +849,31 @@ func buildSchemasRecursive(
 
 		nestedBuilder := parser.LookupStructFields(baseModule, nestedPkgPath, cleanNestedType)
 
-		// Empty builder means the type exists but is not a struct (e.g., enum, type alias)
-		isNonStruct := nestedBuilder == nil || len(nestedBuilder.Fields) == 0
-		if isNonStruct {
+		// Case 1: nil builder — external/unloadable type. Create opaque object definition.
+		if nestedBuilder == nil {
+			console.Logger.Debug(
+				"$Yellow{Nested type %s in package %s has nil builder (external/unloadable), creating opaque object}\n",
+				cleanNestedType,
+				nestedPkgPath,
+			)
+			opaqueSchema := &spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Type:  []string{"object"},
+					Title: toPascalCase(nestedPackageName) + cleanNestedType,
+				},
+			}
+			opaqueKey := nestedPackageName + "." + cleanNestedType
+			allSchemas[opaqueKey] = opaqueSchema
+
+			processed[cleanNestedType] = true
+			processed[cleanNestedType+"Public"] = true
+			processed[nestedPackageName+"."+cleanNestedType] = true
+			processed[nestedPackageName+"."+cleanNestedType+"Public"] = true
+			continue
+		}
+
+		// Case 2 & 3: builder exists but has no fields — check if it's an enum or empty struct
+		if len(nestedBuilder.Fields) == 0 {
 			console.Logger.Debug(
 				"$Yellow{Nested type %s is not a struct in package %s, checking if it's an enum}\n",
 				cleanNestedType,
@@ -836,9 +886,9 @@ func buildSchemasRecursive(
 			enums, err := enumLookup.GetEnumsForType(cleanFullName, nil)
 
 			if err == nil && len(enums) > 0 {
+				// Case 2: enum type — create enum definition
 				console.Logger.Debug("$Green{Found enum type %s with %d values, creating enum definition}\n", cleanFullName, len(enums))
 
-				// Create ONLY the base enum schema — enums never have Public variants
 				baseEnumSchema := &spec.Schema{
 					SchemaProps: spec.SchemaProps{
 						Title: toPascalCase(nestedPackageName) + cleanNestedType,
@@ -862,18 +912,35 @@ func buildSchemasRecursive(
 				allSchemas[baseSchemaKey] = baseEnumSchema
 				console.Logger.Debug("Created enum schema: %s\n", baseSchemaKey)
 
-				// Mark both base and Public as processed to prevent Public variant creation
-				processed[cleanNestedType] = true
-				processed[cleanNestedType+"Public"] = true
-				processed[nestedPackageName+"."+cleanNestedType] = true
-				processed[nestedPackageName+"."+cleanNestedType+"Public"] = true
+				// Also register enum under canonical name for NotUnique types
+				if globalNameResolver != nil && strings.Contains(nestedPkgPath, "/") {
+					canonicalName := globalNameResolver.ResolveDefinitionName(nestedPkgPath + "." + cleanNestedType)
+					if canonicalName != baseSchemaKey {
+						allSchemas[canonicalName] = baseEnumSchema
+					}
+				}
 			} else {
+				// Case 3: empty struct (no fields, not enum) — create opaque object definition
 				console.Logger.Debug(
-					"$Yellow{Warning: Could not lookup nested type %s in package %s as struct or enum}\n",
+					"$Yellow{Nested type %s in package %s is empty struct, creating opaque object}\n",
 					cleanNestedType,
 					nestedPkgPath,
 				)
+				emptySchema := &spec.Schema{
+					SchemaProps: spec.SchemaProps{
+						Type:  []string{"object"},
+						Title: toPascalCase(nestedPackageName) + cleanNestedType,
+					},
+				}
+				emptyKey := nestedPackageName + "." + cleanNestedType
+				allSchemas[emptyKey] = emptySchema
 			}
+
+			// Mark both base and Public as processed to prevent Public variant creation
+			processed[cleanNestedType] = true
+			processed[cleanNestedType+"Public"] = true
+			processed[nestedPackageName+"."+cleanNestedType] = true
+			processed[nestedPackageName+"."+cleanNestedType+"Public"] = true
 			continue
 		}
 
