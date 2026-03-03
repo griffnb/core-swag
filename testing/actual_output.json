@@ -1198,23 +1198,8 @@
       "type": "object",
       "title": "AccountFlags",
       "required": [
-        "force_pending_restart_flow",
-        "pending_restart_flow",
-        "send_dsrs",
-        "never_sent_dsrs",
         "no_coverage",
-        "new_classification_id",
-        "terms_needed",
-        "simplify_login",
-        "shared_address_update",
-        "address_update_by",
-        "authorization_needed",
-        "show_new_data_brokers",
-        "new_data_brokers",
-        "last_broker_email_ts",
-        "lexis_freeze",
-        "classification_changed",
-        "welcome_back"
+        "new_classification_id"
       ],
       "properties": {
         "address_update_by": {
@@ -1292,22 +1277,8 @@
       "type": "object",
       "title": "AccountFlagsPublic",
       "required": [
-        "force_pending_restart_flow",
-        "pending_restart_flow",
-        "send_dsrs",
-        "never_sent_dsrs",
         "no_coverage",
-        "new_classification_id",
-        "terms_needed",
-        "simplify_login",
-        "shared_address_update",
-        "address_update_by",
-        "authorization_needed",
-        "show_new_data_brokers",
-        "new_data_brokers",
-        "lexis_freeze",
-        "classification_changed",
-        "welcome_back"
+        "new_classification_id"
       ],
       "properties": {
         "address_update_by": {
@@ -1534,33 +1505,6 @@
     "account.OrgAccount": {
       "type": "object",
       "title": "AccountOrgAccount",
-      "required": [
-        "id",
-        "account_id",
-        "org_member_id",
-        "status",
-        "name",
-        "first_name",
-        "middle_name",
-        "last_name",
-        "organization_id",
-        "organization_name",
-        "union_id",
-        "union_local_id",
-        "union_local_name",
-        "union_local_number",
-        "organization_verification",
-        "onboard_action_finished_ts",
-        "organization_subscription_plan_id",
-        "organization_subscription_plan_name",
-        "organization_subscription_plan_properties",
-        "created_at",
-        "org_member",
-        "org_member_local_member_id",
-        "org_member_union_status",
-        "org_member_status",
-        "org_member_email"
-      ],
       "properties": {
         "account_id": {
           "type": "string",
@@ -1655,33 +1599,6 @@
     "account.OrgAccountPublic": {
       "type": "object",
       "title": "AccountOrgAccountPublic",
-      "required": [
-        "id",
-        "account_id",
-        "org_member_id",
-        "status",
-        "name",
-        "first_name",
-        "middle_name",
-        "last_name",
-        "organization_id",
-        "organization_name",
-        "union_id",
-        "union_local_id",
-        "union_local_name",
-        "union_local_number",
-        "organization_verification",
-        "onboard_action_finished_ts",
-        "organization_subscription_plan_id",
-        "organization_subscription_plan_name",
-        "organization_subscription_plan_properties",
-        "created_at",
-        "org_member",
-        "org_member_local_member_id",
-        "org_member_union_status",
-        "org_member_status",
-        "org_member_email"
-      ],
       "properties": {
         "account_id": {
           "type": "string",
@@ -1776,14 +1693,6 @@
     "account.Properties": {
       "type": "object",
       "title": "AccountProperties",
-      "required": [
-        "invite_key",
-        "invite_ts",
-        "last_seen",
-        "external_user_info",
-        "verify_email_key",
-        "nj_dl_classification"
-      ],
       "properties": {
         "external_user_info": {
           "type": "object"
@@ -2332,11 +2241,6 @@
     "billing_plan.FeatureSet": {
       "type": "object",
       "title": "BillingPlanFeatureSet",
-      "required": [
-        "custom_branding",
-        "advanced_analytics",
-        "priority_support"
-      ],
       "properties": {
         "advanced_analytics": {
           "type": "integer",
@@ -2355,9 +2259,6 @@
     "billing_plan.FeatureSetPublic": {
       "type": "object",
       "title": "BillingPlanFeatureSetPublic",
-      "required": [
-        "advanced_analytics"
-      ],
       "properties": {
         "advanced_analytics": {
           "type": "integer",

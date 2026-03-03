@@ -840,8 +840,8 @@ func buildSchemasRecursive(
 	// Build schema for current type
 	// Create a parser-based enum lookup that can access the packages
 	enumLookup := &ParserEnumLookup{Parser: parser, BaseModule: baseModule, PkgPath: pkgPath}
-	// Force all fields to be required in response schemas
-	schema, nestedTypes, err := builder.BuildSpecSchema(baseTypeName, public, true, enumLookup)
+	// Respect omitempty tags: fields without omitempty are required, fields with omitempty are not
+	schema, nestedTypes, err := builder.BuildSpecSchema(baseTypeName, public, false, enumLookup)
 	if err != nil {
 		return fmt.Errorf("failed to build schema for %s: %w", schemaName, err)
 	}
