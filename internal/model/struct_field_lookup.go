@@ -284,9 +284,15 @@ func (c *CoreStructParser) LookupStructFields(_, importPath, typeName string) *S
 			}
 
 			// Cache all loaded packages in the global cache.
+			// Only overwrite an existing entry if it lacks Syntax or the new
+			// entry also has Syntax. This prevents transitive deps (which
+			// lack Syntax) from degrading pre-warmed entries.
 			globalCacheMutex.Lock()
 			for path, p := range pm {
-				globalPackageCache[path] = p
+				existing := globalPackageCache[path]
+				if existing == nil || len(existing.Syntax) == 0 || len(p.Syntax) > 0 {
+					globalPackageCache[path] = p
+				}
 			}
 			globalCacheMutex.Unlock()
 
