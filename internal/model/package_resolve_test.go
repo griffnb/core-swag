@@ -11,13 +11,13 @@ func TestResolvePackagePath_SiblingFoundInCache(t *testing.T) {
 	resetGlobalPackageCache()
 	resetEnumPackageCache()
 
-	// Seed the global cache with a sibling package
-	globalCacheMutex.Lock()
-	globalPackageCache["github.com/org/proj/internal/models/constants"] = &packages.Package{
-		PkgPath: "github.com/org/proj/internal/models/constants",
-		Name:    "constants",
-	}
-	globalCacheMutex.Unlock()
+	// Seed the package cache with a sibling package
+	Cache().Seed([]*packages.Package{
+		{
+			PkgPath: "github.com/org/proj/internal/models/constants",
+			Name:    "constants",
+		},
+	})
 
 	result := resolvePackagePath("github.com/org/proj/internal/models/account", "constants")
 	assert.Equal(t, "github.com/org/proj/internal/models/constants", result)
@@ -29,12 +29,12 @@ func TestResolvePackagePath_SiblingNotInCache_RealPathFound(t *testing.T) {
 
 	// The sibling path would be .../models/constants but the real package
 	// is at .../internal/constants (not a sibling)
-	globalCacheMutex.Lock()
-	globalPackageCache["github.com/org/proj/internal/constants"] = &packages.Package{
-		PkgPath: "github.com/org/proj/internal/constants",
-		Name:    "constants",
-	}
-	globalCacheMutex.Unlock()
+	Cache().Seed([]*packages.Package{
+		{
+			PkgPath: "github.com/org/proj/internal/constants",
+			Name:    "constants",
+		},
+	})
 
 	result := resolvePackagePath("github.com/org/proj/internal/models/account", "constants")
 	assert.Equal(t, "github.com/org/proj/internal/constants", result)
@@ -45,16 +45,16 @@ func TestResolvePackagePath_MultipleMatches_PrefersLongestPrefix(t *testing.T) {
 	resetEnumPackageCache()
 
 	// Two packages named "constants" at different locations
-	globalCacheMutex.Lock()
-	globalPackageCache["github.com/org/proj/internal/constants"] = &packages.Package{
-		PkgPath: "github.com/org/proj/internal/constants",
-		Name:    "constants",
-	}
-	globalPackageCache["github.com/other/lib/constants"] = &packages.Package{
-		PkgPath: "github.com/other/lib/constants",
-		Name:    "constants",
-	}
-	globalCacheMutex.Unlock()
+	Cache().Seed([]*packages.Package{
+		{
+			PkgPath: "github.com/org/proj/internal/constants",
+			Name:    "constants",
+		},
+		{
+			PkgPath: "github.com/other/lib/constants",
+			Name:    "constants",
+		},
+	})
 
 	result := resolvePackagePath("github.com/org/proj/internal/models/account", "constants")
 	// Should prefer the one in the same project (longer common prefix)

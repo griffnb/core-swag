@@ -15,7 +15,6 @@ import (
 	"github.com/griffnb/core-swag/internal/console"
 	"github.com/griffnb/core-swag/internal/loader"
 	"github.com/griffnb/core-swag/internal/orchestrator"
-	"github.com/griffnb/core-swag/internal/schema"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
@@ -222,9 +221,6 @@ func (g *Gen) Build(config *Config) error {
 	g.debug.Printf("Sanitizing swagger spec to remove invalid numeric values...")
 	sanitizeSwaggerSpec(swagger)
 
-	// Remove unused schema definitions to keep the output clean
-	schema.RemoveUnusedDefinitions(swagger)
-
 	// nolint:gosec // This is not executing user-provided code, just writing files
 	if err := os.MkdirAll(config.OutputDir, os.ModePerm); err != nil {
 		return errors.WithStack(err)
@@ -260,13 +256,6 @@ func (g *Gen) writeJSONSwagger(config *Config, swagger *spec.Swagger) error {
 	b, err := g.jsonIndent(swagger)
 	if err != nil {
 		return err
-	}
-
-	// Debug: Check what was actually marshaled
-	for name := range swagger.Definitions {
-		if strings.Contains(name, "NJDLClassification") {
-			g.debug.Printf(">>> GEN writeJSONSwagger: After jsonIndent, about to write JSON for definition %s", name)
-		}
 	}
 
 	err = g.writeFile(b, jsonFileName)

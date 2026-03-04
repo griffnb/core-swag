@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/go-openapi/spec"
 )
@@ -64,11 +65,13 @@ func (this *StructBuilder) BuildSpecSchema(
 		schema.Required = required
 	}
 
-	// Convert nested structs map to slice
-	var nestedList []string
+	// Convert nested structs map to sorted slice for deterministic
+	// processing order in buildSchemasRecursive.
+	nestedList := make([]string, 0, len(nestedStructs))
 	for typeName := range nestedStructs {
 		nestedList = append(nestedList, typeName)
 	}
+	sort.Strings(nestedList)
 
 	return schema, nestedList, nil
 }

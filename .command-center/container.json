@@ -1,0 +1,4 @@
+{
+  "image": "command-center-dev:latest",
+  "pullPolicy": "IfNotPresent"
+}

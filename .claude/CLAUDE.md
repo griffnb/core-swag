@@ -5,9 +5,9 @@
 `testing/core_models_integration_test.go` :  `TestRealProjectIntegration` and `TestCoreModelsIntegration`
 To run on ACTUAL projects, theres 2 make commands to give full true outputs on real projects:
 `make test-project-1`
-Output: /Users/griffnb/projects/Crowdshield/atlas-go/swag_docs/swagger.json
+Output: /Users/griffnb/projects/core-swag/testing/test-project-1/swagger.json
 `make test-project-2`
-Output: /Users/griffnb/projects/botbuilders/go-the-schwartz/swag_docs/swagger.json
+Output: /Users/griffnb/projects/core-swag/testing/test-project-2/swagger.json
 
 ## ⚠️ CRITICAL: ALWAYS FOLLOW DOCUMENTATION AND PRD
 **MANDATORY REQUIREMENT**: Before making ANY changes to this codebase, you MUST:
@@ -34,3 +34,15 @@ This ensures the checklist remains an accurate reflection of project progress an
 2. Update documentation if adding new patterns
 
 **IMPORTANT Before you begin, always launch the context-fetcher sub agent to gather the information required for the task.**
+
+
+**CRITICAL**
+This codebase will outlive you. Every shortcut you take becomes
+someone else's burden. Every hack compounds into technical debt
+that slows the whole team down.
+
+You are not just writing code. You are shaping the future of this
+project. The patterns you establish will be copied. The corners
+you cut will be cut again.
+
+Fight entropy. Leave the codebase better than you found it.

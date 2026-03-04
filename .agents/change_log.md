@@ -1,5 +1,64 @@
 # Core-Swag Change Log
 
+## 2026-03-03: Task 2 — Migrate struct_field_lookup.go to PackageCache
+
+**What was done:**
+
+1. Removed all bare global variables from `struct_field_lookup.go`: `globalPackageCache`, `globalCacheMutex`, `packageLoadGroup`, `cacheHits`, `cacheMisses`.
+2. Removed old functions: `SeedGlobalPackageCache` (80-line implementation), `IsPackageCachedWithSyntax`, `GlobalCacheStats`, `ResetGlobalCacheStats`, `resolvePackage` method.
+3. Replaced them with thin backward-compat wrapper functions that delegate to `Cache()` singleton.
+4. Rewrote `LookupStructFields` to use `Cache().GetOrLoad()` instead of the manual singleflight+globalPackageCache pattern. This eliminated ~80 lines of cache-check + singleflight + packageMap code.
+5. Updated `checkNamed` and `processStructField` to use `Cache().GetOrLoad()` instead of `c.resolvePackage()`.
+6. Removed `packageCache` field from `CoreStructParser` struct (local per-parser cache is no longer needed — `PackageCache` singleton handles everything).
+7. Updated `buildSchemasRecursive` candidate search to use `Cache().RLock()`/`Cache().Packages()`.
+8. Added `TypesInfo` nil guard in `ExtractFieldsRecursive` before accessing `pkg.TypesInfo.Defs`.
+9. Updated `package_resolve.go` to use `Cache().get()` and a new `searchPackageCacheByName()` helper instead of direct global access.
+10. Removed unused imports: `"sync/atomic"`, `"golang.org/x/sync/singleflight"`, `"log"`.
+11. Updated all tests in `struct_field_lookup_test.go` and `package_resolve_test.go` to use `Cache()` API.
+12. Deleted tests for removed functions: `TestResolvePackage_*` (3 tests), `TestSingleflight_*` (1 test).
+13. Added 2 new tests: `TestPackageCache_GetOrLoad_HitPath`, `TestPackageCache_GetOrLoad_MissPath`.
+
+**Result:** All 80+ tests pass with `-race`. Entire project builds. Zero references to old globals remain in the model package.
+
+---
+
+## 2026-03-03: Non-determinism debugging (ONGOING)
+
+**Problem:** `test-project-2` produces non-deterministic schema counts (440-447 definitions). `agents.PromptResponse` alternates between 4 and 7 schemas across runs. Project-1 is deterministic at 54 definitions.
+
+**What was tried and what happened:**
+
+1. **fullyLoaded flag (Syntax-only)** — Changed `fullyLoaded` from requiring both Syntax AND TypesInfo to only requiring Syntax. This matches the batch load behavior where all directly-loaded packages get Syntax. Added nil guard for TypesInfo in ExtractFieldsRecursive.
+   - Result: Didn't fix non-determinism by itself.
+
+2. **Pre-warm pass 1** — Added `preWarmPackages()` that batch-loads all structWork pkgPaths before the concurrent phase. Cache misses dropped from ~142 → ~37.
+   - Result: Reduced misses but still non-deterministic.
+
+3. **Mark transitive deps as fullyLoaded** — Modified `SeedGlobalPackageCache` Pass 2 to mark transitive deps as fullyLoaded when they have Syntax (not just direct packages). Cache misses dropped to ~5-10.
+   - Result: Further reduced misses but still non-deterministic.
+
+4. **Iterative pre-warm passes** — Added `NotFullyLoadedPaths()` and iterative pass 2-4 to batch-load any packages still lacking Syntax. Filtered out stdlib packages.
+   - Result: Pass 2 typically finds 0-18 packages needing loading. Still 3-10 misses remain.
+
+5. **Disabled SharedTypeCache** — Temporarily disabled to check if cross-goroutine caching caused poisoning.
+   - Result: Same non-determinism without shared cache. SharedTypeCache is NOT the cause.
+
+6. **forceReloadPackage retry** — Added retry up to 3 times when singleflight returns package with no Syntax.
+   - Result: Sometimes helps, sometimes doesn't.
+
+**Root cause identified:** The remaining 3-10 cache misses are from packages discovered DURING type traversal (via `checkNamed` → `resolvePackage` → not found → falls through to `LookupStructFields` → singleflight → individual `packages.Load`). These individual loads are **inherently non-deterministic** for packages with missing transitive imports — `go/packages` sometimes fails to produce Syntax/TypesInfo when the type checker encounters unresolvable imports.
+
+**The fundamental issue:** `packages.Load` for a single package with broken transitive imports (common in large projects with chat/AI modules that import packages not in the current module) is unreliable. Batch loads with multiple packages in context are more reliable because the type checker has more information, but individual loads can fail randomly.
+
+**Current state:** Project-1 is deterministic (54 defs). Project-2 ranges 440-447 defs with 3-10 misses per run. The variance is directly correlated with the number of cache misses.
+
+**Files changed:**
+- `internal/model/struct_field_lookup.go` — fullyLoaded flag, resolvePackage, NotFullyLoadedPaths, TypesInfo nil guard, forceReloadPackage, transitive deps fullyLoaded marking
+- `internal/model/struct_field_lookup_test.go` — Tests for fullyLoaded, resolvePackage
+- `internal/orchestrator/schema_builder.go` — preWarmPackages with iterative passes, batchLoadPackages
+
+---
+
 ## 2026-03-03: Schema Building Performance Optimization (4 fixes)
 
 **Problem:** `buildDemandDrivenSchemas` was slow due to 142+ `packages.Load` subprocess spawns, full map copies on every cache hit, and no cross-goroutine type caching.

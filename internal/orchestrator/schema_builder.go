@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/token"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 
@@ -70,6 +71,19 @@ func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]RefInfo) e
 		}
 	}
 
+	// Sort work slices for deterministic processing order. Map iteration
+	// above produces random order; sorting ensures the concurrent build
+	// phase and pre-warm always process packages in the same sequence.
+	sort.Slice(structWork, func(i, j int) bool {
+		if structWork[i].pkgPath != structWork[j].pkgPath {
+			return structWork[i].pkgPath < structWork[j].pkgPath
+		}
+		return structWork[i].typeName < structWork[j].typeName
+	})
+	sort.Slice(nonStructRefs, func(i, j int) bool {
+		return nonStructRefs[i].baseName < nonStructRefs[j].baseName
+	})
+
 	// Phase 1.5: Pre-warm packages with Syntax in a single batched call.
 	// This replaces N sequential `go list` subprocesses with one batched call.
 	if err := preWarmPackages(structWork, s.config.Debug); err != nil {
@@ -89,6 +103,11 @@ func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]RefInfo) e
 	}
 
 	// Phase 3: Merge struct results into swagger definitions sequentially.
+	// Sort results by base name so the merge order is deterministic
+	// regardless of goroutine completion order.
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].base < results[j].base
+	})
 	// When multiple concurrent builds produce schemas for the same name
 	// (e.g., through recursive nested type resolution), prefer the schema
 	// with more properties — empty schemas from failed package resolution
@@ -133,7 +152,7 @@ func (s *Service) buildStructSchemasConcurrent(work []structRefWork) ([]structRe
 	var g errgroup.Group
 	g.SetLimit(runtime.NumCPU())
 	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: BuildAllSchemas With %d workers", runtime.NumCPU())
+		s.config.Debug.Printf("Orchestrator: BuildAllSchemas with %d workers", runtime.NumCPU())
 	}
 
 	for _, w := range work {

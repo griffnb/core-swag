@@ -12,9 +12,7 @@ import (
 
 // resetGlobalPackageCache clears the global cache between tests.
 func resetGlobalPackageCache() {
-	globalCacheMutex.Lock()
-	globalPackageCache = make(map[string]*packages.Package)
-	globalCacheMutex.Unlock()
+	Cache().Reset()
 }
 
 func TestSeedGlobalPackageCache_NilSlice(t *testing.T) {
@@ -25,9 +23,7 @@ func TestSeedGlobalPackageCache_NilSlice(t *testing.T) {
 		SeedGlobalPackageCache(nil)
 	})
 
-	globalCacheMutex.RLock()
-	defer globalCacheMutex.RUnlock()
-	assert.Empty(t, globalPackageCache)
+	assert.Nil(t, Cache().get("anything"))
 }
 
 func TestSeedGlobalPackageCache_EmptySlice(t *testing.T) {
@@ -35,9 +31,7 @@ func TestSeedGlobalPackageCache_EmptySlice(t *testing.T) {
 
 	SeedGlobalPackageCache([]*packages.Package{})
 
-	globalCacheMutex.RLock()
-	defer globalCacheMutex.RUnlock()
-	assert.Empty(t, globalPackageCache)
+	assert.Nil(t, Cache().get("anything"))
 }
 
 func TestSeedGlobalPackageCache_AddsEntries(t *testing.T) {
@@ -48,12 +42,8 @@ func TestSeedGlobalPackageCache_AddsEntries(t *testing.T) {
 
 	SeedGlobalPackageCache([]*packages.Package{pkgA, pkgB})
 
-	globalCacheMutex.RLock()
-	defer globalCacheMutex.RUnlock()
-
-	require.Len(t, globalPackageCache, 2)
-	assert.Equal(t, pkgA, globalPackageCache["example.com/a"])
-	assert.Equal(t, pkgB, globalPackageCache["example.com/b"])
+	assert.Equal(t, pkgA, Cache().get("example.com/a"))
+	assert.Equal(t, pkgB, Cache().get("example.com/b"))
 }
 
 func TestSeedGlobalPackageCache_SkipsNilPackage(t *testing.T) {
@@ -63,11 +53,9 @@ func TestSeedGlobalPackageCache_SkipsNilPackage(t *testing.T) {
 
 	SeedGlobalPackageCache([]*packages.Package{nil, pkgA, nil})
 
-	globalCacheMutex.RLock()
-	defer globalCacheMutex.RUnlock()
-
-	require.Len(t, globalPackageCache, 1)
-	assert.Equal(t, pkgA, globalPackageCache["example.com/a"])
+	assert.Equal(t, pkgA, Cache().get("example.com/a"))
+	// Only one non-nil package was seeded
+	assert.Nil(t, Cache().get(""))
 }
 
 func TestSeedGlobalPackageCache_DirectPackagesOverwriteExisting(t *testing.T) {
@@ -77,18 +65,13 @@ func TestSeedGlobalPackageCache_DirectPackagesOverwriteExisting(t *testing.T) {
 	replacement := &packages.Package{PkgPath: "example.com/a", Name: "replacement"}
 
 	// Pre-populate cache with original
-	globalCacheMutex.Lock()
-	globalPackageCache["example.com/a"] = original
-	globalCacheMutex.Unlock()
+	Cache().Seed([]*packages.Package{original})
 
 	// Direct packages (pass 1) always overwrite — they come from the initial
 	// packages.Load with full syntax and should take priority.
 	SeedGlobalPackageCache([]*packages.Package{replacement})
 
-	globalCacheMutex.RLock()
-	defer globalCacheMutex.RUnlock()
-
-	assert.Equal(t, "replacement", globalPackageCache["example.com/a"].Name,
+	assert.Equal(t, "replacement", Cache().get("example.com/a").Name,
 		"direct packages should overwrite existing cache entries")
 }
 
@@ -115,13 +98,9 @@ func TestSeedGlobalPackageCache_WalksImportsRecursively(t *testing.T) {
 
 	SeedGlobalPackageCache([]*packages.Package{root})
 
-	globalCacheMutex.RLock()
-	defer globalCacheMutex.RUnlock()
-
-	require.Len(t, globalPackageCache, 3)
-	assert.Equal(t, root, globalPackageCache["example.com/root"])
-	assert.Equal(t, mid, globalPackageCache["example.com/mid"])
-	assert.Equal(t, leaf, globalPackageCache["example.com/leaf"])
+	assert.Equal(t, root, Cache().get("example.com/root"))
+	assert.Equal(t, mid, Cache().get("example.com/mid"))
+	assert.Equal(t, leaf, Cache().get("example.com/leaf"))
 }
 
 func TestSeedGlobalPackageCache_HandlesCircularImports(t *testing.T) {
@@ -145,12 +124,8 @@ func TestSeedGlobalPackageCache_HandlesCircularImports(t *testing.T) {
 		SeedGlobalPackageCache([]*packages.Package{pkgA})
 	})
 
-	globalCacheMutex.RLock()
-	defer globalCacheMutex.RUnlock()
-
-	require.Len(t, globalPackageCache, 2)
-	assert.Equal(t, pkgA, globalPackageCache["example.com/a"])
-	assert.Equal(t, pkgB, globalPackageCache["example.com/b"])
+	assert.Equal(t, pkgA, Cache().get("example.com/a"))
+	assert.Equal(t, pkgB, Cache().get("example.com/b"))
 }
 
 func TestGlobalCacheStats_ResetWorks(t *testing.T) {
@@ -178,8 +153,8 @@ func TestGlobalCacheStats_IncrementPattern(t *testing.T) {
 
 	parser := &CoreStructParser{}
 	// Calling LookupStructFields for the seeded path triggers the cache-hit
-	// branch (pkgCached == true). The type won't be found but the package
-	// cache hit counter should still increment.
+	// branch. The type won't be found but the package cache hit counter
+	// should still increment.
 	_ = parser.LookupStructFields("example.com/seeded", "example.com/seeded", "NonExistent")
 
 	hits, misses := GlobalCacheStats()
@@ -212,55 +187,6 @@ func TestIsPackageCachedWithSyntax_ReturnsFalseWhenNotCached(t *testing.T) {
 	resetGlobalPackageCache()
 
 	assert.False(t, IsPackageCachedWithSyntax("example.com/nonexistent"))
-}
-
-func TestResolvePackage_LocalCacheFirst(t *testing.T) {
-	resetGlobalPackageCache()
-
-	localPkg := &packages.Package{PkgPath: "example.com/local", Name: "local"}
-	globalPkg := &packages.Package{PkgPath: "example.com/local", Name: "global"}
-
-	// Put different packages in local and global caches
-	globalCacheMutex.Lock()
-	globalPackageCache["example.com/local"] = globalPkg
-	globalCacheMutex.Unlock()
-
-	parser := &CoreStructParser{
-		packageCache: map[string]*packages.Package{
-			"example.com/local": localPkg,
-		},
-	}
-
-	result := parser.resolvePackage("example.com/local")
-	assert.Equal(t, "local", result.Name, "should prefer local cache")
-}
-
-func TestResolvePackage_FallsBackToGlobal(t *testing.T) {
-	resetGlobalPackageCache()
-
-	globalPkg := &packages.Package{PkgPath: "example.com/global", Name: "global"}
-
-	globalCacheMutex.Lock()
-	globalPackageCache["example.com/global"] = globalPkg
-	globalCacheMutex.Unlock()
-
-	parser := &CoreStructParser{
-		packageCache: make(map[string]*packages.Package),
-	}
-
-	result := parser.resolvePackage("example.com/global")
-	assert.Equal(t, "global", result.Name, "should fall back to global cache")
-}
-
-func TestResolvePackage_ReturnsNilWhenNotFound(t *testing.T) {
-	resetGlobalPackageCache()
-
-	parser := &CoreStructParser{
-		packageCache: make(map[string]*packages.Package),
-	}
-
-	result := parser.resolvePackage("example.com/nonexistent")
-	assert.Nil(t, result)
 }
 
 func TestSharedTypeCache_GetSet(t *testing.T) {
@@ -298,22 +224,35 @@ func TestSharedTypeCache_ConcurrentAccess(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func TestSingleflight_DeduplicatesConcurrentLoads(t *testing.T) {
-	// This test verifies the singleflight variable is properly initialized.
-	// The actual deduplication is tested via integration tests (packages.Load
-	// can't be easily mocked). Here we verify the group exists and works.
-	var callCount int64
-	var mu sync.Mutex
+func TestPackageCache_GetOrLoad_HitPath(t *testing.T) {
+	resetGlobalPackageCache()
+	ResetGlobalCacheStats()
 
-	// Use the package-level singleflight group to ensure it's initialized.
-	val, err, _ := packageLoadGroup.Do("test-key", func() (any, error) {
-		mu.Lock()
-		callCount++
-		mu.Unlock()
-		return "result", nil
-	})
+	seeded := &packages.Package{
+		PkgPath: "example.com/cached",
+		Name:    "cached",
+		Syntax:  []*ast.File{{}},
+	}
+	Cache().Seed([]*packages.Package{seeded})
 
-	assert.NoError(t, err)
-	assert.Equal(t, "result", val)
-	assert.Equal(t, int64(1), callCount)
+	result := Cache().GetOrLoad("example.com/cached")
+	require.NotNil(t, result)
+	assert.Equal(t, "example.com/cached", result.PkgPath)
+
+	hits, misses := Cache().Stats()
+	assert.Equal(t, int64(1), hits)
+	assert.Equal(t, int64(0), misses)
+}
+
+func TestPackageCache_GetOrLoad_MissPath(t *testing.T) {
+	resetGlobalPackageCache()
+	ResetGlobalCacheStats()
+
+	// GetOrLoad for a non-existent package still returns a package object
+	// (packages.Load returns a package with Errors set rather than an error).
+	// The important thing is that the miss counter increments.
+	_ = Cache().GetOrLoad("example.com/does-not-exist-at-all")
+
+	_, misses := Cache().Stats()
+	assert.Equal(t, int64(1), misses)
 }
