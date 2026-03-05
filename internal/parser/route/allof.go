@@ -65,23 +65,13 @@ func convertSpecSchemaToDomain(s *spec.Schema) *domain.Schema {
 
 	domainSchema := &domain.Schema{}
 
-	// Handle AllOf - preserve the composition structure
+	// Handle AllOf - preserve the composition structure without top-level type or properties
 	if len(s.AllOf) > 0 {
 		domainSchema.AllOf = make([]*domain.Schema, 0, len(s.AllOf))
 		for _, allOfSchema := range s.AllOf {
 			converted := convertSpecSchemaToDomain(&allOfSchema)
 			domainSchema.AllOf = append(domainSchema.AllOf, converted)
-			// Extract properties from AllOf elements to the top-level schema
-			// so callers can access override fields directly (e.g., data, meta)
-			for name, prop := range converted.Properties {
-				if domainSchema.Properties == nil {
-					domainSchema.Properties = make(map[string]*domain.Schema)
-				}
-				domainSchema.Properties[name] = prop
-			}
 		}
-		// Use type "object" for AllOf compositions
-		domainSchema.Type = "object"
 		return domainSchema
 	}
 
@@ -158,13 +148,9 @@ func (s *Service) resolveOverrideTypeSchema(fieldType, packageName string, isPub
 		}
 	}
 
-	// Wildcard types → plain object
+	// Wildcard types → empty schema (unknown/any value)
 	if fieldType == "any" || fieldType == "interface{}" {
-		return spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-			},
-		}
+		return spec.Schema{}
 	}
 
 	// Primitive types

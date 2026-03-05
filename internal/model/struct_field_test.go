@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/go-openapi/spec"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -507,7 +508,7 @@ func TestToSpecSchema_AnyInterfaceTypes(t *testing.T) {
 				TypeString: "any",
 				Tag:        `json:"data"`,
 			},
-			wantType: []string{"object"},
+			wantType: nil,
 		},
 		{
 			name: "interface{} type",
@@ -516,7 +517,7 @@ func TestToSpecSchema_AnyInterfaceTypes(t *testing.T) {
 				TypeString: "interface{}",
 				Tag:        `json:"metadata"`,
 			},
-			wantType: []string{"object"},
+			wantType: nil,
 		},
 		{
 			name: "interface{} with spaces",
@@ -525,7 +526,7 @@ func TestToSpecSchema_AnyInterfaceTypes(t *testing.T) {
 				TypeString: "interface {}",
 				Tag:        `json:"options"`,
 			},
-			wantType: []string{"object"},
+			wantType: nil,
 		},
 	}
 
@@ -536,10 +537,10 @@ func TestToSpecSchema_AnyInterfaceTypes(t *testing.T) {
 			assert.NotNil(t, schema)
 			assert.True(t, required, "Any/interface fields should be required by default")
 
-			// Check that schema has object type
+			// any/interface{} should produce empty schema (no type)
 			assert.Equal(t, len(tt.wantType), len(schema.Type), "Schema type length should match")
 			if len(tt.wantType) > 0 && len(schema.Type) > 0 {
-				assert.Equal(t, tt.wantType[0], schema.Type[0], "Any/interface should generate object type")
+				assert.Equal(t, tt.wantType[0], schema.Type[0])
 			}
 
 			// Should not generate nested types
@@ -866,12 +867,12 @@ func TestBuildSchema(t *testing.T) {
 		{
 			name:     "any type",
 			field:    &StructField{TypeString: "any"},
-			wantType: []string{"object"},
+			wantType: nil,
 		},
 		{
 			name:     "interface{} type",
 			field:    &StructField{TypeString: "interface{}"},
-			wantType: []string{"object"},
+			wantType: nil,
 		},
 		{
 			name:     "fields.StringField wrapper",
@@ -898,6 +899,303 @@ func TestBuildSchema(t *testing.T) {
 			if tt.wantNested != nil {
 				assert.Equal(t, tt.wantNested, nestedTypes)
 			}
+		})
+	}
+}
+
+func TestApplyStructTagsToSchema(t *testing.T) {
+	tests := []struct {
+		name         string
+		field        *StructField
+		baseType     []string
+		wantEnums    []interface{}
+		wantVarNames []string
+		wantFormat   string
+		wantTitle    string
+		wantMin      *float64
+		wantMax      *float64
+		wantReadOnly bool
+	}{
+		{
+			name: "apply enums to integer",
+			field: &StructField{
+				Name: "Status",
+				Tag:  `json:"status" enums:"1,2,3"`,
+			},
+			baseType:  []string{"integer"},
+			wantEnums: []interface{}{1, 2, 3},
+		},
+		{
+			name: "apply enums with var names",
+			field: &StructField{
+				Name: "Color",
+				Tag:  `json:"color" enums:"red,green,blue" x-enum-varnames:"Red,Green,Blue"`,
+			},
+			baseType:     []string{"string"},
+			wantEnums:    []interface{}{"red", "green", "blue"},
+			wantVarNames: []string{"Red", "Green", "Blue"},
+		},
+		{
+			name: "apply format tag",
+			field: &StructField{
+				Name: "CreatedAt",
+				Tag:  `json:"created_at" format:"date-time"`,
+			},
+			baseType:   []string{"string"},
+			wantFormat: "date-time",
+		},
+		{
+			name: "apply title tag",
+			field: &StructField{
+				Name: "UserCount",
+				Tag:  `json:"user_count" title:"TotalUsers"`,
+			},
+			baseType:  []string{"integer"},
+			wantTitle: "TotalUsers",
+		},
+		{
+			name: "apply min/max constraints",
+			field: &StructField{
+				Name: "Age",
+				Tag:  `json:"age" minimum:"0" maximum:"120"`,
+			},
+			baseType: []string{"integer"},
+			wantMin:  func() *float64 { v := 0.0; return &v }(),
+			wantMax:  func() *float64 { v := 120.0; return &v }(),
+		},
+		{
+			name: "apply readonly",
+			field: &StructField{
+				Name: "ID",
+				Tag:  `json:"id" readonly:"true"`,
+			},
+			baseType:     []string{"integer"},
+			wantReadOnly: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema := &spec.Schema{SchemaProps: spec.SchemaProps{Type: tt.baseType}}
+			err := tt.field.applyStructTagsToSchema(schema)
+
+			assert.NoError(t, err)
+			if tt.wantEnums != nil {
+				assert.Equal(t, tt.wantEnums, schema.Enum)
+			}
+			if tt.wantVarNames != nil {
+				assert.NotNil(t, schema.Extensions)
+				assert.Equal(t, tt.wantVarNames, schema.Extensions["x-enum-varnames"])
+			}
+			if tt.wantFormat != "" {
+				assert.Equal(t, tt.wantFormat, schema.Format)
+			}
+			if tt.wantTitle != "" {
+				assert.Equal(t, tt.wantTitle, schema.Title)
+			}
+			if tt.wantMin != nil {
+				assert.Equal(t, *tt.wantMin, *schema.Minimum)
+			}
+			if tt.wantMax != nil {
+				assert.Equal(t, *tt.wantMax, *schema.Maximum)
+			}
+			if tt.wantReadOnly {
+				assert.True(t, schema.ReadOnly)
+			}
+		})
+	}
+}
+
+func TestBuildSchema_SwaggerType(t *testing.T) {
+	tests := []struct {
+		name         string
+		field        *StructField
+		wantType     []string
+		wantItems    bool
+		wantItemType []string
+		wantEnums    []interface{}
+		wantErr      bool
+	}{
+		{
+			name: "swaggertype with enums tag",
+			field: &StructField{
+				Name:       "FoodTypes",
+				TypeString: "[]string",
+				Tag:        `json:"food_types" swaggertype:"array,integer" enums:"0,1,2"`,
+			},
+			wantType:     []string{"array"},
+			wantItems:    true,
+			wantItemType: []string{"integer"},
+			wantEnums:    []interface{}{0, 1, 2},
+		},
+		{
+			name: "swaggertype integer overrides sql.NullInt64",
+			field: &StructField{
+				Name:       "NullInt",
+				TypeString: "sql.NullInt64",
+				Tag:        `swaggertype:"integer"`,
+			},
+			wantType: []string{"integer"},
+		},
+		{
+			name: "swaggertype array,number for []big.Float",
+			field: &StructField{
+				Name:       "Coeffs",
+				TypeString: "[]big.Float",
+				Tag:        `swaggertype:"array,number"`,
+			},
+			wantType:     []string{"array"},
+			wantItems:    true,
+			wantItemType: []string{"number"},
+		},
+		{
+			name: "swaggertype primitive,integer strips primitive keyword",
+			field: &StructField{
+				Name:       "Birthday",
+				TypeString: "TimestampTime",
+				Tag:        `swaggertype:"primitive,integer"`,
+			},
+			wantType: []string{"integer"},
+		},
+		{
+			name: "swaggertype string for explicit override",
+			field: &StructField{
+				Name:       "URLTemplate",
+				TypeString: "string",
+				Tag:        `json:"urltemplate" swaggertype:"string"`,
+			},
+			wantType: []string{"string"},
+		},
+		{
+			name: "swaggertype object,string creates map schema",
+			field: &StructField{
+				Name:       "Metadata",
+				TypeString: "map[string]string",
+				Tag:        `swaggertype:"object,string"`,
+			},
+			wantType: []string{"object"},
+		},
+		{
+			name: "invalid swaggertype - no type after primitive",
+			field: &StructField{
+				Name:       "BadField",
+				TypeString: "string",
+				Tag:        `swaggertype:"primitive"`,
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid swaggertype - no type after array",
+			field: &StructField{
+				Name:       "BadField",
+				TypeString: "[]string",
+				Tag:        `swaggertype:"array"`,
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid swaggertype - unknown keyword",
+			field: &StructField{
+				Name:       "BadField",
+				TypeString: "string",
+				Tag:        `swaggertype:"invalidtype"`,
+			},
+			wantErr: true,
+		},
+		{
+			name: "no swaggertype tag - uses normal type inference",
+			field: &StructField{
+				Name:       "NormalField",
+				TypeString: "string",
+				Tag:        `json:"normal"`,
+			},
+			wantType: []string{"string"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema, nestedTypes, err := tt.field.BuildSchema(false, false, nil)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid swaggertype tag")
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.NotNil(t, schema)
+			assert.Equal(t, len(tt.wantType), len(schema.Type))
+			if len(tt.wantType) > 0 {
+				assert.Equal(t, tt.wantType[0], schema.Type[0])
+			}
+
+			// swaggertype creates inline schemas, not refs
+			if tt.field.Tag != `json:"normal"` {
+				assert.Empty(t, nestedTypes, "swaggertype creates inline schemas, not refs")
+			}
+
+			if tt.wantItems {
+				assert.NotNil(t, schema.Items, "array schema should have items")
+				assert.NotNil(t, schema.Items.Schema, "array items should have schema")
+				assert.Equal(t, len(tt.wantItemType), len(schema.Items.Schema.Type))
+				if len(tt.wantItemType) > 0 {
+					assert.Equal(t, tt.wantItemType[0], schema.Items.Schema.Type[0])
+				}
+			}
+
+			if tt.wantEnums != nil {
+				// For array types, enums should be on the array schema itself
+				assert.Equal(t, tt.wantEnums, schema.Enum)
+			}
+		})
+	}
+}
+
+func TestToSpecSchema_SwaggerType(t *testing.T) {
+	tests := []struct {
+		name         string
+		field        *StructField
+		wantPropName string
+		wantType     []string
+		wantRequired bool
+	}{
+		{
+			name: "swaggertype with json tag and required",
+			field: &StructField{
+				Name:       "FoodTypes",
+				TypeString: "[]string",
+				Tag:        `json:"food_types" swaggertype:"array,integer"`,
+			},
+			wantPropName: "food_types",
+			wantType:     []string{"array"},
+			wantRequired: true,
+		},
+		{
+			name: "swaggertype with omitempty makes optional",
+			field: &StructField{
+				Name:       "OptionalField",
+				TypeString: "sql.NullInt64",
+				Tag:        `json:"optional,omitempty" swaggertype:"integer"`,
+			},
+			wantPropName: "optional",
+			wantType:     []string{"integer"},
+			wantRequired: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			propName, schema, required, nestedTypes, err := tt.field.ToSpecSchema(false, false, nil)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantPropName, propName)
+			assert.Equal(t, tt.wantRequired, required)
+			assert.Equal(t, len(tt.wantType), len(schema.Type))
+			if len(tt.wantType) > 0 {
+				assert.Equal(t, tt.wantType[0], schema.Type[0])
+			}
+			assert.Empty(t, nestedTypes)
 		})
 	}
 }

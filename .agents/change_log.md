@@ -2907,3 +2907,55 @@ json: unsupported value: +Inf
 **Key Learning**: JSON spec doesn't support infinity or NaN. Must sanitize at output stage, not just at parsing stage, because values can come from many sources (struct tags, annotations, computed values, etc.).
 
 **Next**: Test project-2 to ensure solution is complete.
+
+## 2026-03-05: Implemented Full Struct Tag Processing System
+
+**What was tried:**
+- Implemented complete struct tag processing for OpenAPI schema generation
+- Added `applyStructTagsToSchema()` method to enrich schemas with metadata tags
+- Integrated `swaggertype` tag support for type override in `BuildSchema()`
+- Created new `internal/schemautil` package to avoid import cycles
+
+**Why initial approach didn't work:**
+- Initial implementation caused import cycle: `internal/model` → `internal/schema` → `internal/model`
+- Solution: Moved `BuildCustomSchema()` and related functions to new `internal/schemautil` package
+
+**What was implemented:**
+1. Created `internal/schemautil/types.go` with schema utility functions
+2. Added `applyStructTagsToSchema()` method in `struct_field.go` to handle:
+   - `enums` tag with integer/string parsing based on schema type
+   - `x-enum-varnames` extension for enum display names
+   - `format`, `title`, `minimum`, `maximum`, `minLength`, `maxLength`
+   - `swag_default`, `example`, `readonly`, `multipleOf`
+   - `extensions` tag for custom OpenAPI extensions
+3. Integrated `swaggertype` tag processing at the start of `BuildSchema()`:
+   - Parses comma-separated type keywords
+   - Calls `schemautil.BuildCustomSchema()` to build base schema
+   - Applies other struct tags on top of swaggertype base
+4. Applied tag enrichment to all schema return points (primitives, arrays, maps)
+5. Added comprehensive unit tests:
+   - `TestApplyStructTagsToSchema` - 6 test cases for tag enrichment
+   - `TestBuildSchema_SwaggerType` - 10 test cases for swaggertype integration
+   - `TestToSpecSchema_SwaggerType` - 2 test cases for end-to-end workflow
+6. All 119 internal tests pass
+
+**Success:**
+✅ All unit tests pass (119 tests)
+✅ swaggertype tag successfully overrides type inference
+✅ Tag composition works (swaggertype sets type, enums add values)
+✅ Backward compatible - fields without tags continue working
+✅ No regressions in existing functionality
+✅ Clear error messages for invalid swaggertype values
+
+**Examples that now work:**
+```go
+// Override sql.NullInt64 to integer
+NullInt sql.NullInt64 `swaggertype:"integer"`
+
+// Override []big.Float to array of numbers
+Coeffs []big.Float `swaggertype:"array,number"`
+
+// Override with enums
+FoodTypes []string `swaggertype:"array,integer" enums:"0,1,2" x-enum-varnames:"Wet,Dry,Raw"`
+```
+
