@@ -88,7 +88,8 @@ func IsExtendedPrimitiveType(typeName string) bool {
 		"types.UUID",
 		"uuid.UUID",
 		"github.com/griffnb/core/lib/types.UUID",
-		"github.com/google/uuid.UUID":
+		"github.com/google/uuid.UUID",
+		"[]byte":
 		return true
 	}
 
@@ -148,6 +149,8 @@ func TransToValidPrimitiveSchema(typeName string) *spec.Schema {
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "uuid"}}
 	case "decimal.Decimal", "github.com/shopspring/decimal.Decimal":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{NUMBER}}}
+	case "[]byte":
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "byte"}}
 	}
 	return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{typeName}}}
 }

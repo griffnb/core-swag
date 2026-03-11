@@ -203,6 +203,7 @@ func isPrimitiveType(typeName string) bool {
 		"string":        true,
 		"byte":          true,
 		"rune":          true,
+		"[]byte":        true,
 		"any":           true,
 		"interface{}":   true,
 		"object":        true,

@@ -101,6 +101,8 @@ func (this *StructField) IsPrimitive() bool {
 		"github.com/google/uuid.UUID": true, "*github.com/google/uuid.UUID": true,
 		// json.RawMessage is []byte representing raw JSON — treat as primitive (object)
 		"json.RawMessage": true, "encoding/json.RawMessage": true,
+		// []byte is a primitive represented as base64 string in OpenAPI
+		"[]byte": true,
 	}
 	return primitives[this.EffectiveTypeString()]
 }
@@ -1083,6 +1085,8 @@ func primitiveTypeToSchema(typeStr string) *spec.Schema {
 	case "json.RawMessage", "encoding/json.RawMessage":
 		// json.RawMessage is []byte representing arbitrary JSON — any valid JSON value
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}
+	case "[]byte":
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}, Format: "byte"}}
 	default:
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{typeStr}}}
 	}

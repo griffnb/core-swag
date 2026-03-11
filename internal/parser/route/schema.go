@@ -54,6 +54,7 @@ func isModelType(typeName string) bool {
 		"uuid.UUID":                                 true,
 		"github.com/griffnb/core/lib/types.UUID":    true,
 		"github.com/google/uuid.UUID":               true,
+		"[]byte":                                    true,
 	}
 
 	if extendedPrimitives[cleanType] {
