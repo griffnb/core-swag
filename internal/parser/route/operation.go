@@ -106,7 +106,7 @@ func (s *Service) parseComment(op *operation, comment string) error {
 	case "@id":
 		op.operationID = lineRemainder
 	case "@tags":
-		op.tags = parseTags(lineRemainder)
+		op.tags = append(op.tags, parseTags(lineRemainder)...)
 	case "@accept":
 		return s.parseAccept(op, lineRemainder)
 	case "@produce":

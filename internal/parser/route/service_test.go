@@ -384,6 +384,35 @@ func CreateUser() {}
 	})
 }
 
+func TestParseSuccessFileByteResponse(t *testing.T) {
+	t.Run("should parse file response with []byte as file type not a ref", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {file} []byte "File content"
+// @Router /download [get]
+func Download() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		responses := routes[0].Responses
+		require.Contains(t, responses, 200)
+
+		resp := responses[200]
+		assert.Equal(t, "File content", resp.Description)
+		require.NotNil(t, resp.Schema)
+		assert.Equal(t, "file", resp.Schema.Type)
+		assert.Empty(t, resp.Schema.Ref, "[]byte file response should not create a $ref")
+	})
+}
+
 // TestParseFailure tests @failure annotation parsing
 func TestParseFailure(t *testing.T) {
 	t.Run("should parse failure response", func(t *testing.T) {

@@ -204,6 +204,7 @@ func isPrimitiveType(typeName string) bool {
 		"byte":          true,
 		"rune":          true,
 		"[]byte":        true,
+		"[]uint8":       true,
 		"any":           true,
 		"interface{}":   true,
 		"object":        true,

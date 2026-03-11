@@ -128,7 +128,11 @@ func (s *Service) buildSchemaWithPackageAndPublic(schemaType, dataType, packageN
 		return s.buildAllOfResponseSchema(dataType, packageName, isPublic, file)
 	}
 
-	if schemaType == "array" {
+	if schemaType == "file" {
+		// File response (e.g., @Success 200 {file} []byte "File content")
+		schema.Type = "file"
+		return schema
+	} else if schemaType == "array" {
 		schema.Type = "array"
 		// For array items, apply @Public flag
 		itemSchema := s.buildSchemaForTypeWithPublic(dataType, packageName, isPublic, file)
@@ -204,7 +208,7 @@ func convertTypeToSchemaType(dataType string) string {
 		return "number"
 	case "bool":
 		return "boolean"
-	case "string":
+	case "string", "[]byte", "[]uint8":
 		return "string"
 	// Extended primitives
 	case "time.Time":
