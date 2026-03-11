@@ -384,6 +384,35 @@ func CreateUser() {}
 	})
 }
 
+func TestParseSuccessFileByteResponse(t *testing.T) {
+	t.Run("should parse file response with []byte as file type not a ref", func(t *testing.T) {
+		src := `
+package test
+
+// @Success 200 {file} []byte "File content"
+// @Router /download [get]
+func Download() {}
+`
+		fset := token.NewFileSet()
+		astFile, err := goparser.ParseFile(fset, "test.go", src, goparser.ParseComments)
+		require.NoError(t, err)
+
+		service := NewService(nil, "")
+		routes, err := service.ParseRoutes(astFile, "test.go", fset)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+
+		responses := routes[0].Responses
+		require.Contains(t, responses, 200)
+
+		resp := responses[200]
+		assert.Equal(t, "File content", resp.Description)
+		require.NotNil(t, resp.Schema)
+		assert.Equal(t, "file", resp.Schema.Type)
+		assert.Empty(t, resp.Schema.Ref, "[]byte file response should not create a $ref")
+	})
+}
+
 // TestParseFailure tests @failure annotation parsing
 func TestParseFailure(t *testing.T) {
 	t.Run("should parse failure response", func(t *testing.T) {
@@ -820,10 +849,11 @@ func GetAccount() {}
 		schema := responses[200].Schema
 		require.NotNil(t, schema)
 
-		// AllOf creates an object with properties
-		// The base Response is referenced, and data field is overridden
-		assert.NotNil(t, schema.Properties)
-		assert.Contains(t, schema.Properties, "data")
+		// AllOf should only have allOf composition, no top-level type or properties
+		assert.Empty(t, schema.Type, "allOf schema should not have top-level type")
+		assert.Nil(t, schema.Properties, "allOf schema should not duplicate properties at top level")
+		require.Len(t, schema.AllOf, 2, "allOf should have base ref + override object")
+		assert.Contains(t, schema.AllOf[1].Properties, "data")
 	})
 
 	t.Run("should build AllOf with array field Response{data=[]Account}", func(t *testing.T) {
@@ -850,11 +880,12 @@ func GetAccounts() {}
 		schema := responses[200].Schema
 		require.NotNil(t, schema)
 
-		// Should have data property with array type
-		assert.NotNil(t, schema.Properties)
-		assert.Contains(t, schema.Properties, "data")
+		// AllOf should not have top-level properties
+		assert.Empty(t, schema.Type)
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
 
-		dataSchema := schema.Properties["data"]
+		dataSchema := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "array", dataSchema.Type)
 		assert.NotNil(t, dataSchema.Items)
 	})
@@ -883,10 +914,11 @@ func GetAccountDetail() {}
 		schema := responses[200].Schema
 		require.NotNil(t, schema)
 
-		// Should have both data and meta properties
-		assert.NotNil(t, schema.Properties)
-		assert.Contains(t, schema.Properties, "data")
-		assert.Contains(t, schema.Properties, "meta")
+		// Properties should be in AllOf[1], not at top level
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		assert.Contains(t, schema.AllOf[1].Properties, "data")
+		assert.Contains(t, schema.AllOf[1].Properties, "meta")
 	})
 
 	t.Run("should build AllOf with @Public annotation Response{data=Account}", func(t *testing.T) {
@@ -917,13 +949,12 @@ func GetPublicAccount() {}
 		schema := responses[200].Schema
 		require.NotNil(t, schema)
 
-		// Base type should be ResponsePublic (if Response has Public variant)
-		// Or just Response if it doesn't
-		// Data field should reference AccountPublic
-		assert.NotNil(t, schema.Properties)
-		assert.Contains(t, schema.Properties, "data")
+		// Properties should be in AllOf[1], not at top level
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		assert.Contains(t, schema.AllOf[1].Properties, "data")
 
-		dataSchema := schema.Properties["data"]
+		dataSchema := schema.AllOf[1].Properties["data"]
 		assert.Contains(t, dataSchema.Ref, "AccountPublic")
 	})
 
@@ -951,11 +982,12 @@ func GetAPIAccount() {}
 		schema := responses[200].Schema
 		require.NotNil(t, schema)
 
-		// Should reference qualified types
-		assert.NotNil(t, schema.Properties)
-		assert.Contains(t, schema.Properties, "data")
+		// Properties should be in AllOf[1], not at top level
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		assert.Contains(t, schema.AllOf[1].Properties, "data")
 
-		dataSchema := schema.Properties["data"]
+		dataSchema := schema.AllOf[1].Properties["data"]
 		assert.Contains(t, dataSchema.Ref, "model.Account")
 	})
 
@@ -982,10 +1014,11 @@ func GetMap() {}
 		schema := responses[200].Schema
 		require.NotNil(t, schema)
 
-		assert.NotNil(t, schema.Properties)
-		assert.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		assert.Contains(t, schema.AllOf[1].Properties, "data")
 
-		dataSchema := schema.Properties["data"]
+		dataSchema := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "object", dataSchema.Type)
 		// Should NOT have a $ref — map[string]any is a plain object
 		assert.Empty(t, dataSchema.Ref)
@@ -1014,10 +1047,11 @@ func GetMaps() {}
 		schema := responses[200].Schema
 		require.NotNil(t, schema)
 
-		assert.NotNil(t, schema.Properties)
-		assert.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		assert.Contains(t, schema.AllOf[1].Properties, "data")
 
-		dataSchema := schema.Properties["data"]
+		dataSchema := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "array", dataSchema.Type)
 		require.NotNil(t, dataSchema.Items)
 		// Items should be plain object, not a $ref
@@ -1049,11 +1083,12 @@ func GetCount() {}
 		schema := responses[200].Schema
 		require.NotNil(t, schema)
 
-		// Should have count property with integer type
-		assert.NotNil(t, schema.Properties)
-		assert.Contains(t, schema.Properties, "count")
+		// Properties should be in AllOf[1], not at top level
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		assert.Contains(t, schema.AllOf[1].Properties, "count")
 
-		countSchema := schema.Properties["count"]
+		countSchema := schema.AllOf[1].Properties["count"]
 		assert.Equal(t, "integer", countSchema.Type)
 	})
 }

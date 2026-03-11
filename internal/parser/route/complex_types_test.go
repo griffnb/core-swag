@@ -49,19 +49,22 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		// Properties should be in AllOf[1], not at top level
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
-		// map[string][]any → object with additionalProperties = {type: array, items: {type: object}}
+		data := schema.AllOf[1].Properties["data"]
+		// map[string][]any → object with additionalProperties = {type: array, items: {}}
 		assert.Equal(t, "object", data.Type, "map should produce object type")
 		assert.Empty(t, data.Ref, "should not have a $ref")
 		require.NotNil(t, data.AdditionalProperties, "map should have additionalProperties")
 		assert.Equal(t, "array", data.AdditionalProperties.Type, "map values should be arrays")
 		require.NotNil(t, data.AdditionalProperties.Items, "array items should exist")
-		assert.Equal(t, "object", data.AdditionalProperties.Items.Type, "[]any items should be object")
+		assert.Empty(t, data.AdditionalProperties.Items.Type, "[]any items should be empty schema (unknown)")
 	})
 
-	t.Run("Response{data=any} should produce plain object", func(t *testing.T) {
+	t.Run("Response{data=any} should produce empty schema (unknown)", func(t *testing.T) {
 		src := `
 package test
 
@@ -80,14 +83,17 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		// Properties should be in AllOf[1], not at top level
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
-		assert.Equal(t, "object", data.Type, "any should be object type")
+		data := schema.AllOf[1].Properties["data"]
+		assert.Empty(t, data.Type, "any should produce empty schema (unknown)")
 		assert.Empty(t, data.Ref, "any should not have a $ref")
 	})
 
-	t.Run("response.SuccessResponse{data=any} should produce plain object for data", func(t *testing.T) {
+	t.Run("response.SuccessResponse{data=any} should produce empty schema for data", func(t *testing.T) {
 		src := `
 package test
 
@@ -106,10 +112,13 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		// Properties should be in AllOf[1], not at top level
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
-		assert.Equal(t, "object", data.Type, "any should be object type")
+		data := schema.AllOf[1].Properties["data"]
+		assert.Empty(t, data.Type, "any should produce empty schema (unknown)")
 		assert.Empty(t, data.Ref, "any should not have a $ref")
 	})
 
@@ -132,15 +141,18 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		// Properties should be in AllOf[1], not at top level
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
+		data := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "object", data.Type, "map should produce object type")
 		assert.Empty(t, data.Ref, "should not have a $ref")
 		require.NotNil(t, data.AdditionalProperties, "map should have additionalProperties")
 		assert.Equal(t, "array", data.AdditionalProperties.Type, "map values should be arrays")
 		require.NotNil(t, data.AdditionalProperties.Items, "array items should exist")
-		assert.Equal(t, "object", data.AdditionalProperties.Items.Type, "[]any items should be object")
+		assert.Empty(t, data.AdditionalProperties.Items.Type, "[]any items should be empty schema (unknown)")
 	})
 
 	t.Run("Response{data=map[string][]string} should produce map with array-of-string values", func(t *testing.T) {
@@ -162,9 +174,11 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
+		data := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "object", data.Type, "map should produce object type")
 		assert.Empty(t, data.Ref, "should not have a $ref")
 		require.NotNil(t, data.AdditionalProperties, "map should have additionalProperties")
@@ -192,15 +206,17 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
+		data := schema.AllOf[1].Properties["data"]
 		// map[string]interface{} is a wildcard map → plain object, no additionalProperties
 		assert.Equal(t, "object", data.Type, "wildcard map should be plain object")
 		assert.Empty(t, data.Ref, "should not have a $ref")
 	})
 
-	t.Run("Response{data=[]any} should produce array of objects", func(t *testing.T) {
+	t.Run("Response{data=[]any} should produce array with empty item schema", func(t *testing.T) {
 		src := `
 package test
 
@@ -219,12 +235,14 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
+		data := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "array", data.Type, "[]any should be array")
 		require.NotNil(t, data.Items, "array should have items")
-		assert.Equal(t, "object", data.Items.Type, "any items should be object")
+		assert.Empty(t, data.Items.Type, "any items should be empty schema (unknown)")
 		assert.Empty(t, data.Items.Ref, "any items should not have $ref")
 	})
 
@@ -247,9 +265,11 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
+		data := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "array", data.Type, "[]string should be array")
 		require.NotNil(t, data.Items, "array should have items")
 		assert.Equal(t, "string", data.Items.Type, "string items should be string type")
@@ -274,9 +294,11 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
+		data := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "object", data.Type, "map should produce object")
 		assert.Empty(t, data.Ref, "should not have a $ref")
 		require.NotNil(t, data.AdditionalProperties, "map should have additionalProperties")
@@ -302,9 +324,11 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
+		data := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "object", data.Type, "map should produce object")
 		assert.Empty(t, data.Ref, "should not have a $ref")
 		require.NotNil(t, data.AdditionalProperties, "map should have additionalProperties")
@@ -313,7 +337,7 @@ func Handler() {}
 		assert.Contains(t, data.AdditionalProperties.Items.Ref, "Model", "array items should ref Model")
 	})
 
-	t.Run("Response{data=[]interface{}} should produce array of objects", func(t *testing.T) {
+	t.Run("Response{data=[]interface{}} should produce array with empty item schema", func(t *testing.T) {
 		src := `
 package test
 
@@ -332,12 +356,14 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
-		data := schema.Properties["data"]
+		data := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "array", data.Type, "[]interface{} should be array")
 		require.NotNil(t, data.Items, "array should have items")
-		assert.Equal(t, "object", data.Items.Type, "interface{} items should be object")
+		assert.Empty(t, data.Items.Type, "interface{} items should be empty schema (unknown)")
 		assert.Empty(t, data.Items.Ref, "interface{} items should not have $ref")
 	})
 
@@ -360,20 +386,22 @@ func Handler() {}
 
 		schema := routes[0].Responses[200].Schema
 		require.NotNil(t, schema)
-		require.Contains(t, schema.Properties, "meta")
-		require.Contains(t, schema.Properties, "data")
+		assert.Nil(t, schema.Properties)
+		require.Len(t, schema.AllOf, 2)
+		require.Contains(t, schema.AllOf[1].Properties, "meta")
+		require.Contains(t, schema.AllOf[1].Properties, "data")
 
 		// meta = map[string]string → object with additionalProperties: {type: string}
-		meta := schema.Properties["meta"]
+		meta := schema.AllOf[1].Properties["meta"]
 		assert.Equal(t, "object", meta.Type)
 		require.NotNil(t, meta.AdditionalProperties)
 		assert.Equal(t, "string", meta.AdditionalProperties.Type)
 
-		// data = []any → array with items: {type: object}
-		data := schema.Properties["data"]
+		// data = []any → array with items: {} (empty schema = unknown)
+		data := schema.AllOf[1].Properties["data"]
 		assert.Equal(t, "array", data.Type)
 		require.NotNil(t, data.Items)
-		assert.Equal(t, "object", data.Items.Type)
+		assert.Empty(t, data.Items.Type)
 	})
 }
 

@@ -1,13 +1,16 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/types"
+	"strconv"
 	"strings"
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/console"
+	"github.com/griffnb/core-swag/internal/schemautil"
 )
 
 type StructField struct {
@@ -98,6 +101,8 @@ func (this *StructField) IsPrimitive() bool {
 		"github.com/google/uuid.UUID": true, "*github.com/google/uuid.UUID": true,
 		// json.RawMessage is []byte representing raw JSON — treat as primitive (object)
 		"json.RawMessage": true, "encoding/json.RawMessage": true,
+		// []byte is a primitive represented as base64 string in OpenAPI
+		"[]byte": true, "[]uint8": true,
 	}
 	return primitives[this.EffectiveTypeString()]
 }
@@ -194,6 +199,8 @@ func (this *StructField) FieldsWrapperSchema(enumLookup TypeEnumLookup) (*spec.S
 }
 
 // BuildSchema builds an OpenAPI schema for this field's type.
+// Checks for swaggertype tag first to allow user-specified type overrides.
+// Applies struct tags (enums, format, constraints, etc.) to enrich the schema.
 // For recursive types (arrays, maps), creates child StructField instances.
 // Returns schema, list of nested struct type names for definition generation, and error.
 func (this *StructField) BuildSchema(
@@ -203,6 +210,29 @@ func (this *StructField) BuildSchema(
 ) (*spec.Schema, []string, error) {
 	var nestedTypes []string
 	typeStr := this.EffectiveTypeString()
+
+	// Check for swaggertype tag override - takes precedence over automatic type inference
+	tags := this.GetTags()
+	if swaggerType, ok := tags["swaggertype"]; ok {
+		// Parse comma-separated type keywords
+		typeKeywords := strings.Split(swaggerType, ",")
+		for i := range typeKeywords {
+			typeKeywords[i] = strings.TrimSpace(typeKeywords[i])
+		}
+
+		// Build custom schema using existing schemautil package function
+		baseSchema, err := schemautil.BuildCustomSchema(typeKeywords)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid swaggertype tag '%s' for field %s: %w", swaggerType, this.Name, err)
+		}
+
+		// Apply other struct tags to enrich the schema
+		if err := this.applyStructTagsToSchema(baseSchema); err != nil {
+			return nil, nil, fmt.Errorf("failed to apply tags to schema for field %s: %w", this.Name, err)
+		}
+
+		return baseSchema, nil, nil
+	}
 
 	var debug bool
 	if strings.Contains(typeStr, "constants.") {
@@ -231,12 +261,12 @@ func (this *StructField) BuildSchema(
 	// Create a normalized field for method-based type checks
 	normalizedField := &StructField{TypeString: typeStr}
 
-	// Handle any/interface{} types as object
+	// Handle any/interface{} types as empty schema (unknown/any value)
 	if normalizedField.IsAny() {
 		if debug {
 			console.Logger.Debug("Detected any/interface{} type: $Bold{%s}\n", typeStr)
 		}
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}, nil, nil
+		return &spec.Schema{}, nil, nil
 	}
 
 	// Check if this is a fields wrapper type
@@ -244,7 +274,15 @@ func (this *StructField) BuildSchema(
 		if debug {
 			console.Logger.Debug("Detected fields wrapper type: $Bold{%s}\n", typeStr)
 		}
-		return getPrimitiveSchemaForFieldType(typeStr, this.TypeString, enumLookup)
+		schema, nestedTypes, err := getPrimitiveSchemaForFieldType(typeStr, this.TypeString, enumLookup)
+		if err != nil {
+			return nil, nil, err
+		}
+		// Apply struct tags to enrich the schema
+		if err := this.applyStructTagsToSchema(schema); err != nil {
+			return nil, nil, fmt.Errorf("failed to apply tags to schema: %w", err)
+		}
+		return schema, nestedTypes, nil
 	}
 
 	// Handle primitive types
@@ -252,6 +290,10 @@ func (this *StructField) BuildSchema(
 		schema := primitiveTypeToSchema(typeStr)
 		if debug {
 			console.Logger.Debug("Detected Is Primitive type: $Bold{%s} Schema %+v\n", typeStr, schema)
+		}
+		// Apply struct tags to enrich the schema
+		if err := this.applyStructTagsToSchema(schema); err != nil {
+			return nil, nil, fmt.Errorf("failed to apply tags to schema: %w", err)
 		}
 		return schema, nil, nil
 	}
@@ -269,6 +311,10 @@ func (this *StructField) BuildSchema(
 			return nil, nil, err
 		}
 		schema := spec.ArrayProperty(elemSchema)
+		// Apply struct tags to enrich the schema
+		if err := this.applyStructTagsToSchema(schema); err != nil {
+			return nil, nil, fmt.Errorf("failed to apply tags to schema: %w", err)
+		}
 		return schema, elemNestedTypes, nil
 	}
 
@@ -315,6 +361,10 @@ func (this *StructField) BuildSchema(
 			return nil, nil, err
 		}
 		schema := spec.MapProperty(valueSchema)
+		// Apply struct tags to enrich the schema
+		if err := this.applyStructTagsToSchema(schema); err != nil {
+			return nil, nil, fmt.Errorf("failed to apply tags to schema: %w", err)
+		}
 		return schema, valueNestedTypes, nil
 	}
 
@@ -405,6 +455,163 @@ func (this *StructField) BuildSchema(
 		console.Logger.Debug("Created Ref Schema for type: $Bold{$Red{%s}} Ref: $Bold{#/definitions/%s}\n", typeStr, refName)
 	}
 	return schema, nestedTypes, nil
+}
+
+// applyStructTagsToSchema enriches a base schema with metadata from struct tags.
+// Handles enums, format, title, constraints (min/max, minLength/maxLength),
+// default, example, readonly, multipleOf, and extensions tags.
+// The base schema's type structure should already be set before calling this.
+func (this *StructField) applyStructTagsToSchema(schema *spec.Schema) error {
+	if schema == nil {
+		return nil
+	}
+
+	tags := this.GetTags()
+
+	// Apply format tag
+	if format, ok := tags["format"]; ok {
+		schema.Format = format
+	}
+
+	// Apply title tag
+	if title, ok := tags["title"]; ok {
+		schema.Title = title
+	}
+
+	// Apply enums tag
+	if enumsStr, ok := tags["enums"]; ok {
+		// Split by comma, handling escaped UTF-8 commas (0x2C)
+		enumValues := strings.Split(enumsStr, ",")
+		var enums []interface{}
+
+		// Determine target type for enum parsing
+		targetType := ""
+		if len(schema.Type) > 0 {
+			targetType = schema.Type[0]
+			// For array types, check the item type
+			if targetType == "array" && schema.Items != nil && schema.Items.Schema != nil && len(schema.Items.Schema.Type) > 0 {
+				targetType = schema.Items.Schema.Type[0]
+			}
+		}
+
+		for _, val := range enumValues {
+			val = strings.TrimSpace(val)
+			// Replace UTF-8 hex comma back to actual comma
+			val = strings.ReplaceAll(val, "0x2C", ",")
+			if val != "" {
+				// Try to parse as number if target type is integer/number
+				if strings.Contains(targetType, "integer") || strings.Contains(targetType, "number") {
+					if num, err := strconv.ParseFloat(val, 64); err == nil {
+						if strings.Contains(targetType, "integer") {
+							enums = append(enums, int(num))
+						} else {
+							enums = append(enums, num)
+						}
+						continue
+					}
+				}
+				enums = append(enums, val)
+			}
+		}
+		schema.Enum = enums
+
+		// Apply x-enum-varnames extension if present
+		if varNames, ok := tags["x-enum-varnames"]; ok {
+			if schema.Extensions == nil {
+				schema.Extensions = make(spec.Extensions)
+			}
+			varNamesList := strings.Split(varNames, ",")
+			for i := range varNamesList {
+				varNamesList[i] = strings.TrimSpace(varNamesList[i])
+			}
+			schema.Extensions["x-enum-varnames"] = varNamesList
+		}
+	}
+
+	// Apply minimum/maximum constraints
+	if minStr, ok := tags["minimum"]; ok {
+		if min, err := strconv.ParseFloat(minStr, 64); err == nil {
+			schema.Minimum = &min
+		}
+	}
+	if maxStr, ok := tags["maximum"]; ok {
+		if max, err := strconv.ParseFloat(maxStr, 64); err == nil {
+			schema.Maximum = &max
+		}
+	}
+
+	// Apply minLength/maxLength constraints
+	if minLenStr, ok := tags["minLength"]; ok {
+		if minLen, err := strconv.ParseInt(minLenStr, 10, 64); err == nil {
+			schema.MinLength = &minLen
+		}
+	}
+	if maxLenStr, ok := tags["maxLength"]; ok {
+		if maxLen, err := strconv.ParseInt(maxLenStr, 10, 64); err == nil {
+			schema.MaxLength = &maxLen
+		}
+	}
+
+	// Apply default value
+	if defaultStr, ok := tags["swag_default"]; ok {
+		// Try to parse as JSON, fallback to string
+		var defaultVal interface{}
+		if err := json.Unmarshal([]byte(defaultStr), &defaultVal); err == nil {
+			schema.Default = defaultVal
+		} else {
+			schema.Default = defaultStr
+		}
+	}
+
+	// Apply example value
+	if exampleStr, ok := tags["example"]; ok {
+		// Try to parse as JSON, fallback to string
+		var exampleVal interface{}
+		if err := json.Unmarshal([]byte(exampleStr), &exampleVal); err == nil {
+			schema.Example = exampleVal
+		} else {
+			schema.Example = exampleStr
+		}
+	}
+
+	// Apply readonly
+	if readonlyStr, ok := tags["readonly"]; ok {
+		if readonly, err := strconv.ParseBool(readonlyStr); err == nil {
+			schema.ReadOnly = readonly
+		}
+	}
+
+	// Apply multipleOf
+	if multipleStr, ok := tags["multipleOf"]; ok {
+		if multiple, err := strconv.ParseFloat(multipleStr, 64); err == nil {
+			schema.MultipleOf = &multiple
+		}
+	}
+
+	// Apply custom extensions
+	if extensionsStr, ok := tags["extensions"]; ok {
+		if schema.Extensions == nil {
+			schema.Extensions = make(spec.Extensions)
+		}
+		// Format: "x-key1:value1,x-key2:value2"
+		extPairs := strings.Split(extensionsStr, ",")
+		for _, pair := range extPairs {
+			parts := strings.SplitN(strings.TrimSpace(pair), ":", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				val := strings.TrimSpace(parts[1])
+				// Try to parse value as JSON
+				var jsonVal interface{}
+				if err := json.Unmarshal([]byte(val), &jsonVal); err == nil {
+					schema.Extensions[key] = jsonVal
+				} else {
+					schema.Extensions[key] = val
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // TypeEnumLookup is an interface for looking up enum values for a type
@@ -878,6 +1085,8 @@ func primitiveTypeToSchema(typeStr string) *spec.Schema {
 	case "json.RawMessage", "encoding/json.RawMessage":
 		// json.RawMessage is []byte representing arbitrary JSON — any valid JSON value
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}
+	case "[]byte", "[]uint8":
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}, Format: "byte"}}
 	default:
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{typeStr}}}
 	}
