@@ -99,6 +99,9 @@ func (this *StructField) IsPrimitive() bool {
 		"uuid.UUID": true, "*uuid.UUID": true,
 		"github.com/griffnb/core/lib/types.UUID": true, "*github.com/griffnb/core/lib/types.UUID": true,
 		"github.com/google/uuid.UUID": true, "*github.com/google/uuid.UUID": true,
+		// URN types
+		"types.URN": true, "*types.URN": true,
+		"github.com/griffnb/core/lib/types.URN": true, "*github.com/griffnb/core/lib/types.URN": true,
 		// json.RawMessage is []byte representing raw JSON — treat as primitive (object)
 		"json.RawMessage": true, "encoding/json.RawMessage": true,
 		// []byte is a primitive represented as base64 string in OpenAPI

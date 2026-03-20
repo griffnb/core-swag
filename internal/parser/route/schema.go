@@ -47,15 +47,17 @@ func isModelType(typeName string) bool {
 
 	// Extended primitives (commonly treated as primitives in OpenAPI)
 	extendedPrimitives := map[string]bool{
-		"time.Time":                                 true,
-		"decimal.Decimal":                           true,
-		"github.com/shopspring/decimal.Decimal":     true,
-		"types.UUID":                                true,
-		"uuid.UUID":                                 true,
-		"github.com/griffnb/core/lib/types.UUID":    true,
-		"github.com/google/uuid.UUID":               true,
-		"[]byte":                                    true,
-		"[]uint8":                                   true,
+		"time.Time":                              true,
+		"decimal.Decimal":                        true,
+		"github.com/shopspring/decimal.Decimal":  true,
+		"types.UUID":                             true,
+		"github.com/griffnb/core/lib/types.UUID": true,
+		"types.URN":                              true,
+		"github.com/griffnb/core/lib/types.URN":  true,
+		"uuid.UUID":                              true,
+		"github.com/google/uuid.UUID":            true,
+		"[]byte":                                 true,
+		"[]uint8":                                true,
 	}
 
 	if extendedPrimitives[cleanType] {

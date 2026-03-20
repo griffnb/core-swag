@@ -39,7 +39,7 @@ func (s *Service) parseResponseWithSchema(op *operation, matches []string) error
 	statusCodes := matches[1]
 	schemaType := matches[2] // object or array
 	dataType := matches[3]
-	description := ""
+	var description string
 	if len(matches) > 4 && matches[4] != "" {
 		description = matches[4]
 	} else {
@@ -215,6 +215,8 @@ func convertTypeToSchemaType(dataType string) string {
 		return "string" // with format: date-time
 	case "types.UUID", "uuid.UUID", "github.com/griffnb/core/lib/types.UUID", "github.com/google/uuid.UUID":
 		return "string" // with format: uuid
+	case "types.URN", "github.com/griffnb/core/lib/types.URN":
+		return "string" // with format: uri
 	case "decimal.Decimal", "github.com/shopspring/decimal.Decimal":
 		return "number"
 	default:

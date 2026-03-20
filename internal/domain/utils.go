@@ -86,8 +86,10 @@ func IsExtendedPrimitiveType(typeName string) bool {
 		"decimal.Decimal",
 		"github.com/shopspring/decimal.Decimal",
 		"types.UUID",
+		"types.URN",
 		"uuid.UUID",
 		"github.com/griffnb/core/lib/types.UUID",
+		"github.com/griffnb/core/lib/types.URN",
 		"github.com/google/uuid.UUID",
 		"[]byte", "[]uint8":
 		return true
@@ -145,8 +147,10 @@ func TransToValidPrimitiveSchema(typeName string) *spec.Schema {
 	// Extended primitives
 	case "time.Time":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "date-time"}}
-	case "types.UUID", "uuid.UUID", "github.com/griffnb/core/lib/types.UUID", "github.com/google/uuid.UUID":
+	case "types.UUID", "github.com/griffnb/core/lib/types.UUID", "uuid.UUID", "github.com/google/uuid.UUID":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "uuid"}}
+	case "types.URN", "github.com/griffnb/core/lib/types.URN":
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "uri"}}
 	case "decimal.Decimal", "github.com/shopspring/decimal.Decimal":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{NUMBER}}}
 	case "[]byte", "[]uint8":
