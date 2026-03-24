@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-openapi/spec"
+	"github.com/griffnb/core-swag/internal/typeregistry"
 )
 
 const (
@@ -80,22 +81,8 @@ func IsExtendedPrimitiveType(typeName string) bool {
 		return true
 	}
 
-	// Check extended primitives (commonly treated as primitives in OpenAPI)
-	switch cleanType {
-	case "time.Time",
-		"decimal.Decimal",
-		"github.com/shopspring/decimal.Decimal",
-		"types.UUID",
-		"types.URN",
-		"uuid.UUID",
-		"github.com/griffnb/core/lib/types.UUID",
-		"github.com/griffnb/core/lib/types.URN",
-		"github.com/google/uuid.UUID",
-		"[]byte", "[]uint8":
-		return true
-	}
-
-	return false
+	// Check extended primitives via centralized registry
+	return typeregistry.IsExtendedPrimitive(typeName)
 }
 
 func ignoreNameOverride(name string) bool {
@@ -144,17 +131,12 @@ func TransToValidPrimitiveSchema(typeName string) *spec.Schema {
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{BOOLEAN}}}
 	case "string":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}}}
-	// Extended primitives
-	case "time.Time":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "date-time"}}
-	case "types.UUID", "github.com/griffnb/core/lib/types.UUID", "uuid.UUID", "github.com/google/uuid.UUID":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "uuid"}}
-	case "types.URN", "github.com/griffnb/core/lib/types.URN":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "uri"}}
-	case "decimal.Decimal", "github.com/shopspring/decimal.Decimal":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{NUMBER}}}
-	case "[]byte", "[]uint8":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{STRING}, Format: "byte"}}
 	}
+
+	// Check extended primitives via centralized registry
+	if schema := typeregistry.ToSchema(typeName); schema != nil {
+		return schema
+	}
+
 	return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{typeName}}}
 }

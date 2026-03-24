@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/typeregistry"
 )
 
 // isModelType checks if a type name represents a model type (not a primitive).
@@ -18,49 +19,20 @@ func isModelType(typeName string) bool {
 
 	// Basic Go primitive types
 	primitives := map[string]bool{
-		"int":         true,
-		"int8":        true,
-		"int16":       true,
-		"int32":       true,
-		"int64":       true,
-		"uint":        true,
-		"uint8":       true,
-		"uint16":      true,
-		"uint32":      true,
-		"uint64":      true,
-		"float32":     true,
-		"float64":     true,
-		"bool":        true,
-		"string":      true,
-		"byte":        true,
-		"rune":        true,
-		"any":         true, // Go wildcard type
-		"interface{}": true, // Go wildcard type (legacy syntax)
-		"object":      true, // OpenAPI keyword
-		"array":       true, // OpenAPI keyword
-		"file":        true, // Special type for file uploads
+		"int": true, "int8": true, "int16": true, "int32": true, "int64": true,
+		"uint": true, "uint8": true, "uint16": true, "uint32": true, "uint64": true,
+		"float32": true, "float64": true, "bool": true, "string": true,
+		"byte": true, "rune": true,
+		"any": true, "interface{}": true, // Go wildcard types
+		"object": true, "array": true, "file": true, // OpenAPI keywords
 	}
 
 	if primitives[cleanType] {
 		return false
 	}
 
-	// Extended primitives (commonly treated as primitives in OpenAPI)
-	extendedPrimitives := map[string]bool{
-		"time.Time":                              true,
-		"decimal.Decimal":                        true,
-		"github.com/shopspring/decimal.Decimal":  true,
-		"types.UUID":                             true,
-		"github.com/griffnb/core/lib/types.UUID": true,
-		"types.URN":                              true,
-		"github.com/griffnb/core/lib/types.URN":  true,
-		"uuid.UUID":                              true,
-		"github.com/google/uuid.UUID":            true,
-		"[]byte":                                 true,
-		"[]uint8":                                true,
-	}
-
-	if extendedPrimitives[cleanType] {
+	// Check extended primitives via centralized registry
+	if typeregistry.IsExtendedPrimitive(typeName) {
 		return false
 	}
 

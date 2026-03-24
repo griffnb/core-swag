@@ -10,7 +10,9 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/griffnb/core-swag/internal/console"
+	"github.com/griffnb/core-swag/internal/domain"
 	"github.com/griffnb/core-swag/internal/schemautil"
+	"github.com/griffnb/core-swag/internal/typeregistry"
 )
 
 type StructField struct {
@@ -61,7 +63,7 @@ func (this *StructField) NormalizedType() string {
 // ConstantFieldEnumType extracts the enum type parameter from IntConstantField[T]
 // or StringConstantField[T]. Returns empty string if not a constant field.
 func (this *StructField) ConstantFieldEnumType() string {
-	return extractConstantFieldEnumType(this.EffectiveTypeString())
+	return typeregistry.ExtractConstantFieldEnumType(this.EffectiveTypeString())
 }
 
 // IsGeneric returns true if this field is a generic wrapper type like
@@ -85,29 +87,18 @@ func (this *StructField) GenericTypeArg() (string, error) {
 // IsPrimitive returns true if this field's type is a Go primitive or an extended
 // primitive (time.Time, UUID, decimal.Decimal).
 func (this *StructField) IsPrimitive() bool {
-	primitives := map[string]bool{
-		"string": true, "bool": true,
-		"int": true, "int8": true, "int16": true, "int32": true, "int64": true,
-		"uint": true, "uint8": true, "uint16": true, "uint32": true, "uint64": true,
-		"byte": true, "rune": true,
-		"float32": true, "float64": true,
-		"time.Time": true, "*time.Time": true,
-		"decimal.Decimal": true, "*decimal.Decimal": true,
-		"github.com/shopspring/decimal.Decimal": true, "*github.com/shopspring/decimal.Decimal": true,
-		// UUID types
-		"types.UUID": true, "*types.UUID": true,
-		"uuid.UUID": true, "*uuid.UUID": true,
-		"github.com/griffnb/core/lib/types.UUID": true, "*github.com/griffnb/core/lib/types.UUID": true,
-		"github.com/google/uuid.UUID": true, "*github.com/google/uuid.UUID": true,
-		// URN types
-		"types.URN": true, "*types.URN": true,
-		"github.com/griffnb/core/lib/types.URN": true, "*github.com/griffnb/core/lib/types.URN": true,
-		// json.RawMessage is []byte representing raw JSON — treat as primitive (object)
-		"json.RawMessage": true, "encoding/json.RawMessage": true,
-		// []byte is a primitive represented as base64 string in OpenAPI
-		"[]byte": true, "[]uint8": true,
+	typeStr := this.EffectiveTypeString()
+	// Strip pointer for Go primitive check
+	clean := strings.TrimPrefix(typeStr, "*")
+
+	// Check basic Go primitives via domain package
+	if domain.IsGolangPrimitiveType(clean) {
+		return true
 	}
-	return primitives[this.EffectiveTypeString()]
+
+	// Check extended primitives via centralized registry
+	_, ok := typeregistry.Lookup(typeStr)
+	return ok
 }
 
 // IsAny returns true if this field's type is any or interface{}.
@@ -125,7 +116,7 @@ func (this *StructField) IsAny() bool {
 // IsFieldsWrapper returns true if this field is a fields package wrapper type
 // like fields.StringField, fields.IntField, etc.
 func (this *StructField) IsFieldsWrapper() bool {
-	return strings.Contains(this.EffectiveTypeString(), "fields.")
+	return typeregistry.IsFieldsWrapper(this.EffectiveTypeString())
 }
 
 // IsSwaggerPrimitive returns true if the field's Go type is a struct that should
@@ -946,79 +937,46 @@ func makeFullPathDefinitionName(fullTypeStr string) string {
 
 // getPrimitiveSchemaForFieldType returns the appropriate schema for a fields wrapper type
 func getPrimitiveSchemaForFieldType(typeStr string, originalTypeStr string, enumLookup TypeEnumLookup) (*spec.Schema, []string, error) {
-	// Check for IntConstantField and StringConstantField with enum type parameters
-	// Create $ref to enum definition instead of inlining enum values
-	if strings.Contains(typeStr, "fields.IntConstantField[") {
-		enumType := extractConstantFieldEnumType(originalTypeStr)
-		if enumType != "" {
-			normalizedEnum := normalizeTypeName(enumType)
-			if enumLookup != nil {
-				enums, err := enumLookup.GetEnumsForType(normalizedEnum, nil)
-				if err == nil && len(enums) > 0 {
-					refName := resolveRefName(normalizedEnum, enumType)
-					schema := spec.RefSchema("#/definitions/" + refName)
-					// Propagate full import path for correct cross-package resolution
-					if strings.Contains(enumType, "/") {
-						return schema, []string{enumType}, nil
-					}
-					return schema, []string{refName}, nil
-				}
-			}
-		}
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"integer"}}}, nil, nil
-	}
-	if strings.Contains(typeStr, "fields.StringConstantField[") {
-		enumType := extractConstantFieldEnumType(originalTypeStr)
-		if enumType != "" {
-			normalizedEnum := normalizeTypeName(enumType)
-			if enumLookup != nil {
-				enums, err := enumLookup.GetEnumsForType(normalizedEnum, nil)
-				if err == nil && len(enums) > 0 {
-					refName := resolveRefName(normalizedEnum, enumType)
-					schema := spec.RefSchema("#/definitions/" + refName)
-					// Propagate full import path for correct cross-package resolution
-					if strings.Contains(enumType, "/") {
-						return schema, []string{enumType}, nil
-					}
-					return schema, []string{refName}, nil
-				}
-			}
-		}
+	result, ok := typeregistry.ResolveFieldsWrapper(typeStr)
+	if !ok {
+		// Not a fields wrapper — fallback to string (matches previous default)
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}}}, nil, nil
 	}
-	if strings.Contains(typeStr, "fields.StringField") {
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}}}, nil, nil
-	}
-	if strings.Contains(typeStr, "fields.IntField") || strings.Contains(typeStr, "fields.DecimalField") {
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"integer"}}}, nil, nil
-	}
-	if strings.Contains(typeStr, "fields.UUIDField") {
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}, Format: "uuid"}}, nil, nil
-	}
-	if strings.Contains(typeStr, "fields.BoolField") {
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"boolean"}}}, nil, nil
-	}
-	if strings.Contains(typeStr, "fields.FloatField") {
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"number"}}}, nil, nil
-	}
-	if strings.Contains(typeStr, "fields.TimeField") {
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}, Format: "date-time"}}, nil, nil
-	}
-	// Default to string for unknown field types
-	return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}}}, nil, nil
-}
 
-// extractConstantFieldEnumType extracts the enum type from IntConstantField[T] or StringConstantField[T]
-func extractConstantFieldEnumType(typeStr string) string {
-	// Look for pattern like "*fields.IntConstantField[constants.Role]" or "*fields.StringConstantField[constants.GlobalConfigKey]"
-	if strings.Contains(typeStr, "ConstantField[") {
-		start := strings.Index(typeStr, "[")
-		end := strings.LastIndex(typeStr, "]")
-		if start != -1 && end != -1 && end > start {
-			return typeStr[start+1 : end]
-		}
+	// Simple wrapper types — return concrete schema directly
+	if result.Schema != nil {
+		return result.Schema, nil, nil
 	}
-	return ""
+
+	// Enum constant fields — try to resolve enum via lookup
+	if result.IsEnum && result.InnerType != "" {
+		normalizedEnum := normalizeTypeName(result.InnerType)
+		// Try full path from originalTypeStr for accurate extraction
+		fullEnumType := typeregistry.ExtractConstantFieldEnumType(originalTypeStr)
+		if fullEnumType == "" {
+			fullEnumType = result.InnerType
+		}
+		if enumLookup != nil {
+			enums, err := enumLookup.GetEnumsForType(normalizedEnum, nil)
+			if err == nil && len(enums) > 0 {
+				refName := resolveRefName(normalizedEnum, fullEnumType)
+				schema := spec.RefSchema("#/definitions/" + refName)
+				if strings.Contains(fullEnumType, "/") {
+					return schema, []string{fullEnumType}, nil
+				}
+				return schema, []string{refName}, nil
+			}
+		}
+		// Fallback to base type if enum lookup fails
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{result.FallbackSchemaType}}}, nil, nil
+	}
+
+	// StructField[T] or other generic — fallback to string
+	if result.InnerType != "" {
+		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}}}, nil, nil
+	}
+
+	return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}}}, nil, nil
 }
 
 // applyEnumsToSchema applies enum values to a schema
@@ -1062,7 +1020,10 @@ func applyEnumsToSchema(schema *spec.Schema, enums []EnumValue) {
 
 // primitiveTypeToSchema converts a Go primitive type to OpenAPI schema
 func primitiveTypeToSchema(typeStr string) *spec.Schema {
-	switch typeStr {
+	// Strip pointer for Go primitive check
+	clean := strings.TrimPrefix(typeStr, "*")
+
+	switch clean {
 	case "string":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}}}
 	case "bool":
@@ -1077,20 +1038,12 @@ func primitiveTypeToSchema(typeStr string) *spec.Schema {
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"number"}, Format: "float"}}
 	case "float64":
 		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"number"}, Format: "double"}}
-	case "time.Time", "*time.Time":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}, Format: "date-time"}}
-	case "types.UUID", "*types.UUID", "uuid.UUID", "*uuid.UUID",
-		"github.com/griffnb/core/lib/types.UUID", "*github.com/griffnb/core/lib/types.UUID",
-		"github.com/google/uuid.UUID", "*github.com/google/uuid.UUID":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}, Format: "uuid"}}
-	case "decimal.Decimal", "*decimal.Decimal", "github.com/shopspring/decimal.Decimal", "*github.com/shopspring/decimal.Decimal":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"number"}}}
-	case "json.RawMessage", "encoding/json.RawMessage":
-		// json.RawMessage is []byte representing arbitrary JSON — any valid JSON value
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"object"}}}
-	case "[]byte", "[]uint8":
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{"string"}, Format: "byte"}}
-	default:
-		return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{typeStr}}}
 	}
+
+	// Check extended primitives via centralized registry
+	if schema := typeregistry.ToSchema(typeStr); schema != nil {
+		return schema
+	}
+
+	return &spec.Schema{SchemaProps: spec.SchemaProps{Type: []string{typeStr}}}
 }

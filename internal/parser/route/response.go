@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	routedomain "github.com/griffnb/core-swag/internal/parser/route/domain"
+	"github.com/griffnb/core-swag/internal/typeregistry"
 )
 
 var (
@@ -210,19 +211,15 @@ func convertTypeToSchemaType(dataType string) string {
 		return "boolean"
 	case "string", "[]byte", "[]uint8":
 		return "string"
-	// Extended primitives
-	case "time.Time":
-		return "string" // with format: date-time
-	case "types.UUID", "uuid.UUID", "github.com/griffnb/core/lib/types.UUID", "github.com/google/uuid.UUID":
-		return "string" // with format: uuid
-	case "types.URN", "github.com/griffnb/core/lib/types.URN":
-		return "string" // with format: uri
-	case "decimal.Decimal", "github.com/shopspring/decimal.Decimal":
-		return "number"
-	default:
-		// For custom types, treat as object
-		return "object"
 	}
+
+	// Check extended primitives via centralized registry
+	if entry, ok := typeregistry.Lookup(dataType); ok {
+		return entry.SchemaType
+	}
+
+	// For custom types, treat as object
+	return "object"
 }
 
 // parseHeader parses @header annotation
