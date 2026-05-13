@@ -31,16 +31,10 @@ var mimeTypeAliases = map[string]string{
 	"event-stream":          "text/event-stream",
 }
 
-// Debugger interface for logging
-type Debugger interface {
-	Printf(format string, v ...interface{})
-}
-
 // Service handles parsing of general API information from comments
 type Service struct {
 	swagger         *spec.Swagger
 	markdownFileDir string
-	debug           Debugger
 }
 
 // NewService creates a new base parser service
@@ -53,11 +47,6 @@ func NewService(swagger *spec.Swagger) *Service {
 // SetMarkdownFileDir sets the directory for markdown files
 func (s *Service) SetMarkdownFileDir(dir string) {
 	s.markdownFileDir = dir
-}
-
-// SetDebugger sets the debugger for logging
-func (s *Service) SetDebugger(debug Debugger) {
-	s.debug = debug
 }
 
 // ParseGeneralInfo parses general API info from comment lines

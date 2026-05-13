@@ -1,16 +1,12 @@
 package orchestrator
 
 import (
-	"log"
-	"os"
 	"testing"
 
 	"github.com/griffnb/core-swag/internal/loader"
 )
 
 func TestOrchestratorBasic(t *testing.T) {
-	logger := log.New(os.Stdout, "[TEST] ", log.LstdFlags)
-
 	config := &Config{
 		ParseVendor:             false,
 		ParseInternal:           true,
@@ -24,14 +20,13 @@ func TestOrchestratorBasic(t *testing.T) {
 		Excludes:                make(map[string]struct{}),
 		PackagePrefix:           []string{},
 		ParseExtension:          ".go",
-		ParseGoList:             true,  // Try with go list
+		ParseGoList:             true, // Try with go list
 		ParseGoPackages:         false,
 		HostState:               "",
 		ParseFuncBody:           true,
 		UseStructName:           false,
 		Overrides:               make(map[string]string),
 		Tags:                    make(map[string]struct{}),
-		Debug:                   logger,
 	}
 
 	orc := New(config)

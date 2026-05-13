@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -196,17 +195,13 @@ func initAction(ctx *cli.Context) error {
 		return fmt.Errorf("not supported %s propertyStrategy", strategy)
 	}
 
-	if ctx.IsSet(debugFlag) {
+	if ctx.Bool(debugFlag) {
 		console.Logger.DebugLevel = 1
 	}
 
 	outputTypes := strings.Split(ctx.String(outputTypesFlag), ",")
 	if len(outputTypes) == 0 {
 		return fmt.Errorf("no output types specified")
-	}
-	logger := log.New(os.Stdout, "", log.LstdFlags)
-	if ctx.Bool(quietFlag) {
-		logger = log.New(io.Discard, "", log.LstdFlags)
 	}
 
 	collectionFormat := field.TransToValidCollectionFormat(
@@ -245,7 +240,6 @@ func initAction(ctx *cli.Context) error {
 		OverridesFile:       ctx.String(overridesFileFlag),
 		ParseGoList:         ctx.Bool(parseGoListFlag),
 		Tags:                ctx.String(tagsFlag),
-		Debugger:            logger,
 		CollectionFormat:    collectionFormat,
 		PackagePrefix:       ctx.String(packagePrefixFlag),
 		State:               ctx.String(stateFlag),

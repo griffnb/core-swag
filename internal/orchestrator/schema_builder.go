@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/go-openapi/spec"
+	"github.com/griffnb/core-swag/internal/console"
 	"github.com/griffnb/core-swag/internal/domain"
 	"github.com/griffnb/core-swag/internal/model"
 	"golang.org/x/sync/errgroup"
@@ -86,12 +87,10 @@ func (s *Service) buildDemandDrivenSchemas(referencedTypes map[string]RefInfo) e
 
 	// Phase 1.5: Pre-warm packages with Syntax in a single batched call.
 	// This replaces N sequential `go list` subprocesses with one batched call.
-	if err := preWarmPackages(structWork, s.config.Debug); err != nil {
+	if err := preWarmPackages(structWork); err != nil {
 		// Non-fatal: concurrent builds fall back to individual loads
 		// (deduplicated by singleflight).
-		if s.config.Debug != nil {
-			s.config.Debug.Printf("Orchestrator: preWarmPackages failed (non-fatal): %v", err)
-		}
+		console.Logger.Debug("Orchestrator: preWarmPackages failed (non-fatal): %v", err)
 	}
 
 	// Phase 2: Build struct schemas concurrently.
@@ -151,27 +150,21 @@ func (s *Service) buildStructSchemasConcurrent(work []structRefWork) ([]structRe
 
 	var g errgroup.Group
 	g.SetLimit(runtime.NumCPU())
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: BuildAllSchemas with %d workers", runtime.NumCPU())
-	}
+	console.Logger.Debug("Orchestrator: BuildAllSchemas with %d workers", runtime.NumCPU())
 
 	for _, w := range work {
 		w := w
 		g.Go(func() error {
 			schemas, err := model.BuildAllSchemasWithCache("", w.pkgPath, w.typeName, sharedCache, w.goPackageName)
 			if err != nil {
-				if s.config.Debug != nil {
-					s.config.Debug.Printf("Orchestrator: BuildAllSchemas FAILED for %s (pkg=%s): %v",
-						w.baseName, w.pkgPath, err)
-				}
+				console.Logger.Error("Orchestrator: BuildAllSchemas FAILED for %s (pkg=%s): %v",
+					w.baseName, w.pkgPath, err)
 				// Non-fatal: skip this type.
 				return nil
 			}
 
-			if s.config.Debug != nil {
-				s.config.Debug.Printf("Orchestrator: BuildAllSchemas OK for %s → %d schemas",
-					w.baseName, len(schemas))
-			}
+			console.Logger.Debug("Orchestrator: BuildAllSchemas OK for %s → %d schemas",
+				w.baseName, len(schemas))
 
 			mu.Lock()
 			results = append(results, structRefResult{schemas: schemas, base: w.baseName})
@@ -224,12 +217,10 @@ func (s *Service) resolveRef(refName string, info RefInfo, processed map[string]
 	}
 
 	if typeDef == nil {
-		if s.config.Debug != nil {
-			if info.Source != "" {
-				s.config.Debug.Printf("Orchestrator: Skipping unknown ref %s (not in registry) referenced by %s", refName, info.Source)
-			} else {
-				s.config.Debug.Printf("Orchestrator: Skipping unknown ref %s (not in registry)", refName)
-			}
+		if info.Source != "" {
+			console.Logger.Error("Orchestrator: Skipping unknown ref %s (not in registry) referenced by %s", refName, info.Source)
+		} else {
+			console.Logger.Error("Orchestrator: Skipping unknown ref %s (not in registry)", refName)
 		}
 		return "", nil
 	}
@@ -241,24 +232,20 @@ func (s *Service) resolveRef(refName string, info RefInfo, processed map[string]
 // buildNonStructSchema builds a schema for a non-struct type (enum, type alias)
 // using the SchemaBuilder.
 func (s *Service) buildNonStructSchema(ref resolvedNonStructRef) {
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Building non-struct schema for %s (type=%T)",
-			ref.baseName, ref.typeDef.TypeSpec.Type)
-	}
+	console.Logger.Debug("Orchestrator: Building non-struct schema for %s (type=%T)",
+		ref.baseName, ref.typeDef.TypeSpec.Type)
 	schemaName, err := s.schemaBuilder.BuildSchema(ref.typeDef)
 	if err != nil {
-		if s.config.Debug != nil {
-			s.config.Debug.Printf("Orchestrator: BuildSchema FAILED for %s: %v", ref.baseName, err)
-		}
-	} else if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: BuildSchema OK for %s → %s", ref.baseName, schemaName)
+		console.Logger.Error("Orchestrator: BuildSchema FAILED for %s: %v", ref.baseName, err)
+		return
 	}
+	console.Logger.Debug("Orchestrator: BuildSchema OK for %s → %s", ref.baseName, schemaName)
 }
 
 // preWarmPackages loads all unique package paths from the work slice in a single
 // batched packages.Load call. This triggers one `go list` invocation that
 // resolves everything, dramatically faster than N individual calls.
-func preWarmPackages(work []structRefWork, debug Debugger) error {
+func preWarmPackages(work []structRefWork) error {
 	// Collect unique pkgPaths that aren't already cached with Syntax.
 	seen := make(map[string]bool, len(work))
 	var paths []string
@@ -274,15 +261,11 @@ func preWarmPackages(work []structRefWork, debug Debugger) error {
 	}
 
 	if len(paths) == 0 {
-		if debug != nil {
-			debug.Printf("Orchestrator: preWarmPackages: all %d packages already cached with syntax", len(work))
-		}
+		console.Logger.Debug("Orchestrator: preWarmPackages: all %d packages already cached with syntax", len(work))
 		return nil
 	}
 
-	if debug != nil {
-		debug.Printf("Orchestrator: preWarmPackages: loading %d packages in single batch", len(paths))
-	}
+	console.Logger.Debug("Orchestrator: preWarmPackages: loading %d packages in single batch", len(paths))
 
 	cfg := &packages.Config{
 		Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo |
@@ -297,8 +280,6 @@ func preWarmPackages(work []structRefWork, debug Debugger) error {
 	model.SeedGlobalPackageCache(pkgs)
 	model.SeedEnumPackageCache(pkgs)
 
-	if debug != nil {
-		debug.Printf("Orchestrator: preWarmPackages: seeded %d packages", len(pkgs))
-	}
+	console.Logger.Debug("Orchestrator: preWarmPackages: seeded %d packages", len(pkgs))
 	return nil
 }

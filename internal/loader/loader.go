@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/griffnb/core-swag/internal/console"
 )
 
 // LoadSearchDirs loads Go files from the specified search directories
@@ -23,7 +25,7 @@ func (s *Service) LoadSearchDirs(dirs []string) (*LoadResult, error) {
 
 		packageDir, err := getPkgName(absDir)
 		if err != nil {
-			s.debug.Printf("warning: failed to get package name in dir: %s, error: %s", absDir, err.Error())
+			console.Logger.Debug("warning: failed to get package name in dir: %s, error: %s", absDir, err.Error())
 			packageDir = ""
 		}
 

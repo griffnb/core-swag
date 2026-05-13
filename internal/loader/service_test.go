@@ -317,7 +317,6 @@ func TestOptions(t *testing.T) {
 			WithParseExtension(".go"),
 			WithParseDependency(ParseAll),
 			WithExcludes(map[string]struct{}{"test": {}}),
-			WithDebugger(&testDebugger{}),
 		)
 
 		// Assert
@@ -345,16 +344,8 @@ func TestOptions(t *testing.T) {
 		if len(service.excludes) != 1 {
 			t.Error("excludes should have one entry")
 		}
-		if service.debug == nil {
-			t.Error("debug should be set")
-		}
 	})
 }
-
-// testDebugger is a mock debugger for testing
-type testDebugger struct{}
-
-func (t *testDebugger) Printf(format string, v ...interface{}) {}
 
 // TestSkipLogic tests file and directory skip logic
 func TestSkipLogic(t *testing.T) {

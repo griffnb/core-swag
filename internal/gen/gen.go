@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"os"
 	"path"
@@ -38,12 +37,6 @@ type Gen struct {
 	jsonIndent    func(data interface{}) ([]byte, error)
 	jsonToYAML    func(data []byte) ([]byte, error)
 	outputTypeMap map[string]genTypeWriter
-	debug         Debugger
-}
-
-// Debugger is the interface that wraps the basic Printf method.
-type Debugger interface {
-	Printf(format string, v ...interface{})
 }
 
 // New creates a new Gen.
@@ -54,7 +47,6 @@ func New() *Gen {
 			return json.MarshalIndent(data, "", "    ")
 		},
 		jsonToYAML: yaml.JSONToYAML,
-		debug:      log.New(os.Stdout, "", log.LstdFlags),
 	}
 
 	gen.outputTypeMap = map[string]genTypeWriter{
@@ -68,8 +60,6 @@ func New() *Gen {
 
 // Config presents Gen configurations.
 type Config struct {
-	Debugger Debugger
-
 	// SearchDir the swag would parse,comma separated if multiple
 	SearchDir string
 
@@ -149,9 +139,6 @@ type Config struct {
 
 // Build builds swagger json file  for given searchDir and mainAPIFile. Returns json.
 func (g *Gen) Build(config *Config) error {
-	if config.Debugger != nil {
-		g.debug = config.Debugger
-	}
 	if config.InstanceName == "" {
 		config.InstanceName = DefaultInstanceName
 	}
@@ -207,7 +194,6 @@ func (g *Gen) Build(config *Config) error {
 		UseStructName:           config.UseStructNames,
 		Overrides:               overrides,
 		Tags:                    parseTags(config.Tags),
-		Debug:                   g.debug,
 	})
 
 	// Parse using orchestrator
@@ -218,7 +204,7 @@ func (g *Gen) Build(config *Config) error {
 
 	// Sanitize swagger spec to remove infinity/NaN values before any output
 	// These values are not valid in JSON and will cause marshaling errors
-	g.debug.Printf("Sanitizing swagger spec to remove invalid numeric values...")
+	console.Logger.Debug("Sanitizing swagger spec to remove invalid numeric values...")
 	sanitizeSwaggerSpec(swagger)
 
 	// nolint:gosec // This is not executing user-provided code, just writing files
@@ -233,7 +219,7 @@ func (g *Gen) Build(config *Config) error {
 				return err
 			}
 		} else {
-			log.Printf("output type '%s' not supported", outputType)
+			console.Logger.Error("output type '%s' not supported", outputType)
 		}
 	}
 
@@ -263,7 +249,7 @@ func (g *Gen) writeJSONSwagger(config *Config, swagger *spec.Swagger) error {
 		return err
 	}
 
-	console.Logger.Debug("create swagger.json at %+v", jsonFileName)
+	console.Logger.Info("$Green{Wrote} %s", jsonFileName)
 
 	return nil
 }
@@ -296,7 +282,7 @@ func (g *Gen) writeYAMLSwagger(config *Config, swagger *spec.Swagger) error {
 		return err
 	}
 
-	console.Logger.Debug("create swagger.yaml at %+v", yamlFileName)
+	console.Logger.Info("$Green{Wrote} %s", yamlFileName)
 
 	return nil
 }

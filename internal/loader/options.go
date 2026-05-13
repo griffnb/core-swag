@@ -11,7 +11,6 @@ func NewService(options ...Option) *Service {
 		useGoList:       false,
 		useGoPackages:   false,
 		parseDependency: ParseNone,
-		debug:           &noOpDebugger{},
 	}
 
 	for _, opt := range options {
@@ -74,12 +73,5 @@ func WithGoPackages(use bool) Option {
 func WithParseDependency(flag ParseFlag) Option {
 	return func(s *Service) {
 		s.parseDependency = flag
-	}
-}
-
-// WithDebugger sets the debugger for logging
-func WithDebugger(debugger Debugger) Option {
-	return func(s *Service) {
-		s.debug = debugger
 	}
 }

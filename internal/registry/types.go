@@ -234,9 +234,7 @@ func (s *Service) FindTypeSpec(typeName string, file *ast.File) *domain.TypeSpec
 	// in case that comment //@name renamed the type with a name without a dot
 	for k, v := range s.uniqueDefinitions {
 		if v == nil {
-			if s.debug != nil {
-				s.debug.Printf("%s TypeSpecDef is nil", k)
-			}
+			console.Logger.Debug("%s TypeSpecDef is nil", k)
 			continue
 		}
 		if v.SchemaName == typeName {
@@ -282,9 +280,7 @@ func (s *Service) CheckTypeSpec(typeSpecDef *domain.TypeSpecDef) {
 		obj = findGenericTypeFromPackage(pkg, typeSpecDef.TypeSpec.Name.Pos())
 	}
 	if obj == nil {
-		if s.debug != nil {
-			s.debug.Printf("warning: %s TypeSpecDef is nil", typeSpecDef.TypeSpec.Name.Name)
-		}
+		console.Logger.Debug("warning: %s TypeSpecDef is nil", typeSpecDef.TypeSpec.Name.Name)
 		return
 	}
 	s.checkJSONMarshal(pkg, obj)

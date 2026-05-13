@@ -31,12 +31,6 @@ type Service struct {
 	useGoList       bool
 	useGoPackages   bool
 	parseDependency ParseFlag
-	debug           Debugger
-}
-
-// Debugger interface for logging
-type Debugger interface {
-	Printf(format string, v ...interface{})
 }
 
 // LoadResult contains the results of loading packages
@@ -56,8 +50,3 @@ type AstFileInfo struct {
 
 // Option is a functional option for configuring Service
 type Option func(*Service)
-
-// noOpDebugger is a no-op debugger
-type noOpDebugger struct{}
-
-func (n *noOpDebugger) Printf(format string, v ...interface{}) {}

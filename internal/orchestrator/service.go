@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/go-openapi/spec"
+	"github.com/griffnb/core-swag/internal/console"
 	"github.com/griffnb/core-swag/internal/loader"
 	"github.com/griffnb/core-swag/internal/model"
 	"github.com/griffnb/core-swag/internal/parser/base"
@@ -48,12 +50,6 @@ type Config struct {
 	UseStructName           bool
 	Overrides               map[string]string
 	Tags                    map[string]struct{}
-	Debug                   Debugger
-}
-
-// Debugger is the interface for debug logging.
-type Debugger interface {
-	Printf(format string, v ...interface{})
 }
 
 // New creates a new orchestrator service with the given configuration.
@@ -98,16 +94,12 @@ func New(config *Config) *Service {
 		loader.WithParseExtension(config.ParseExtension),
 		loader.WithGoList(config.ParseGoList),
 		loader.WithGoPackages(config.ParseGoPackages),
-		loader.WithDebugger(config.Debug),
 	)
 
 	// Create registry service
 	registryService := registry.NewService()
 	registryService.SetParseDependency(config.ParseDependency)
 	registryService.SetPackagePrefixes(config.PackagePrefix)
-	if config.Debug != nil {
-		registryService.SetDebugger(config.Debug)
-	}
 
 	// Create schema builder
 	schemaBuilder := schema.NewBuilder()
@@ -147,9 +139,6 @@ func New(config *Config) *Service {
 	if config.MarkdownFileDir != "" {
 		baseParser.SetMarkdownFileDir(config.MarkdownFileDir)
 	}
-	if config.Debug != nil {
-		baseParser.SetDebugger(config.Debug)
-	}
 
 	// Create route parser
 	// Note: Passing nil for type resolver - routes will use basic type schemas
@@ -175,14 +164,11 @@ func New(config *Config) *Service {
 // Parse generates OpenAPI documentation from the given search directories and main API file.
 // This is the main entry point that coordinates all services.
 func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int) (*spec.Swagger, error) {
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Starting parse with %d search dirs", len(searchDirs))
-	}
+	start := time.Now()
+	console.Logger.Info("$Cyan{Starting swagger generation} ($Bold{%d} search dir(s))", len(searchDirs))
 
 	// Step 1: Load packages and files
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Step 1 - Loading packages")
-	}
+	console.Logger.Debug("Orchestrator: Step 1 - Loading packages")
 
 	var loadResult *loader.LoadResult
 	var err error
@@ -213,23 +199,17 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 		}
 	}
 
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Loaded %d files", len(loadResult.Files))
-	}
+	console.Logger.Info("$Green{Loaded} %d files", len(loadResult.Files))
 
 	// Step 1b: Seed downstream caches from loaded packages to eliminate redundant packages.Load() calls
 	if loadResult.Packages != nil {
-		if s.config.Debug != nil {
-			s.config.Debug.Printf("Orchestrator: Step 1b - Seeding package caches from %d top-level packages", len(loadResult.Packages))
-		}
+		console.Logger.Debug("Orchestrator: Step 1b - Seeding package caches from %d top-level packages", len(loadResult.Packages))
 		model.SeedGlobalPackageCache(loadResult.Packages)
 		model.SeedEnumPackageCache(loadResult.Packages)
 	}
 
 	// Step 2: Register types with registry
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Step 2 - Registering types")
-	}
+	console.Logger.Debug("Orchestrator: Step 2 - Registering types")
 
 	// Collect files into registry
 	for astFile, fileInfo := range loadResult.Files {
@@ -246,30 +226,22 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 	}
 
 	// Parse types in registry
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Parsing types in registry")
-	}
+	console.Logger.Debug("Orchestrator: Parsing types in registry")
 	schemas, err := s.registry.ParseTypes()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse types: %w", err)
 	}
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Parsed %d schemas from registry", len(schemas))
-	}
+	console.Logger.Debug("Orchestrator: Parsed %d schemas from registry", len(schemas))
 
 	// Set global name resolver so CoreStructParser produces short $ref names for
 	// unique types and full-path names for NotUnique types. Must happen after
 	// ParseTypes() which sets the NotUnique flags.
 	model.SetGlobalNameResolver(newRegistryNameResolver(s.registry))
 
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Registry has %d unique definitions", len(s.registry.UniqueDefinitions()))
-	}
+	console.Logger.Info("$Green{Registered} %d types", len(s.registry.UniqueDefinitions()))
 
 	// Step 3: Parse general API info from main file
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Step 3 - Parsing general API info")
-	}
+	console.Logger.Debug("Orchestrator: Step 3 - Parsing general API info")
 
 	// The mainAPIFile parameter can be:
 	// 1. Relative to searchDir (e.g., "main.go" or "./main.go")
@@ -294,49 +266,37 @@ func (s *Service) Parse(searchDirs []string, mainAPIFile string, parseDepth int)
 	}
 
 	// Step 4: Parse routes from all files (parallel)
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Step 4 - Parsing routes (parallel, limit=%d)", runtime.NumCPU())
-	}
+	console.Logger.Debug("Orchestrator: Step 4 - Parsing routes (parallel, limit=%d)", runtime.NumCPU())
 
 	allRoutes, routeCount, err := s.parseRoutesParallel(loadResult.Files)
 	if err != nil {
 		return nil, err
 	}
 
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Parsed %d routes", routeCount)
-	}
+	console.Logger.Info("$Green{Parsed} %d routes", routeCount)
 
 	// Step 5: Build schemas (demand-driven)
 	// Only build schemas for types referenced by routes, not all 60K+ registry types.
 	// BuildAllSchemas handles Public variants and transitive nested dependencies.
 	referencedTypes := CollectReferencedTypes(allRoutes)
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Step 5 - Building schemas (demand-driven, %d route-referenced types)",
-			len(referencedTypes))
-	}
+	console.Logger.Debug("Orchestrator: Step 5 - Building schemas (demand-driven, %d route-referenced types)",
+		len(referencedTypes))
 
 	err = s.buildDemandDrivenSchemas(referencedTypes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build demand-driven schemas: %w", err)
 	}
 
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Built %d schema definitions", len(s.swagger.Definitions))
-	}
+	console.Logger.Info("$Green{Built} %d schemas", len(s.swagger.Definitions))
 
-	if s.config.Debug != nil {
-		hits, misses := model.GlobalCacheStats()
-		s.config.Debug.Printf("Orchestrator: Package cache hits=%d misses=%d", hits, misses)
-	}
+	hits, misses := model.GlobalCacheStats()
+	console.Logger.Debug("Orchestrator: Package cache hits=%d misses=%d", hits, misses)
 
 	// Step 6: Cleanup unused definitions
 	// TODO: Implement cleanup logic
 	// For now, keep all definitions
 
-	if s.config.Debug != nil {
-		s.config.Debug.Printf("Orchestrator: Parse complete")
-	}
+	console.Logger.Info("$Bold{$Green{Parse complete}} in %s", time.Since(start).Round(time.Millisecond))
 
 	return s.swagger, nil
 }

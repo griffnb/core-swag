@@ -1,10 +1,10 @@
 package route
 
 import (
-	"log"
 	"math"
 
 	"github.com/go-openapi/spec"
+	"github.com/griffnb/core-swag/internal/console"
 	"github.com/griffnb/core-swag/internal/parser/route/domain"
 )
 
@@ -73,10 +73,10 @@ func RouteToSpecOperation(route *domain.Route) *spec.Operation {
 func ParameterToSpec(param domain.Parameter) spec.Parameter {
 	// Debug logging for infinity detection
 	if param.Maximum != nil && (math.IsInf(*param.Maximum, 0) || math.IsNaN(*param.Maximum)) {
-		log.Printf("INFINITY DETECTED: Parameter %s (in:%s) has invalid maximum: %v", param.Name, param.In, *param.Maximum)
+		console.Logger.Debug("INFINITY DETECTED: Parameter %s (in:%s) has invalid maximum: %v", param.Name, param.In, *param.Maximum)
 	}
 	if param.Minimum != nil && (math.IsInf(*param.Minimum, 0) || math.IsNaN(*param.Minimum)) {
-		log.Printf("INFINITY DETECTED: Parameter %s (in:%s) has invalid minimum: %v", param.Name, param.In, *param.Minimum)
+		console.Logger.Debug("INFINITY DETECTED: Parameter %s (in:%s) has invalid minimum: %v", param.Name, param.In, *param.Minimum)
 	}
 
 	specParam := spec.Parameter{
@@ -110,7 +110,7 @@ func ParameterToSpec(param domain.Parameter) spec.Parameter {
 
 		if param.Default != nil {
 			if f, ok := param.Default.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
-				log.Printf("WARNING: Parameter %s has infinite/NaN default value: %v", param.Name, f)
+				console.Logger.Debug("WARNING: Parameter %s has infinite/NaN default value: %v", param.Name, f)
 			} else {
 				specParam.Default = param.Default
 			}
@@ -122,7 +122,7 @@ func ParameterToSpec(param domain.Parameter) spec.Parameter {
 
 		if param.Minimum != nil {
 			if math.IsInf(*param.Minimum, 0) || math.IsNaN(*param.Minimum) {
-				log.Printf("WARNING: Parameter %s has infinite/NaN minimum value: %v", param.Name, *param.Minimum)
+				console.Logger.Debug("WARNING: Parameter %s has infinite/NaN minimum value: %v", param.Name, *param.Minimum)
 			} else {
 				specParam.Minimum = param.Minimum
 			}
@@ -130,7 +130,7 @@ func ParameterToSpec(param domain.Parameter) spec.Parameter {
 
 		if param.Maximum != nil {
 			if math.IsInf(*param.Maximum, 0) || math.IsNaN(*param.Maximum) {
-				log.Printf("WARNING: Parameter %s has infinite/NaN maximum value: %v", param.Name, *param.Maximum)
+				console.Logger.Debug("WARNING: Parameter %s has infinite/NaN maximum value: %v", param.Name, *param.Maximum)
 			} else {
 				specParam.Maximum = param.Maximum
 			}
@@ -264,7 +264,7 @@ func sanitizeEnumValues(paramName string, enums []interface{}) []interface{} {
 	sanitized := make([]interface{}, 0, len(enums))
 	for _, v := range enums {
 		if f, ok := v.(float64); ok && (math.IsInf(f, 0) || math.IsNaN(f)) {
-			log.Printf("WARNING: Parameter %s has infinite/NaN enum value: %v — skipping", paramName, f)
+			console.Logger.Debug("WARNING: Parameter %s has infinite/NaN enum value: %v — skipping", paramName, f)
 			continue
 		}
 		sanitized = append(sanitized, v)

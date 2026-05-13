@@ -65,7 +65,6 @@
           "200": {
             "description": "OK",
             "schema": {
-              "type": "object",
               "allOf": [
                 {
                   "$ref": "#/definitions/response.SuccessResponse"
@@ -81,15 +80,7 @@
                     }
                   }
                 }
-              ],
-              "properties": {
-                "data": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/account.OrgAccountPublic"
-                  }
-                }
-              }
+              ]
             }
           },
           "400": {
@@ -155,7 +146,6 @@
           "200": {
             "description": "OK",
             "schema": {
-              "type": "object",
               "allOf": [
                 {
                   "$ref": "#/definitions/response.SuccessResponse"
@@ -171,15 +161,7 @@
                     }
                   }
                 }
-              ],
-              "properties": {
-                "data": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/account.AccountJoinedPublic"
-                  }
-                }
-              }
+              ]
             }
           },
           "400": {
@@ -228,7 +210,6 @@
           "200": {
             "description": "OK",
             "schema": {
-              "type": "object",
               "allOf": [
                 {
                   "$ref": "#/definitions/response.SuccessResponse"
@@ -241,12 +222,7 @@
                     }
                   }
                 }
-              ],
-              "properties": {
-                "data": {
-                  "$ref": "#/definitions/account.Account"
-                }
-              }
+              ]
             }
           },
           "400": {
@@ -293,7 +269,6 @@
           "200": {
             "description": "OK",
             "schema": {
-              "type": "object",
               "allOf": [
                 {
                   "$ref": "#/definitions/response.SuccessResponse"
@@ -306,12 +281,7 @@
                     }
                   }
                 }
-              ],
-              "properties": {
-                "data": {
-                  "$ref": "#/definitions/api.APIResponse"
-                }
-              }
+              ]
             }
           },
           "400": {
@@ -343,7 +313,6 @@
           "200": {
             "description": "OK",
             "schema": {
-              "type": "object",
               "allOf": [
                 {
                   "$ref": "#/definitions/response.SuccessResponse"
@@ -356,12 +325,7 @@
                     }
                   }
                 }
-              ],
-              "properties": {
-                "data": {
-                  "$ref": "#/definitions/account.AccountWithFeaturesPublic"
-                }
-              }
+              ]
             }
           },
           "400": {
@@ -476,9 +440,7 @@
           "type": "object",
           "additionalProperties": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object"
-            }
+            "additionalProperties": {}
           }
         },
         "role": {
@@ -628,9 +590,7 @@
           "type": "object",
           "additionalProperties": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object"
-            }
+            "additionalProperties": {}
           }
         },
         "role": {
@@ -759,9 +719,7 @@
           "type": "object",
           "additionalProperties": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object"
-            }
+            "additionalProperties": {}
           }
         },
         "role": {
@@ -875,9 +833,7 @@
           "type": "object",
           "additionalProperties": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object"
-            }
+            "additionalProperties": {}
           }
         },
         "role": {
@@ -1031,9 +987,7 @@
           "type": "object",
           "additionalProperties": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object"
-            }
+            "additionalProperties": {}
           }
         },
         "role": {
@@ -1165,9 +1119,7 @@
           "type": "object",
           "additionalProperties": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object"
-            }
+            "additionalProperties": {}
           }
         },
         "role": {
@@ -1569,9 +1521,7 @@
         },
         "organization_subscription_plan_properties": {
           "type": "object",
-          "additionalProperties": {
-            "type": "object"
-          }
+          "additionalProperties": {}
         },
         "organization_verification": {
           "type": "integer",
@@ -1663,9 +1613,7 @@
         },
         "organization_subscription_plan_properties": {
           "type": "object",
-          "additionalProperties": {
-            "type": "object"
-          }
+          "additionalProperties": {}
         },
         "organization_verification": {
           "type": "integer",
@@ -1694,9 +1642,7 @@
       "type": "object",
       "title": "AccountProperties",
       "properties": {
-        "external_user_info": {
-          "type": "object"
-        },
+        "external_user_info": {},
         "invite_key": {
           "type": "string"
         },
@@ -2278,19 +2224,19 @@
       ],
       "properties": {
         "mms_rate": {
-          "type": "number"
+          "type": "string"
         },
         "monthly_rate": {
-          "type": "number"
+          "type": "string"
         },
         "setup_rate": {
-          "type": "number"
+          "type": "string"
         },
         "sms_rate": {
-          "type": "number"
+          "type": "string"
         },
         "voice_rate": {
-          "type": "number"
+          "type": "string"
         }
       }
     },
@@ -2608,9 +2554,7 @@
         "data"
       ],
       "properties": {
-        "data": {
-          "type": "object"
-        }
+        "data": {}
       }
     },
     "response.SuccessResponsePublic": {

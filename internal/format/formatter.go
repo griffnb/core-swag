@@ -6,8 +6,6 @@ import (
 	"go/ast"
 	goparser "go/parser"
 	"go/token"
-	"log"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -24,11 +22,6 @@ const (
 	responseAttr = "@response"
 	headerAttr   = "@header"
 )
-
-// Debugger is the interface that wraps the basic Printf method.
-type Debugger interface {
-	Printf(format string, v ...interface{})
-}
 
 // Check of @Param @Success @Failure @Response @Header
 var specialTagForSplit = map[string]bool{
@@ -47,17 +40,11 @@ var skipChar = map[byte]byte{
 }
 
 // Formatter implements a formatter for Go source files.
-type Formatter struct {
-	// debugging output goes here
-	debug Debugger
-}
+type Formatter struct{}
 
 // NewFormatter create a new formatter instance.
 func NewFormatter() *Formatter {
-	formatter := &Formatter{
-		debug: log.New(os.Stdout, "", log.LstdFlags),
-	}
-	return formatter
+	return &Formatter{}
 }
 
 // Format formats swag comments in contents. It uses fileName to report errors

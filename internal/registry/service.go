@@ -23,7 +23,6 @@ type Service struct {
 	uniqueDefinitions map[string]*domain.TypeSpecDef
 	parseDependency   domain.ParseFlag
 	packagePrefixes   []string
-	debug             Debugger
 }
 
 // NewService creates a new registry service.
@@ -38,11 +37,6 @@ func NewService() *Service {
 // SetParseDependency sets the parse dependency flag.
 func (s *Service) SetParseDependency(flag domain.ParseFlag) {
 	s.parseDependency = flag
-}
-
-// SetDebugger sets the debugger.
-func (s *Service) SetDebugger(debug Debugger) {
-	s.debug = debug
 }
 
 // SetPackagePrefixes sets the project package prefixes used for disambiguating

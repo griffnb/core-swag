@@ -1,10 +1,8 @@
 package gen
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -535,33 +533,6 @@ func TestGen_TypeOverridesFile(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
-func TestGen_Debugger(t *testing.T) {
-	var buf bytes.Buffer
-	config := &Config{
-		SearchDir:          searchDir,
-		MainAPIFile:        "./main.go",
-		OutputDir:          "../../testing/testdata/simple/docs",
-		OutputTypes:        outputTypes,
-		PropNamingStrategy: "",
-		Debugger:           log.New(&buf, "", log.LstdFlags),
-	}
-	assert.True(t, buf.Len() == 0)
-	assert.NoError(t, New().Build(config))
-	assert.True(t, buf.Len() > 0)
-
-	expectedFiles := []string{
-		filepath.Join(config.OutputDir, "swagger.json"),
-		filepath.Join(config.OutputDir, "swagger.yaml"),
-	}
-	for _, expectedFile := range expectedFiles {
-		if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
-			require.NoError(t, err)
-		}
-
-		_ = os.Remove(expectedFile)
-	}
-}
-
 func TestGen_ErrorAndInterface(t *testing.T) {
 	t.Skip("Legacy swag test: JSON comparison against stale expected files")
 	config := &Config{
