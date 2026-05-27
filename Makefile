@@ -64,9 +64,15 @@ ckb-start: ## Start CKB node
 .PHONY: test-project-1
 test-project-1: ## Run tests for project 1
 	@echo "Running generation for project 1..."
-	@go install ./cmd/core-swag && cd /Users/griffnb/projects/Crowdshield/atlas-go && core-swag init -g "main.go" -d "./cmd/server,./internal/controllers,./internal/models" --parseInternal -pd -o "/Users/griffnb/projects/core-swag/testing/test-project-1"
+	@go install ./cmd/core-swag && cd /Users/griffnb/projects/Crowdshield/atlas-go/atlas-go && core-swag init -g "main.go" -d "./cmd/server,./internal/controllers,./internal/models" --parseInternal -pd -o "/Users/griffnb/projects/core-swag/testing/test-project-1"
 
 .PHONY: test-project-2
 test-project-2: ## Run tests for project 2
 	@echo "Running generation for project 2..."
 	@go install ./cmd/core-swag && cd /Users/griffnb/projects/botbuilders/go-the-schwartz && core-swag init -g "main.go" -d "./cmd/server,./internal/controllers,./internal/models,./applications" --parseInternal -pd -o "/Users/griffnb/projects/core-swag/testing/test-project-2"
+
+
+.PHONY: test-project-3
+test-project-3: ## Run tests for project 3
+	@echo "Running generation for project 3..."
+	@go install ./cmd/core-swag && cd /Users/griffnb/projects/Crowdshield/go-litigate/backend && core-swag init -g "main.go" -d "./cmd/server,./internal/controllers,./internal/models" --parseInternal -pd -o "/Users/griffnb/projects/core-swag/testing/test-project-3"
