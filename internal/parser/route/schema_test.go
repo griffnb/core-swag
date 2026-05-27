@@ -404,9 +404,9 @@ func TestConvertTypeToSchemaType(t *testing.T) {
 		{"*uuid.UUID", "*uuid.UUID", "string"},
 		{"types.UUID", "types.UUID", "string"},
 		{"github.com/google/uuid.UUID", "github.com/google/uuid.UUID", "string"},
-		{"decimal.Decimal", "decimal.Decimal", "number"},
-		{"*decimal.Decimal", "*decimal.Decimal", "number"},
-		{"github.com/shopspring/decimal.Decimal", "github.com/shopspring/decimal.Decimal", "number"},
+		{"decimal.Decimal", "decimal.Decimal", "string"},
+		{"*decimal.Decimal", "*decimal.Decimal", "string"},
+		{"github.com/shopspring/decimal.Decimal", "github.com/shopspring/decimal.Decimal", "string"},
 
 		// Custom types should be object
 		{"User", "User", "object"},

@@ -22,9 +22,9 @@ func TestLookup_KnownTypes(t *testing.T) {
 		{"github.com/griffnb/core/lib/types.UUID", "string", "uuid"},
 		{"types.URN", "string", "uri"},
 		{"github.com/griffnb/core/lib/types.URN", "string", "uri"},
-		{"decimal.Decimal", "number", ""},
-		{"*decimal.Decimal", "number", ""},
-		{"github.com/shopspring/decimal.Decimal", "number", ""},
+		{"decimal.Decimal", "string", ""},
+		{"*decimal.Decimal", "string", ""},
+		{"github.com/shopspring/decimal.Decimal", "string", ""},
 		{"json.RawMessage", "object", ""},
 		{"encoding/json.RawMessage", "object", ""},
 		{"[]byte", "string", "byte"},
@@ -62,7 +62,7 @@ func TestToSchema(t *testing.T) {
 	assert.Equal(t, "uuid", schema.Format)
 
 	schema = ToSchema("*decimal.Decimal")
-	assert.Equal(t, spec.StringOrArray{"number"}, schema.Type)
+	assert.Equal(t, spec.StringOrArray{"string"}, schema.Type)
 	assert.Equal(t, "", schema.Format)
 
 	schema = ToSchema("[]byte")

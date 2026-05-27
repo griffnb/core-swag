@@ -4,6 +4,7 @@ package orchestrator
 import (
 	"fmt"
 	"go/ast"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"sync"
@@ -43,7 +44,16 @@ func (s *Service) parseRoutesParallel(files map[*ast.File]*loader.AstFileInfo) (
 		astFile, fileInfo := astFile, fileInfo
 
 		g.Go(func() error {
-			routes, err := s.routeParser.ParseRoutes(astFile, fileInfo.Path, fileInfo.FileSet)
+			// Build a module-relative display path for x-path (e.g.
+			// "github.com/owner/repo/internal/foo/bar.go") so generated specs
+			// don't leak absolute filesystem paths. Falls back to the absolute
+			// path when the loader couldn't determine the package import path.
+			displayPath := fileInfo.Path
+			if pkg := fileInfo.PackagePath; pkg != "" && pkg != "." {
+				displayPath = pkg + "/" + filepath.Base(fileInfo.Path)
+			}
+
+			routes, err := s.routeParser.ParseRoutes(astFile, displayPath, fileInfo.FileSet)
 			if err != nil {
 				return fmt.Errorf("failed to parse routes from %s: %w", fileInfo.Path, err)
 			}
@@ -53,7 +63,7 @@ func (s *Service) parseRoutesParallel(files map[*ast.File]*loader.AstFileInfo) (
 
 			mu.Lock()
 			collected = append(collected, fileRoutes{
-				filePath: fileInfo.Path,
+				filePath: displayPath,
 				routes:   routes,
 			})
 			mu.Unlock()
