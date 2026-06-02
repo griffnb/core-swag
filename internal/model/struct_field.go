@@ -626,6 +626,10 @@ type EnumValue struct {
 // (e.g., "github_com_chargebee_chargebee-go_v3_enum.Source").
 type DefinitionNameResolver interface {
 	ResolveDefinitionName(fullTypePath string) string
+	// IsNotUnique reports whether the type collides with another type of the same
+	// short name in a different package. NotUnique types must only be stored under
+	// their full-path name; their short name is ambiguous across packages.
+	IsNotUnique(fullTypePath string) bool
 }
 
 // resolveFullImportPath extracts the full import path from a go/types Type.

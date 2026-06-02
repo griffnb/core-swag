@@ -1,5 +1,55 @@
 # Core-Swag Change Log
 
+## 2026-06-02: Fix non-deterministic output from same-package-name type collisions
+
+**Problem:** `swagger.json` changed between runs and sometimes emitted the WRONG object.
+Reproduced in atlas-go (test-project-1): two packages both named `atlasmail`
+(`internal/services/atlasmail` and `internal/integrations/atlasmail`) each define
+`InboxThread`/`Thread`. Controllers importing `services/atlasmail` annotated
+`@Success 200 {object} response.SuccessResponse{data=[]atlasmail.InboxThread}`. The output
+non-deterministically picked services vs integrations and emitted a short-name definition.
+
+**Ruled out first:** map-key render order (encoding/json already sorts map keys — definitions/paths
+come out alphabetical) and flaky package loading. Confirmed by inspecting the output: ordering was
+already deterministic; the variance was the SET/identity of definitions.
+
+**Root cause (three coordinated bugs):**
+1. Route `$ref` strings were never canonicalized — `resolveTypePathsInSchema`/`buildSchemaForTypeWithPublic`
+   set `TypePath` but left the `$ref` as the ambiguous short `atlasmail.InboxThread`.
+2. `BuildAllSchemas` stored every schema under the short `pkg.Type` key (additively), so two NotUnique
+   colliding types both wrote the same short key — last writer won non-deterministically.
+3. `parseOperation` built all response/param schemas (via `parseComment`) BEFORE `op.astFile` was
+   assigned (it was set in `ParseRoutes` only AFTER `parseOperation` returned). So import context was
+   nil during schema building and `FindTypeSpec` could never resolve the qualified type → TypePath
+   stayed empty → fell back to the non-deterministic short-name lookup.
+
+**Fixes:**
+- `parser/route/service.go`: added `resolveTypeRef` (returns canonical `TypeSpecDef.TypeName()` +
+  `FullPath()`); pass `astFile` INTO `parseOperation` so it is set before comment parsing.
+- `parser/route/response.go` + `parameter.go`: build `$ref` from the resolved canonical name (full-path
+  for NotUnique); `resolveTypePathsInSchema` now rewrites `Ref` (covers AllOf override items).
+- `model/struct_field_lookup.go` + `model/struct_field.go` + `orchestrator/name_resolver.go`: added
+  `DefinitionNameResolver.IsNotUnique`; `BuildAllSchemas` stores under the canonical name and only
+  ALSO under the short name for UNIQUE types.
+- `registry/service.go` `FindTypeSpecByName` + `registry/types.go` renamed-type fallback: deterministic
+  candidate selection (project-local first, then smallest `TypeName`) instead of first map match.
+
+**Dead-ends (what didn't work / was wrong):**
+- First idea "make FindTypeSpecByName deterministic by picking the shortest name" — rejected: it makes
+  output stable but still emits the WRONG object (ignores which package the file imports). The correct
+  fix resolves via the referencing file's imports.
+- Fix B v1 (store ONLY canonical for everything) regressed `stripe.Account`/`stripe.Subscription`
+  (2 dangling refs): for stripe the Go package name (`stripe`) ≠ import-path segment (`v84`) and the
+  type is UNIQUE, so refs legitimately use the short `stripe.Subscription`. Gated the short-name drop
+  on `IsNotUnique` to fix.
+
+**Verification:** `make test-project-1` 5× → identical shasum (`686f2f2…`), 0 dangling `$ref`s (was
+non-deterministic before). atlasmail refs now point to
+`github_com_..._services_atlasmail.InboxThread` (the imported package), no short-name defs.
+`go test -race ./internal/registry/... ./internal/parser/route/... ./internal/orchestrator/...` pass.
+New tests: registry collision determinism, resolver `IsNotUnique`, route ref canonicalization.
+Pre-existing unrelated failures remain (decimal→string in `domain`/`model`, from the centralized-registry commit).
+
 ## 2026-03-03: Task 2 — Migrate struct_field_lookup.go to PackageCache
 
 **What was done:**

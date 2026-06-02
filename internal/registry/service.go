@@ -160,7 +160,12 @@ func (s *Service) FindTypeSpecByName(name string) *domain.TypeSpecDef {
 	// Fallback: search for NotUnique types whose short name matches.
 	// This handles collisions where e.g. "address.Address" exists in both
 	// the project and an external dependency like chargebee-go.
-	var candidate *domain.TypeSpecDef
+	//
+	// Multiple candidates can match (the whole point of NotUnique), and ranging a
+	// map yields them in random order — so collect all matches and pick by a stable
+	// rule (project-local first, then smallest full-path TypeName) to keep output
+	// deterministic across runs.
+	var local, external *domain.TypeSpecDef
 	for _, def := range s.uniqueDefinitions {
 		if def == nil || !def.NotUnique {
 			continue
@@ -168,16 +173,18 @@ func (s *Service) FindTypeSpecByName(name string) *domain.TypeSpecDef {
 		if def.SimpleTypeName() != name {
 			continue
 		}
-		// Prefer the type whose PkgPath matches a project package prefix.
 		if s.isProjectLocal(def) {
-			return def
-		}
-		// Keep as fallback if no project-local match is found.
-		if candidate == nil {
-			candidate = def
+			if local == nil || def.TypeName() < local.TypeName() {
+				local = def
+			}
+		} else if external == nil || def.TypeName() < external.TypeName() {
+			external = def
 		}
 	}
-	return candidate
+	if local != nil {
+		return local
+	}
+	return external
 }
 
 // isProjectLocal returns true if the type's PkgPath starts with any of the

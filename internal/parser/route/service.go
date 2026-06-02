@@ -48,18 +48,22 @@ func (s *Service) SetRegistry(registry TypeRegistry) {
 	s.registry = registry
 }
 
-// resolveTypePath resolves a qualified type name (e.g., "address.Address") to its
-// full import path (e.g., "github.com/.../address.Address") using the file's imports.
-// Returns empty string if resolution fails (caller falls back to short name).
-func (s *Service) resolveTypePath(qualifiedType string, file *ast.File) string {
+// resolveTypeRef resolves a qualified type name (e.g., "atlasmail.InboxThread") using
+// the file's imports and returns both the canonical definition name and the full import
+// path. The canonical name matches the key the schema builder stores the definition
+// under: the short "pkg.Type" for unique types, and the sanitized full-path form
+// (TypeSpecDef.TypeName) for NotUnique types. This is what lets a $ref disambiguate
+// between two packages that share a Go package name but differ by import path.
+// Returns empty strings when resolution fails so the caller can fall back to the short name.
+func (s *Service) resolveTypeRef(qualifiedType string, file *ast.File) (defName, typePath string) {
 	if s.registry == nil || file == nil {
-		return ""
+		return "", ""
 	}
 	typeDef := s.registry.FindTypeSpec(qualifiedType, file)
 	if typeDef == nil {
-		return ""
+		return "", ""
 	}
-	return typeDef.FullPath()
+	return typeDef.TypeName(), typeDef.FullPath()
 }
 
 // ParseRoutes extracts all routes from an AST file.
@@ -82,12 +86,13 @@ func (s *Service) ParseRoutes(astFile *ast.File, filePath string, fset *token.Fi
 			continue
 		}
 
-		// Parse the function's documentation comments with package context
-		operation := s.parseOperation(funcDecl, packageName, filePath, fset)
+		// Parse the function's documentation comments with package context.
+		// astFile is passed so import resolution (TypePath / canonical $ref names)
+		// works while the response/param schemas are being built.
+		operation := s.parseOperation(funcDecl, packageName, filePath, fset, astFile)
 		if operation == nil {
 			continue
 		}
-		operation.astFile = astFile
 
 		// Convert operation to routes (one operation can have multiple routes)
 		operationRoutes := s.operationToRoutes(operation)
@@ -98,11 +103,12 @@ func (s *Service) ParseRoutes(astFile *ast.File, filePath string, fset *token.Fi
 }
 
 // parseOperation parses a function declaration into an operation
-func (s *Service) parseOperation(funcDecl *ast.FuncDecl, packageName string, filePath string, fset *token.FileSet) *operation {
+func (s *Service) parseOperation(funcDecl *ast.FuncDecl, packageName string, filePath string, fset *token.FileSet, astFile *ast.File) *operation {
 	op := &operation{
 		functionName: funcDecl.Name.Name,
 		packageName:  packageName,
 		filePath:     filePath,
+		astFile:      astFile,
 		routerPaths:  []routerPath{},
 		parameters:   []routedomain.Parameter{},
 		responses:    make(map[int]routedomain.Response),

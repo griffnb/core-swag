@@ -65,9 +65,9 @@ func TestTransToValidPrimitiveSchema(t *testing.T) {
 		{"*uuid.UUID", "*uuid.UUID", "string", "uuid"},
 		{"types.UUID", "types.UUID", "string", "uuid"},
 		{"github.com/google/uuid.UUID", "github.com/google/uuid.UUID", "string", "uuid"},
-		{"decimal.Decimal", "decimal.Decimal", "number", ""},
-		{"*decimal.Decimal", "*decimal.Decimal", "number", ""},
-		{"github.com/shopspring/decimal.Decimal", "github.com/shopspring/decimal.Decimal", "number", ""},
+		{"decimal.Decimal", "decimal.Decimal", "string", ""},
+		{"*decimal.Decimal", "*decimal.Decimal", "string", ""},
+		{"github.com/shopspring/decimal.Decimal", "github.com/shopspring/decimal.Decimal", "string", ""},
 	}
 
 	for _, tt := range tests {
@@ -135,12 +135,14 @@ func TestTransToValidPrimitiveSchema_DecimalFormat(t *testing.T) {
 		"github.com/shopspring/decimal.Decimal",
 	}
 
+	// Decimal serializes to JSON as a string (shopspring's MarshalJSON), so it is
+	// represented as type "string" in the spec, not "number".
 	for _, typeName := range decimalTypes {
 		t.Run(typeName, func(t *testing.T) {
 			schema := TransToValidPrimitiveSchema(typeName)
 
-			if len(schema.Type) == 0 || schema.Type[0] != "number" {
-				t.Errorf("%s should be type number, got %v", typeName, schema.Type)
+			if len(schema.Type) == 0 || schema.Type[0] != "string" {
+				t.Errorf("%s should be type string, got %v", typeName, schema.Type)
 			}
 		})
 	}
@@ -154,7 +156,7 @@ func TestTransToValidPrimitiveSchema_PointerTypes(t *testing.T) {
 	}{
 		{"*time.Time", "string", "date-time"},
 		{"*uuid.UUID", "string", "uuid"},
-		{"*decimal.Decimal", "number", ""},
+		{"*decimal.Decimal", "string", ""},
 	}
 
 	for _, tt := range tests {

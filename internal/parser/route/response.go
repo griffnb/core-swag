@@ -179,20 +179,26 @@ func (s *Service) buildSchemaForTypeWithPublic(dataType, packageName string, isP
 		qualifiedType = packageName + "." + dataType
 	}
 
-	// Resolve full import path for unambiguous registry lookup.
-	// Do this before appending Public suffix since the registry stores base types.
-	typePath := s.resolveTypePath(qualifiedType, file)
+	// Resolve full import path AND canonical definition name for unambiguous
+	// registry lookup. Do this before appending Public suffix since the registry
+	// stores base types. defName is the sanitized full-path name for NotUnique
+	// types, so the $ref points at the exact package this file imports.
+	defName, typePath := s.resolveTypeRef(qualifiedType, file)
+	refName := qualifiedType
+	if defName != "" {
+		refName = defName
+	}
 
 	// If @Public annotation is present, only append Public suffix for struct types.
 	// Enums and other non-struct types are identical regardless of public context.
 	if isPublic && !s.hasNoPublicAnnotation(qualifiedType) && s.isStructType(qualifiedType) {
-		qualifiedType = qualifiedType + "Public"
+		refName += "Public"
 		if typePath != "" {
 			typePath += "Public"
 		}
 	}
 
-	ref := "#/definitions/" + qualifiedType
+	ref := "#/definitions/" + refName
 	return &routedomain.Schema{Ref: ref, TypePath: typePath}
 }
 
@@ -297,11 +303,16 @@ func (s *Service) resolveTypePathsInSchema(schema *routedomain.Schema, file *ast
 		if isPublicRef {
 			lookupName = strings.TrimSuffix(lookupName, "Public")
 		}
-		if tp := s.resolveTypePath(lookupName, file); tp != "" {
+		// Rewrite the $ref to the canonical definition name as well as setting
+		// TypePath. For NotUnique collisions this points the ref at the exact
+		// package the file imports instead of the ambiguous short name.
+		if defName, tp := s.resolveTypeRef(lookupName, file); tp != "" {
 			if isPublicRef {
 				schema.TypePath = tp + "Public"
+				schema.Ref = "#/definitions/" + defName + "Public"
 			} else {
 				schema.TypePath = tp
+				schema.Ref = "#/definitions/" + defName
 			}
 		}
 	}

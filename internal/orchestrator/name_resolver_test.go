@@ -15,8 +15,8 @@ func TestRegistryNameResolver_UniqueType(t *testing.T) {
 	typeSpec := &ast.TypeSpec{Name: ast.NewIdent("Role")}
 	typeDef := &domain.TypeSpecDef{
 		TypeSpec: typeSpec,
-		PkgPath: "github.com/user/project/internal/constants",
-		File:    &ast.File{Name: ast.NewIdent("constants")},
+		PkgPath:  "github.com/user/project/internal/constants",
+		File:     &ast.File{Name: ast.NewIdent("constants")},
 	}
 	reg.AddTypeSpecForTest("constants.Role", typeDef)
 
@@ -58,6 +58,39 @@ func TestRegistryNameResolver_NotInRegistry(t *testing.T) {
 
 	if result != "unknown.Type" {
 		t.Errorf("expected fallback short name 'unknown.Type', got '%s'", result)
+	}
+}
+
+func TestRegistryNameResolver_IsNotUnique(t *testing.T) {
+	reg := registry.NewService()
+
+	// NotUnique type registered under its full-path key.
+	notUnique := &domain.TypeSpecDef{
+		TypeSpec:  &ast.TypeSpec{Name: ast.NewIdent("Source")},
+		PkgPath:   "github.com/chargebee/chargebee-go/v3/enum",
+		NotUnique: true,
+		File:      &ast.File{Name: ast.NewIdent("enum")},
+	}
+	reg.AddTypeSpecForTest("github_com_chargebee_chargebee-go_v3_enum.Source", notUnique)
+
+	// Unique type registered under its short key.
+	unique := &domain.TypeSpecDef{
+		TypeSpec: &ast.TypeSpec{Name: ast.NewIdent("Role")},
+		PkgPath:  "github.com/user/project/internal/constants",
+		File:     &ast.File{Name: ast.NewIdent("constants")},
+	}
+	reg.AddTypeSpecForTest("constants.Role", unique)
+
+	resolver := newRegistryNameResolver(reg)
+
+	if !resolver.IsNotUnique("github.com/chargebee/chargebee-go/v3/enum.Source") {
+		t.Error("expected enum.Source to be reported NotUnique")
+	}
+	if resolver.IsNotUnique("github.com/user/project/internal/constants.Role") {
+		t.Error("expected constants.Role to be reported unique")
+	}
+	if resolver.IsNotUnique("github.com/user/project/internal/missing.Type") {
+		t.Error("expected unknown type to be reported unique (false)")
 	}
 }
 

@@ -231,18 +231,21 @@ func (s *Service) FindTypeSpec(typeName string, file *ast.File) *domain.TypeSpec
 		return s.parametrizeGenericType(file, typeDef, typeName)
 	}
 
-	// in case that comment //@name renamed the type with a name without a dot
+	// in case that comment //@name renamed the type with a name without a dot.
+	// Multiple types could share a renamed SchemaName; ranging the map is random,
+	// so pick the smallest TypeName for a deterministic result.
+	var renamed *domain.TypeSpecDef
 	for k, v := range s.uniqueDefinitions {
 		if v == nil {
 			console.Logger.Debug("%s TypeSpecDef is nil", k)
 			continue
 		}
-		if v.SchemaName == typeName {
-			return v
+		if v.SchemaName == typeName && (renamed == nil || v.TypeName() < renamed.TypeName()) {
+			renamed = v
 		}
 	}
 
-	return nil
+	return renamed
 }
 
 func (s *Service) findTypeSpec(pkgPath string, typeName string) *domain.TypeSpecDef {

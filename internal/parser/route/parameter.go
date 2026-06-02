@@ -72,22 +72,28 @@ func (s *Service) parseParam(op *operation, line string) error {
 			if op.packageName != "" && !strings.Contains(dataType, ".") {
 				qualifiedType = op.packageName + "." + dataType
 			}
-			// Resolve full import path for unambiguous registry lookup
-			typePath := s.resolveTypePath(qualifiedType, op.astFile)
+			// Resolve full import path AND canonical definition name for
+			// unambiguous registry lookup. defName disambiguates NotUnique
+			// collisions to the package this file imports.
+			defName, typePath := s.resolveTypeRef(qualifiedType, op.astFile)
+			refName := qualifiedType
+			if defName != "" {
+				refName = defName
+			}
 			// Build schema for model type
 			if isArray {
 				// Array of models
 				param.Schema = &domain.Schema{
 					Type: "array",
 					Items: &domain.Schema{
-						Ref:      "#/definitions/" + qualifiedType,
+						Ref:      "#/definitions/" + refName,
 						TypePath: typePath,
 					},
 				}
 			} else {
 				// Single model
 				param.Schema = &domain.Schema{
-					Ref:      "#/definitions/" + qualifiedType,
+					Ref:      "#/definitions/" + refName,
 					TypePath: typePath,
 				}
 			}
@@ -133,7 +139,7 @@ func buildMapParamSchema(dataType, packageName string) *domain.Schema {
 	if isPrimitiveType(valueType) {
 		schemaType, _ := convertType(valueType)
 		return &domain.Schema{
-			Type: "object",
+			Type:                 "object",
 			AdditionalProperties: &domain.Schema{Type: schemaType},
 		}
 	}

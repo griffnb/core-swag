@@ -375,6 +375,58 @@ type Account struct {
 	})
 }
 
+// TestFindTypeSpecByName_CollisionDeterminism guards against the non-deterministic
+// output bug: two packages sharing a Go package name (here "atlasmail") at different
+// import paths each define InboxThread, so both are NotUnique. The short-name lookup
+// must return the SAME candidate on every call (smallest TypeName, project-local
+// preferred) rather than whichever the definitions map iterates first.
+func TestFindTypeSpecByName_CollisionDeterminism(t *testing.T) {
+	t.Run("stable winner across many calls for colliding project-local types", func(t *testing.T) {
+		svc := NewService()
+		svc.SetPackagePrefixes([]string{"github.com/CrowdShield/atlas-go"})
+
+		src := "package atlasmail\ntype InboxThread struct {\n\tID string\n}"
+		_ = svc.ParseFile("github.com/CrowdShield/atlas-go/internal/services/atlasmail", "a.go", src, domain.ParseAll)
+		_ = svc.ParseFile("github.com/CrowdShield/atlas-go/internal/integrations/atlasmail", "b.go", src, domain.ParseAll)
+		_, _ = svc.ParseTypes()
+
+		first := svc.FindTypeSpecByName("atlasmail.InboxThread")
+		if first == nil {
+			t.Fatal("expected a NotUnique candidate, got nil")
+		}
+		if !first.NotUnique {
+			t.Errorf("expected the resolved type to be NotUnique, got unique %s", first.PkgPath)
+		}
+		// "integrations" sorts before "services" → integrations is the stable winner.
+		if first.PkgPath != "github.com/CrowdShield/atlas-go/internal/integrations/atlasmail" {
+			t.Errorf("expected smallest TypeName (integrations) winner, got %s", first.PkgPath)
+		}
+		for i := 0; i < 25; i++ {
+			if got := svc.FindTypeSpecByName("atlasmail.InboxThread"); got != first {
+				t.Fatalf("non-deterministic result on call %d: got %v want %v", i, got, first)
+			}
+		}
+	})
+
+	t.Run("project-local preferred over external collision", func(t *testing.T) {
+		svc := NewService()
+		svc.SetPackagePrefixes([]string{"github.com/CrowdShield/atlas-go"})
+
+		src := "package address\ntype Address struct {\n\tLine string\n}"
+		_ = svc.ParseFile("github.com/chargebee/chargebee-go/v3/address", "ext.go", src, domain.ParseAll)
+		_ = svc.ParseFile("github.com/CrowdShield/atlas-go/internal/models/address", "local.go", src, domain.ParseAll)
+		_, _ = svc.ParseTypes()
+
+		got := svc.FindTypeSpecByName("address.Address")
+		if got == nil {
+			t.Fatal("expected a candidate, got nil")
+		}
+		if got.PkgPath != "github.com/CrowdShield/atlas-go/internal/models/address" {
+			t.Errorf("expected project-local winner, got %s", got.PkgPath)
+		}
+	})
+}
+
 func TestService_UniqueDefinitions(t *testing.T) {
 	t.Run("returns all unique type definitions", func(t *testing.T) {
 		// Arrange

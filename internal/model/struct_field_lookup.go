@@ -716,22 +716,32 @@ func buildSchemasRecursive(
 		schema.Title = packagePascal + titleTypeName
 	}
 
-	allSchemas[fullSchemaName] = schema
-
-	// Also register under the canonical name if globalNameResolver produces a
-	// different key. This handles NotUnique types where $ref uses the full-path
-	// name (e.g., "github_com_chargebee_chargebee-go_v3_enum.Source") but the
-	// definition was stored under the short key ("enum.Source").
+	// Resolve the canonical definition name. For unique types this is the short
+	// "pkg.Type" form; for NotUnique types (same Go package name at two different
+	// import paths) it is the sanitized full-path name
+	// (e.g. "github_com_..._services_atlasmail.InboxThread").
+	canonicalName := fullSchemaName
+	notUnique := false
 	if globalNameResolver != nil && strings.Contains(pkgPath, "/") {
 		lookupType := strings.TrimSuffix(schemaName, "Public")
 		isPublicSchema := strings.HasSuffix(schemaName, "Public")
-		canonicalName := globalNameResolver.ResolveDefinitionName(pkgPath + "." + lookupType)
+		cn := globalNameResolver.ResolveDefinitionName(pkgPath + "." + lookupType)
 		if isPublicSchema {
-			canonicalName += "Public"
+			cn += "Public"
 		}
-		if canonicalName != fullSchemaName {
-			allSchemas[canonicalName] = schema
-		}
+		canonicalName = cn
+		notUnique = globalNameResolver.IsNotUnique(pkgPath + "." + lookupType)
+	}
+
+	allSchemas[canonicalName] = schema
+	// Unique types are also registered under the short Go-package-name form, since
+	// $refs reference them by that name (e.g. "stripe.Subscription" even when the
+	// import path segment is "v84"). NotUnique types deliberately omit the short
+	// name: it is ambiguous across the colliding packages and a shared short key
+	// would be resolved non-deterministically to whichever package was built last.
+	// Their $refs use the canonical full-path name instead.
+	if !notUnique && fullSchemaName != canonicalName {
+		allSchemas[fullSchemaName] = schema
 	}
 
 	// Recursively process nested types

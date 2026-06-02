@@ -409,7 +409,8 @@ func TestExtendedPrimitives_UUID(t *testing.T) {
 		propertyFormat("parent_id", "uuid")
 }
 
-// TestExtendedPrimitives_Decimal tests decimal.Decimal mapping to number
+// TestExtendedPrimitives_Decimal tests decimal.Decimal mapping. Decimal serializes
+// to JSON as a string (shopspring's MarshalJSON), so it maps to type "string".
 func TestExtendedPrimitives_Decimal(t *testing.T) {
 	builder := &StructBuilder{
 		Fields: []*StructField{
@@ -432,8 +433,8 @@ func TestExtendedPrimitives_Decimal(t *testing.T) {
 	assertSchema(t, schema).
 		hasProperty("price").
 		hasProperty("tax").
-		propertyType("price", "number").
-		propertyType("tax", "number")
+		propertyType("price", "string").
+		propertyType("tax", "string")
 }
 
 // TestExtendedPrimitives_RawMessage tests json.RawMessage mapping to object

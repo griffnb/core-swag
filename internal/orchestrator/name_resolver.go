@@ -65,6 +65,20 @@ func (r *registryNameResolver) ResolveDefinitionName(fullTypePath string) string
 	return shortName
 }
 
+// IsNotUnique reports whether the type at fullTypePath is marked NotUnique in the
+// registry (i.e. another package defines a type with the same short name). The
+// exact full-path key is checked first (unambiguous); the short name is only used
+// as a fallback when the type isn't registered under its full-path key.
+func (r *registryNameResolver) IsNotUnique(fullTypePath string) bool {
+	if td := r.registry.FindTypeSpecByName(makeFullPathDefName2(fullTypePath)); td != nil {
+		return td.NotUnique
+	}
+	if td := r.registry.FindTypeSpecByName(extractShortTypeName(fullTypePath)); td != nil {
+		return td.NotUnique
+	}
+	return false
+}
+
 // extractShortTypeName extracts "package.TypeName" from a full module path.
 // "github.com/user/project/internal/constants.Role" → "constants.Role"
 func extractShortTypeName(fullPath string) string {
